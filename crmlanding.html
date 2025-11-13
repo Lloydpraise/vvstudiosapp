@@ -1,0 +1,2799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VV Studios</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" xintegrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        // Placeholder for Firebase configuration (Required for context)
+        const __app_id = 'crm-app-id';
+        const __firebase_config = '{}';
+        
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'faint-gold': '#FFD700',
+                        'bg-dark': '#0f1115',
+                        'bg-card': '#1a1d23',
+                        'bg-sidebar': '#14161a',
+                        'border-dark': '#2b2f3a',
+                        'whatsapp-green': '#25D366',
+                        'selected-row': 'rgba(59, 130, 246, 0.1)',
+                        'lost-red': '#b91c1c',
+                        'unqualified-gray': '#4b5563',
+                        'main-purple': '#8B5CF6',
+                        'add-green': '#10B981',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background-color: transparent; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.1); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.2); }
+        .card-animate { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .card-animate:hover { transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        .sidebar-link { position: relative; transition: all 0.2s ease; }
+        /* Tooltip: hidden by default, shown when the parent .sidebar-link is hovered */
+        .sidebar-link:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        .tooltip {
+            position: absolute;
+            left: calc(100% + 12px);
+            top: 50%;
+            transform: translateY(-50%);
+            visibility: hidden;
+            opacity: 0;
+            background-color: #2b2f3a;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            white-space: nowrap;
+            font-size: 0.875rem;
+            z-index: 10;
+            transition: opacity 0.2s ease, visibility 0.2s;
+        }
+        .tooltip::after {
+            content: '';
+            position: absolute;
+            right: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+            border-width: 6px;
+            border-style: solid;
+            border-color: transparent #2b2f3a transparent transparent;
+        }
+        .sidebar-link.active { color: #FFD700; background-color: rgba(255, 215, 0, 0.1); }
+        .sidebar-link.faint-gold { color: #FFD700; }
+        .tab-button.active { background-color: #3b82f6; color: white; }
+        /* Modal Backdrop */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.75);
+            z-index: 40;
+        }
+        /* Ensure sidebar settings button is visible on small screens by fixing it to viewport when sidebar is open */
+        #sidebar-settings-wrapper.mobile-fixed {
+            position: fixed !important;
+            bottom: 1rem !important;
+            left: 1rem !important;
+            width: calc(16rem - 2rem);
+            z-index: 80 !important;
+        }
+        @media (max-width: 768px) {
+            /* On small screens, show only the icon to save space */
+            #sidebar-settings-wrapper .hidden.lg\:inline { display: none !important; }
+        }
+        /* Ensure sidebar overlays the mobile nav bar on small screens so nothing is hidden */
+        @media (max-width: 1024px) {
+            #sidebar { z-index: 75 !important; }
+            /* also ensure the sidebar content area (inner) is above the mobile nav */
+            #sidebar * { z-index: 75 !important; }
+        }
+
+        /* --- Contacts List Styles (Table View) --- */
+        .contact-row {
+            /* Grid layout for Contact List (5 columns total) */
+            grid-template-columns: 40px minmax(180px, 1.5fr) minmax(120px, 1fr) minmax(200px, 2.5fr) 40px;
+            display: grid;
+            align-items: stretch;
+            padding: 0; 
+            border-bottom: 1px solid #2b2f3a;
+            position: relative;
+            cursor: default; 
+            min-height: 3.5rem;
+            transition: background-color 0.2s;
+        }
+        
+        /* Specific layout for Deal List (7 columns: Index, Deal Name, Contact, Stage, Amount, Date, Action) */
+        .deal-list-row {
+            grid-template-columns: 40px 40px minmax(150px, 1.5fr) minmax(150px, 1.5fr) minmax(120px, 1fr) minmax(100px, 1fr) minmax(120px, 1fr); 
+            display: grid;
+            align-items: stretch;
+            padding: 0; 
+            border-bottom: 1px solid #2b2f3a;
+            position: relative;
+            cursor: default; 
+            min-height: 3.5rem;
+            transition: background-color 0.2s;
+        }
+
+        .contact-row:hover, .deal-list-row:hover {
+            background-color: rgba(26, 29, 35, 0.5);
+        }
+        
+        .contact-row.selected, .deal-list-row.selected {
+            background-color: var(--selected-row);
+        }
+
+        .contact-row > *, .deal-list-row > * {
+            padding: 0.75rem 1rem;
+            border-right: 1px solid #2b2f3a; 
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+        /* Remove padding for checkbox/index cell */
+        .contact-row > *:nth-child(1), .deal-list-row > *:nth-child(1), .deal-list-row > *:nth-child(2) {
+            padding: 0.75rem 0.5rem;
+            justify-content: center;
+        }
+        
+        /* Remove right border from last data column */
+        .contact-row > *:nth-child(4) { 
+            border-right: none; 
+        }
+        /* Remove right border from last column (Date to Close in Deals List) */
+        .deal-list-row > *:nth-child(7) { 
+             border-right: none; 
+        }
+
+        /* Style for editable cells */
+        .edit-cell {
+            position: relative;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            padding-right: 2.5rem !important; /* Make space for icon */
+        }
+        .editable-content {
+            flex-grow: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 10px; /* needed for contenteditable */
+        }
+        .editable-content:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+            border-radius: 4px;
+            padding: 0 4px;
+            margin: -4px;
+        }
+        .edit-icon {
+            position: absolute;
+            right: 0.5rem;
+            opacity: 0;
+            transition: opacity 0.1s ease;
+        }
+        .edit-cell:hover .edit-icon {
+            opacity: 1;
+        }
+
+        .select-trigger {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 40px;
+            height: 100%;
+            cursor: default; /* No pointer unless action is present */
+            z-index: 10;
+        }
+
+        /* --- Pipeline View Styles --- */
+        .pipeline-column {
+            min-height: 500px;
+        }
+        
+        .pipeline-column.drag-over {
+            background-color: rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+        }
+
+        .deals-card {
+            cursor: grab;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .deals-card:active {
+            cursor: grabbing;
+        }
+        
+        .deals-card:hover {
+             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Follow Up Button on Pipeline Card Hover */
+        .deals-card-follow-up {
+            height: 0;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.2s ease;
+            overflow: hidden;
+        }
+
+        .deals-card:hover .deals-card-follow-up {
+            height: 36px; /* Height of the button */
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* --- Drop Zone Tiles (small cards that slide in from the right bottom) --- */
+        #hidden-drop-zones {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            height: auto;
+            width: auto;
+            display: flex;
+            flex-direction: row-reverse; /* span from the right */
+            gap: 12px;
+            pointer-events: none;
+            z-index: 60;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            overflow: visible;
+            opacity: 0;
+            transform: translateX(20px);
+        }
+
+        /* Active state: tiles become visible and interactive */
+        #hidden-drop-zones.active {
+            pointer-events: auto;
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /*
+         * Prevent the small drop-zone tiles and the drop-zone table modal from
+         * appearing or intercepting clicks on small devices. The drag/drop
+         * experience is desktop-first; on mobile we hide these entirely so they
+         * cannot hijack bottom-nav interactions.
+         */
+        @media (max-width: 768px) {
+            #hidden-drop-zones { display: none !important; pointer-events: none !important; }
+            #drop-zone-table-modal { display: none !important; pointer-events: none !important; }
+        }
+
+        .drop-zone-drawer {
+            pointer-events: auto;
+            min-width: 220px;
+            max-width: 260px;
+            height: 88px;
+            padding: 10px 14px;
+            color: #e6eef8;
+            background: linear-gradient(180deg, rgba(11,18,32,0.98), rgba(9,12,20,0.98));
+            border-radius: 10px;
+            box-shadow: 0 8px 22px rgba(2,6,23,0.6), 0 2px 6px rgba(0,0,0,0.35);
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 12px;
+            transition: transform 0.28s cubic-bezier(.2,.9,.2,1), opacity 0.25s ease;
+            transform: translateX(18px);
+            border: 1px solid rgba(255,255,255,0.03);
+            cursor: default;
+            overflow: hidden;
+        }
+
+        /* Slide each tile into place when parent is active */
+        #hidden-drop-zones.active .drop-zone-drawer { transform: translateX(0); }
+
+        .drop-zone-drawer .dz-icon { font-size: 22px; color: #9fb7d7; }
+        .drop-zone-drawer .dz-title { font-weight: 700; font-size: 14px; color: #ffffff; margin: 0; }
+        .drop-zone-drawer .dz-sub { font-size: 12px; color: #b6c7db; margin: 0; }
+
+        /* Make each tile more subtle and neutral (remove harsh reds/greys)
+           Use a slight colored left accent for distinction */
+        #unqualified-drop-zone { border-left: 4px solid rgba(99,102,241,0.9); }
+        #lost-drop-zone { border-left: 4px solid rgba(239,68,68,0.9); }
+
+        .drop-zone-drag-over {
+            transform: scale(1.02);
+            box-shadow: 0 12px 28px rgba(2,6,23,0.7);
+            border-color: rgba(255,255,255,0.08);
+        }
+        
+        /* List View Follow Up Button (Fixing position and hover visibility) */
+        .deal-list-row-actions {
+            position: absolute;
+            right: 0; 
+            top: 0;
+            height: 100%;
+            width: 120px; 
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 1rem;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 20;
+            pointer-events: none; 
+        }
+        
+        .deal-list-row:hover .deal-list-row-actions {
+            opacity: 1;
+            pointer-events: auto; 
+        }
+        
+        .deal-list-row-actions button {
+            pointer-events: auto; 
+        }
+
+        /* --- Add Modal Styles --- */
+        #add-main-modal-content {
+            max-width: 90%;
+            width: 768px;
+            min-height: 500px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* When opened from mobile submenu, hide the left selector and let the form span full width */
+        #add-main-modal-content.mobile-full .w-40 {
+            display: none !important;
+        }
+        #add-main-modal-content.mobile-full #add-form-container {
+            padding-left: 0.75rem;
+            width: 100%;
+        }
+
+        /* Make modal use more of the screen on small devices */
+        @media (max-width: 768px) {
+            #add-main-modal-content {
+                /* Make the modal smaller and scrollable on narrow screens */
+                max-width: 94%;
+                width: calc(100% - 2rem);
+                min-height: auto;
+                max-height: calc(100vh - 4rem); /* leave space for header/nav */
+                overflow-y: auto;
+                padding: 1rem;
+            }
+            /* Ensure modal container doesn't push content off-screen */
+            .modal-backdrop > .absolute { padding: 0.5rem; }
+        }
+
+        .add-form-menu-item {
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .add-form-menu-item.active {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-left: 3px solid var(--add-green);
+            color: white;
+        }
+
+        /* Custom date picker styles for input[type="date"] and input[type="datetime-local"] */
+        input[type="date"], input[type="datetime-local"] {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            color-scheme: dark;
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator,
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+        }
+    /* --- Meeting Calendar Styles --- */
+        .day-square {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            text-align: center;
+            border: 1px solid #2b2f3a;
+            border-radius: 8px;
+            transition: background-color 0.2s, border-color 0.2s;
+            cursor: pointer;
+            position: relative; /* Essential for badges */
+            overflow: hidden; /* Hide overflowing badge */
+        }
+        .day-square:hover {
+            background-color: rgba(26, 29, 35, 0.5);
+            border-color: #3b82f6;
+        }
+        .day-square.selected-day {
+            border-color: #8B5CF6; /* light purple */
+            background-color: rgba(139,92,246,0.06);
+            box-shadow: 0 0 10px rgba(139,92,246,0.25);
+        }
+        .calendar-badge {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        /* Diagonal badge style: Thin strip on top-left */
+        .calendar-badge::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 150%;
+            height: 4px; /* Thin strip height */
+            transform-origin: top left;
+            transform: rotate(-45deg) translate(-20%, -30%); /* Positioned on the top-left corner */
+            transition: background-color 0.2s;
+        }
+        /* Contacts search result card styles */
+        #contacts-search-results {
+            position: absolute !important;
+            z-index: 99999 !important; /* Ensure it appears above table rows on mobile */
+            width: 100%;
+            left: 0;
+            top: calc(100% + 6px);
+            background: var(--bg-card);
+            border: 1px solid var(--border-dark);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(2,6,23,0.6);
+        }
+        #contacts-search-results .contacts-search-item {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+            position: relative;
+            z-index: 100000;
+            /* slightly darker, semi-opaque so it sits above rows but isn't fully opaque */
+            background: rgba(26,29,35,0.9);
+        }
+        #contacts-search-results .contacts-search-item .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 9999px;
+            background: #6b21a8; /* main-purple */
+            display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;
+            flex-shrink: 0;
+        }
+        #contacts-search-results .contacts-search-item .meta { flex:1; min-width:0 }
+        #contacts-search-results .contacts-search-item .meta .name { font-weight:600 }
+        #contacts-search-results .contacts-search-item .meta .phone { font-size:0.8rem; color: rgba(255,255,255,0.7) }
+
+        /* Purple border pulse for a found/selected contact (desktop rows & mobile cards) */
+        @keyframes highlightBorderPurple {
+            0%   { box-shadow: 0 0 0 0 rgba(139,92,246,0.45); border-color: rgba(139,92,246,0); }
+            30%  { box-shadow: 0 0 0 6px rgba(139,92,246,0.12); border-color: rgba(139,92,246,0.9); }
+            70%  { box-shadow: 0 0 0 10px rgba(139,92,246,0.02); border-color: rgba(139,92,246,0.3); }
+            100% { box-shadow: 0 0 0 0 rgba(139,92,246,0); border-color: rgba(139,92,246,0); }
+        }
+        .search-target-highlight {
+            animation: highlightBorderPurple 1.6s ease-in-out;
+            border-radius: 10px !important;
+            border: 2px solid rgba(139,92,246,0) !important;
+            box-shadow: 0 0 0 0 rgba(139,92,246,0);
+            transition: border-color 0.25s ease, box-shadow 0.25s ease; /* fallback */
+        }
+        /* Ensure the visual highlight looks good on the desktop contact rows which use grid */
+        .contact-row.search-target-highlight { padding: 0.25rem; }
+        /* Mobile card specific tweak (if mobile card uses a wrapper) */
+        #contacts-mobile-view .search-target-highlight { border-radius: 12px; }
+
+        /* Brief purple highlight used when a user clicks a search result (no layout shift) */
+        .search-highlight-brief {
+            /* Use outline and box-shadow so we don't change element size */
+            outline: 3px solid rgba(139,92,246,0.95);
+            outline-offset: 4px;
+            border-radius: 10px !important;
+            box-shadow: 0 6px 20px rgba(139,92,246,0.12);
+            transition: box-shadow 0.25s ease, outline 0.25s ease;
+        }
+        /* Ensure highlight shows above mobile adjacent layers */
+        .contact-card-slide.search-highlight-brief {
+            position: relative;
+            z-index: 100005 !important;
+            outline: 3px solid rgba(139,92,246,0.95) !important;
+            outline-offset: 3px !important;
+            box-shadow: 0 14px 36px rgba(139,92,246,0.18) !important;
+            border-radius: 12px !important;
+            /* Add a subtle purple tint to ensure visibility on mobile */
+            background: linear-gradient(180deg, rgba(139,92,246,0.04) 0%, rgba(139,92,246,0.02) 100%) !important;
+            border-color: rgba(139,92,246,0.6) !important;
+            transition: box-shadow 0.2s ease, outline 0.2s ease, background 0.2s ease;
+        }
+        /* Fallback in case the outer wrapper is highlighted */
+        [data-contact-id].search-highlight-brief {
+            position: relative;
+            z-index: 100004 !important;
+            /* also tint the outer wrapper slightly to help visibility */
+            background: rgba(139,92,246,0.02) !important;
+        }
+
+        /* After-sale search results should match contacts dropdown style */
+        #after-sale-search-results {
+            position: absolute !important;
+            z-index: 99999 !important;
+            width: 100%;
+            left: 0;
+            top: calc(100% + 6px);
+            background: var(--bg-card);
+            border: 1px solid var(--border-dark);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(2,6,23,0.6);
+        }
+        #after-sale-search-results .contacts-search-item {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+            position: relative;
+            z-index: 100000;
+            background: rgba(26,29,35,0.9);
+        }
+        .past-meeting-day .calendar-badge::before {
+            background-color: #4b5563; /* Grey */
+        }
+        .upcoming-meeting-day .calendar-badge::before {
+            background-color: #8B5CF6; /* main-purple */
+        }
+        .today-day {
+            background-color: rgba(59, 130, 246, 0.2); /* blue */
+            border-color: #3b82f6;
+        }
+        /* Horizontal month scroller helper class used in modal and step-2 */
+        .month-scroll {
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            -ms-overflow-style: none; /* hide scrollbar IE */
+            scrollbar-width: none; /* hide scrollbar Firefox */
+        }
+        .month-scroll::-webkit-scrollbar { display: none; }
+        .past-day {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .day-names-row > div { font-weight: 600; padding: 6px 0; }
+        .daily-meeting-item {
+            background-color: rgba(59, 130, 246, 0.1);
+            border-left: 4px solid #3b82f6;
+            padding: 0.75rem;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        .daily-meeting-item:hover {
+            background-color: rgba(59, 130, 246, 0.2);
+        }
+        /* Monthly View Container for Scrolling */
+        #calendar-months-scroll-container {
+            display: flex;
+            overflow-x: scroll;
+            scroll-snap-type: x mandatory;
+            scrollbar-width: none; /* Hide scrollbar for Firefox */
+            -ms-overflow-style: none; /* Hide scrollbar for IE/Edge */
+        }
+        #calendar-months-scroll-container::-webkit-scrollbar {
+            display: none; /* Hide scrollbar for Chrome/Safari */
+        }
+        .month-view-container {
+            min-width: 100%; /* Snap to full width */
+            scroll-snap-align: start;
+            padding-right: 20px; /* Space for the scroll stop */
+        }
+        .day-grid {
+             /* Keeps the calendar square structure */
+            display: grid; 
+            grid-template-columns: repeat(7, 1fr); 
+            gap: 1px;
+        }
+        .day-square {
+            position: relative;
+          }
+
+        .day-square .calendar-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background-color: var(--main-purple, #9b59b6);
+}
+/* Transport button selected state */
+.transport-btn { background: transparent; border: 1px solid #2b2f3a; color: white; }
+.transport-btn.selected { background: var(--main-purple); color: white; border-color: transparent; }
+
+/* Time slot card - cleaner, more tappable buttons */
+.meeting-time-slot {
+    padding: 12px 10px;
+    border-radius: 12px;
+    border: 1px solid #2b2f3a;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+    width: 100%;
+    background: rgba(255,255,255,0.02);
+    color: #e6eef8;
+    font-weight: 600;
+    font-size: 0.95rem;
+    line-height: 1.2;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.meeting-time-slot:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(2,6,23,0.6);
+    background: rgba(139,92,246,0.08); /* subtle purple tint on hover */
+}
+.meeting-time-slot:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(139,92,246,0.12);
+}
+.meeting-time-slot.selected {
+    background: #8B5CF6; /* main purple */
+    color: #ffffff;
+    border-color: transparent;
+}
+.meeting-time-slot.past-day {
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: grayscale(20%);
+}
+
+/* Meeting location selected style (single-select visual) */
+.meeting-location-btn.selected { background: var(--main-purple) !important; color: white !important; border-color: transparent !important; }
+
+/* Calendar day selected inside the meeting modal */
+.meeting-modal-day.selected { background: var(--main-purple) !important; color: white !important; border-color: transparent !important; }
+
+.meeting-modal-day { cursor: pointer; padding: 0.6rem; border-radius: 8px; border: 1px solid #2b2f3a; display:flex; align-items:center; justify-content:center; }
+
+        /* Time slots horizontal layout (left-to-right flow) */
+        .time-slots-grid {
+            display: grid;
+            grid-auto-flow: row; /* flow left-to-right */
+            /* Force 3 columns with flexible sizing so buttons are legible */
+            grid-template-columns: repeat(3, minmax(90px, 1fr));
+            gap: 0.75rem;
+            align-items: stretch;
+        }
+
+        /* Make add-meeting modal fit mobile screens and keep actions reachable */
+        @media (max-width: 768px) {
+            #add-meeting-modal .bg-bg-card {
+                max-height: calc(100vh - 2rem);
+                width: calc(100% - 2rem);
+                border-radius: 12px;
+            }
+            /* Scroll the modal body while keeping actions sticky */
+            #add-meeting-modal-body {
+                max-height: calc(100vh - 6rem);
+                overflow: auto;
+                padding-bottom: 1rem;
+            }
+            /* Make the actions sticky at the bottom of the modal body so buttons are always reachable */
+            .meeting-actions {
+                position: sticky;
+                bottom: 0;
+                z-index: 40;
+                background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.6));
+                padding-top: 0.75rem;
+                padding-bottom: 0.5rem;
+            }
+            /* Allow the time grid to use remaining vertical space on narrow screens */
+            #meeting-step-2 .md\:col-span-1 { height: auto; }
+            #meeting-times-grid { max-height: none; }
+
+            /* On narrow screens we prefer to use the available modal area efficiently.
+               Use a 3-column grid (like desktop) but make buttons larger so they fill
+               the section vertically and horizontally. This avoids a tiny horizontal
+               scroller and uses available space for tappable buttons. */
+            .time-slots-grid {
+                display: grid !important;
+                /* On mobile use 5 columns so time buttons compress into multiple
+                   columns and remain tappable without requiring horizontal scroll */
+                grid-template-columns: repeat(5, 1fr) !important;
+                grid-auto-rows: minmax(48px, 1fr) !important;
+                gap: 0.75rem !important;
+            }
+
+            /* Let each slot fill its grid cell and be comfortably tappable */
+            .meeting-time-slot {
+                min-width: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                padding: 14px 12px !important;
+                font-size: 1rem !important;
+                border-radius: 12px !important;
+                box-sizing: border-box !important;
+                text-align: center !important;
+            }
+            /* Hide desktop grid on mobile and show mobile-specific container */
+            #meeting-times-grid { display: none !important; }
+            #meeting-times-grid-mobile { display: block !important; }
+            /* Mobile grid layout for timeslots: 3 columns for compact tappable buttons */
+            .time-slots-list {
+                display: grid !important;
+                grid-template-columns: repeat(3, 1fr) !important;
+                grid-auto-rows: minmax(48px, auto) !important;
+                gap: 0.75rem !important;
+            }
+            .time-slots-list .meeting-time-slot {
+                width: 100% !important;
+                display: block !important;
+                height: 100% !important;
+            }
+        }
+
+            /* Alerts panel and bubble */
+            /* Default bubble style used for both desktop and mobile notification bubbles */
+            .alerts-bubble {
+                min-width: 20px;
+                height: 20px;
+                padding: 0 5px;
+                font-size: 11px;
+                line-height: 20px;
+                background-color: var(--add-green, #10B981); /* green by default */
+                color: white;
+                border: 2px solid rgba(0,0,0,0.25);
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .alerts-bubble.unread { background-color: #ef4444; } /* red when unread */
+
+            /* Mobile nav buttons need to be positioned relative so bubble can be placed top-right */
+            .mobile-nav-btn { position: relative; }
+
+            /* Slightly smaller bubble for mobile nav so it doesn't overflow */
+            .mobile-alerts-bubble { min-width: 14px; height: 14px; padding: 0 3px; font-size: 10px; line-height: 14px; }
+
+            #alerts-panel {
+                position: absolute; /* will be positioned under the bell via JS */
+                width: 280px;
+                max-width: calc(100% - 32px);
+                background: linear-gradient(180deg, rgba(17,24,39,0.98), rgba(10,12,17,0.98));
+                border: 1px solid rgba(255,255,255,0.04);
+                box-shadow: 0 12px 30px rgba(2,6,23,0.7);
+                border-radius: 10px;
+                z-index: 120;
+                transform-origin: top left;
+                transform: translateY(-6px) scaleY(0.95);
+                opacity: 0;
+                transition: transform 0.16s ease, opacity 0.12s ease;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+            #alerts-panel.open { transform: translateY(6px) scaleY(1); opacity: 1; }
+            #alerts-panel .alerts-header { padding: 12px 14px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.03); }
+            #alerts-panel .alerts-list { padding: 12px; overflow-y: auto; flex:1; }
+            #alerts-panel .alerts-empty { color: #94a3b8; text-align:center; padding:24px 12px; }
+            #alerts-panel .alerts-item { padding: 10px 12px; border-radius:8px; margin-bottom:8px; background: rgba(255,255,255,0.02); }
+            #alerts-panel .alerts-item.unread { border-left: 4px solid #ef4444; }
+
+        /* Make the Step-2 calendar + times column use the available modal
+           width more effectively. At md and above use a 2:1 proportion so the
+           calendar expands while the time column remains a comfortably sized
+           sidebar. This spreads out columns to avoid large empty gutters. */
+        /* Desktop retains the original side-by-side md:grid-cols-3 layout from
+           the markup (no forced 2:1 override). This keeps calendar and times
+           columns consistent with the original desktop behavior. */
+
+    </style>
+    <style>
+        /* Mobile: ensure the main scrollable area has enough bottom padding so
+           the last list items aren't hidden by the fixed bottom nav. We add
+           a safe-area inset and a little extra gap for comfortable spacing. */
+        @media (max-width: 1024px) {
+            main {
+                /* mobile nav height (h-16) = 4rem, add 1rem extra spacing */
+                padding-bottom: calc(4rem + 1rem + env(safe-area-inset-bottom));
+            }
+            /* Also make sure any inner mobile-only list views that are independently
+               scrollable also respect the nav by adding bottom padding. */
+            #contacts-mobile-view, #mobile-deals-card-container, #after-sale-mobile-view, #meetings-list-container {
+                padding-bottom: calc(4rem + 1rem + env(safe-area-inset-bottom));
+            }
+
+            /* Mobile nav hide/show transitions */
+            #mobile-nav-bar {
+                transition: transform 240ms ease, opacity 240ms ease;
+                will-change: transform;
+            }
+            /* Applied when the nav should be hidden (slide down out of view) */
+            #mobile-nav-bar.mobile-hidden {
+                transform: translateY(100%);
+                opacity: 0;
+                pointer-events: none;
+            }
+        }
+    </style>
+</head>
+<body class="bg-bg-dark text-white" data-page="crm">
+    <div id="dashboard-container">
+        <div class="flex min-h-screen">
+                        <aside id="sidebar" class="w-64 bg-[#14161a] p-6 flex-shrink-0 fixed inset-y-0 left-0 transform -translate-x-full transition-transform duration-300 z-50 lg:relative lg:translate-x-0">
+                <div class="flex flex-col items-center space-y-2 mb-8">
+                    <img src="../assets/logo.png" alt="VV Studios Logo" class="w-16 h-16">
+                    <span class="text-xl font-bold">VV Studios</span>
+                    <span class="text-sm text-white/60">Client Portal</span>
+                </div>
+                <!-- Tablet-only sidebar toggle (hidden on mobile, hidden on desktop >lg) -->
+                <button id="sidebar-toggle-tablet" class="hidden sm:block lg:hidden absolute top-4 right-4 bg-gray-500 hover:bg-gray-600 text-white text-sm font-medium py-1 px-2 rounded-lg transition-colors" title="Toggle sidebar">&gt;</button>
+                                <nav>
+        <ul class="space-y-2">
+                <!-- My Business -->
+        <li class="mb-4">
+            <a href="../index.html"
+                                class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                                <i class="fa-solid fa-briefcase w-5 h-5"></i>
+                                <span>My Business</span>
+                                <span class="tooltip">View your business overview and key insights</span>
+                        </a>
+                </li>
+
+                <!-- Ads -->
+        <li class="mb-4">
+            <a href="../ads_management_dashboard.html"
+                                class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                                <i class="fa-solid fa-bullhorn w-5 h-5"></i>
+                                <span>Ads</span>
+                                <span class="tooltip">Optimize your ad campaigns for maximum ROI!</span>
+                        </a>
+                </li>
+
+                <!-- Sales & Follow-Ups (Active) -->
+        <li class="mb-4">
+            <a href="crmlanding.html"
+                                class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors active">
+                                <i class="fa-solid fa-handshake w-5 h-5"></i>
+                                <span>Sales & Follow-Ups</span>
+                                <span class="tooltip">Track and manage your customers easily</span>
+                        </a>
+                </li>
+
+                <!-- Business Assistant (Copilot) -->
+        <li class="mb-4">
+            <a href="../copilot.html"
+                                class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                                <i class="fa-solid fa-robot w-5 h-5"></i>
+                                <span>Business Assistant</span>
+                                <span class="tooltip">Your AI Copilot that helps you run the business</span>
+                        </a>
+                </li>
+
+                <!-- AI Sales Assistant -->
+        <li class="mb-4">
+            <a href="../salesassistant.html"
+                                class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                                <i class="fa-solid fa-robot w-5 h-5"></i>
+                                <span>AI Sales Assistant</span>
+                                <span class="tooltip">Unlock our smartest AI to blow up your sales!</span>
+                        </a>
+                </li>
+
+                <!-- Automations (locked) -->
+        <li class="mb-4">
+            <a href="#"
+                                class="flex items-center space-x-3 text-white/30 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                                <i class="fa-solid fa-arrows-spin w-5 h-5"></i>
+                                <span>Automations</span>
+                                <span class="tooltip">Automate your business and save 10+ hours a week!</span>
+                                <i class="fa-solid fa-lock w-3 h-3 text-white/30 ml-auto"></i>
+                        </a>
+                </li>
+
+                <!-- Marketing Systems (locked) -->
+        <li class="mb-4">
+            <a href="#"
+                                class="flex items-center space-x-3 text-white/30 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                                <i class="fa-solid fa-gear w-5 h-5"></i>
+                                <span>Marketing Systems</span>
+                                <span class="tooltip">Sales and marketing on autopilot!</span>
+                                <i class="fa-solid fa-lock w-3 h-3 text-white/30 ml-auto"></i>
+                        </a>
+                </li>
+
+                <!-- Content Creation -->
+        <li class="mb-4">
+            <a href="#"
+                                class="flex items-center space-x-3 text-white/60 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                                <i class="fa-solid fa-pen-nib w-5 h-5"></i>
+                                <span>Content Creation</span>
+                        </a>
+                </li>
+
+                <!-- Live Chat -->
+        <li class="mb-4">
+            <a href="../livechat.html"
+                                class="flex items-center space-x-3 text-white/60 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                                <i class="fa-solid fa-comments w-5 h-5"></i>
+                                <span>Live Chat</span>
+                                <span class="tooltip">Engage with customers in real-time!</span>
+                        </a>
+                </li>
+        </ul>
+</nav>
+                        
+            <!-- Sidebar Settings button (fixed to bottom of sidebar) -->
+            <div id="sidebar-settings-wrapper" style="position: absolute; left: 1rem; right: 1rem; bottom: 1.25rem;">
+                <div class="relative">
+                    <!-- Submenu that appears on top of the button -->
+                    <div id="sidebar-settings-menu" class="hidden absolute bottom-[56px] right-0 w-48 bg-bg-card border border-border-dark rounded-xl p-2 shadow-2xl z-60">
+                        <a href="#" id="sidebar-my-offers" class="block px-3 py-2 text-sm text-white/90 hover:bg-bg-dark rounded-lg sidebar-link">
+                            <i class="fa-solid fa-tag mr-2"></i> My Offers
+                        </a>
+                        <a href="#" id="sidebar-business-profile" class="block px-3 py-2 mt-1 text-sm text-white/90 hover:bg-bg-dark rounded-lg sidebar-link">
+                            <i class="fa-solid fa-id-badge mr-2"></i> Business Profile
+                        </a>
+                        <a href="#" id="sidebar-followup-schedules" class="block px-3 py-2 mt-1 text-sm text-white/90 hover:bg-bg-dark rounded-lg sidebar-link">
+                            <i class="fa-solid fa-calendar-days mr-2"></i> Schedules
+                        </a>
+                    </div>
+
+                    <button id="sidebar-settings-btn" title="Settings" class="w-full flex items-center justify-center space-x-3 text-white/80 hover:text-white bg-bg-dark border border-border-dark p-3 rounded-xl transition-colors">
+                        <i class="fa-solid fa-gear w-5 h-5"></i>
+                        <span class="hidden lg:inline">Settings</span>
+                    </button>
+                </div>
+            </div>
+
+                        </aside>
+
+            <main class="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 mt-0">
+    <div id="top-header" class="flex justify-between items-center mb-4 flex-wrap sticky top-0 z-30 bg-bg-dark/90 backdrop-blur-sm p-3 rounded-b-xl">
+        <button id="hamburger-btn" class="lg:hidden text-white text-2xl mr-4">
+            <i class="fas fa-bars"></i>
+        </button>
+        <div class="flex-1 min-w-[200px]">
+            <h1 id="businessName" class="text-3xl lg:text-4xl font-bold">Business Name</h1>
+            <p class="text-white/60 text-sm hidden sm:block">Good to see you <span id="welcomeName" class="font-bold"></span>.</p>
+        </div>
+        <div class="relative flex items-center space-x-4 mt-4 lg:mt-0">
+            <!-- Alerts button (left of profile) -->
+            <div id="alerts-wrapper" class="relative">
+                <button id="alerts-button" aria-expanded="false" title="Alerts" class="flex items-center justify-center p-2 bg-bg-card rounded-xl cursor-pointer mr-2 hover:bg-bg-dark transition-colors">
+                    <i class="fa-solid fa-bell text-lg"></i>
+                    <span id="alerts-bubble" class="alerts-bubble absolute -top-1 -right-1 inline-flex items-center justify-center w-5 h-5 text-xs font-semibold rounded-full">1</span>
+                </button>
+            </div>
+            <div id="profile-menu-button" class="flex items-center space-x-2 p-2 bg-bg-card rounded-xl cursor-pointer">
+                <div id="profile-avatar" class="rounded-full w-8 h-8 bg-blue-500 flex items-center justify-center text-white font-bold text-sm">L</div>
+                <p id="profileName" class="font-medium text-sm hidden sm:block">User</p>
+            </div>
+
+            <!-- Profile dropdown (copied from dashboardlanding.html style) -->
+            <div id="profile-dropdown" class="absolute top-14 right-0 z-50 w-48 bg-bg-card rounded-xl border border-border-dark p-2 shadow-lg hidden transition-opacity duration-200">
+                <a href="#" class="block p-2 text-sm text-white/80 hover:bg-[#2b2f3a] rounded-lg transition-colors">Change Password</a>
+                <a href="#" id="logoutButton" class="block p-2 text-sm text-red-400 hover:bg-[#2b2f3a] rounded-lg transition-colors">Logout</a>
+            </div>
+        </div>
+    </div>
+
+                <div class="hidden md:flex mb-10 p-2 bg-bg-card rounded-xl border border-border-dark flex flex-wrap justify-start items-center gap-4">
+                    <div class="flex flex-wrap gap-2">
+                        <button id="add-new-btn" class="bg-add-green hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors shadow-lg flex items-center justify-center">
+                            <i class="fa-solid fa-plus mr-2"></i> Add
+                        </button>
+                        
+                        <button class="tab-button p-3 rounded-lg font-medium transition-colors" data-section="contacts">
+                            <i class="fa-solid fa-users mr-2"></i> Contacts
+                        </button>
+                        <button class="tab-button p-3 rounded-lg font-medium transition-colors" data-section="deals">
+                            <i class="fa-solid fa-cart-shopping mr-2"></i> Deals / Carts
+                        </button>
+                        
+                        <button class="tab-button p-3 rounded-lg font-medium transition-colors" data-section="meetings">
+                            <i class="fa-solid fa-calendar-alt mr-2"></i> Meetings
+                        </button>
+                        <button class="tab-button p-3 rounded-lg font-medium transition-colors" data-section="follow-ups">
+                            <i class="fa-solid fa-bullhorn mr-2"></i> Follow Ups Today
+                        </button>
+                        <button class="tab-button p-3 rounded-lg font-medium transition-colors" data-section="after-sale">
+                            <i class="fa-solid fa-gift mr-2"></i> After Sale
+                     </button>
+
+                    </div>
+                </div>
+
+                <div id="crm-content">
+                    <section id="contacts-section" class="hidden">
+                        <div class="mb-4 flex justify-between items-center flex-nowrap">
+                            <h2 class="text-xl font-semibold">Contacts (Total: <span id="contact-count">0</span>)</h2>
+                            <div class="relative">
+                                <input type="text" id="contacts-search" placeholder="Search contacts..." class="bg-bg-dark border border-border-dark rounded-lg py-2 pl-3 pr-10 text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-main-purple w-40">
+                                <button id="search-icon" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/50 hover:text-white">
+                                    <i class="fa-solid fa-search"></i>
+                                </button>
+                                <div id="contacts-search-results" class="absolute z-10 w-full bg-bg-card border border-border-dark rounded-lg mt-1 shadow-2xl max-h-40 overflow-y-auto hidden">
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Desktop Table View -->
+                        <div class="bg-bg-card rounded-2xl border border-border-dark overflow-x-auto hidden lg:block">
+                            <div class="contact-row text-white/80 font-bold bg-bg-dark rounded-t-xl sticky top-0">
+                                <input type="checkbox" disabled class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded mr-2 opacity-0">
+                                <div>Name</div>
+                                <div>Phone Number</div>
+                                <div>Notes</div>
+                                <div></div>
+                            </div>
+                            <div id="contacts-list-container">
+                                </div>
+                        </div>
+
+                        <!-- Mobile Card View -->
+                        <div id="contacts-mobile-view" class="block lg:hidden space-y-1 p-4">
+                            <!-- Cards will be rendered here -->
+                        </div>
+
+                        <div class="hidden lg:flex justify-between items-center mt-4 p-4 bg-bg-card rounded-2xl border border-border-dark">
+                            <span class="text-white/60 text-sm"><span id="selected-contact-count">0</span> contacts selected.</span>
+                            <div class="flex items-center space-x-4">
+                                <span class="text-white/60 text-sm">Cards per page:</span>
+                                <select id="change-view-select" class="bg-bg-dark border border-border-dark rounded-lg p-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                    <option value="10">1-10</option>
+                                    <option value="25">1-25</option>
+                                    <option value="50">1-50</option>
+                                    <option value="999">All</option>
+                                </select>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section id="deals-section" class="">
+                        <div class="flex justify-between items-center mb-4 hidden md:flex flex-wrap">
+                            <h2 class="text-xl font-semibold">Sales Pipeline (Total Deals: <span id="total-deals-count">0</span>)</h2>
+                            <div class="flex space-x-2 p-1 bg-bg-card rounded-xl border border-border-dark mt-2 sm:mt-0">
+                                <button class="view-switch-btn p-2 rounded-lg text-sm font-medium transition-colors active tab-button" data-view="pipeline">
+                                    <i class="fa-solid fa-columns mr-1"></i> Pipeline View
+                                </button>
+                                <button class="view-switch-btn p-2 rounded-lg text-sm font-medium transition-colors tab-button" data-view="list">
+                                    <i class="fa-solid fa-list mr-1"></i> List View
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="deals-pipeline-view" class="deals-view grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            </div>
+                        
+                        <div id="deals-list-view" class="deals-view hidden bg-bg-card rounded-2xl border border-border-dark overflow-x-auto">
+                            <div class="deal-list-row text-white/80 font-bold bg-bg-dark rounded-t-xl sticky top-0">
+                                <div></div> <div>No.</div>
+                                <div>Product/Service</div>
+                                <div>Contact Associated</div>
+                                <div>Stage</div>
+                                <div>Amount</div>
+                                <div>Date to Close</div>
+                            </div>
+                            <div id="deals-list-container"></div>
+                        </div>
+                        <div id="deals-mobile-view" class="block md:hidden p-4">
+                           <div class="text-xl font-bold mb-4">Active Deals</div>
+                                 <div id="mobile-deals-card-container" class="space-y-3">
+                                 <p class="text-white/50 text-center py-8" id="mobile-deals-placeholder">Loading deals...</p>
+                             </div>
+                        </div>
+                    </section>
+
+<section id="after-sale-section" class="hidden">
+  <div class="mb-4 flex justify-between items-center flex-nowrap">
+    <h2 class="text-xl font-semibold">Customers</h2>
+    <div class="relative">
+      <input type="text" id="after-sale-search" placeholder="Search customers..." 
+        class="bg-bg-dark border border-border-dark rounded-lg py-2 pl-3 pr-10 text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-main-purple w-40">
+      <button id="after-sale-search-icon" 
+        class="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/50 hover:text-white">
+        <i class="fa-solid fa-search"></i>
+      </button>
+      <div id="after-sale-search-results" 
+        class="absolute z-10 w-full bg-bg-card border border-border-dark rounded-lg mt-1 shadow-2xl max-h-40 overflow-y-auto hidden">
+      </div>
+    </div>
+  </div>
+
+  <!-- Desktop Table View -->
+  <div class="bg-bg-card rounded-2xl border border-border-dark overflow-x-auto hidden lg:block">
+    <div id="after-sale-header" class="grid grid-cols-[1.2fr_1.2fr_1.2fr_1fr_1fr_0.6fr] text-white/80 font-bold bg-bg-dark sticky top-0 hidden border-t border-b border-border-dark divide-x divide-border-dark">
+  <div class="px-4 py-3">Name</div>
+  <div class="px-4 py-3">Phone</div>
+  <div class="px-4 py-3">Purchases</div>
+  <div class="px-4 py-3">Total</div>
+  <div class="px-4 py-3">First Buy</div>
+  <div class="px-4 py-3"></div>
+</div>
+    <div id="after-sale-list-container"></div>
+  </div>
+
+  <!-- Mobile Card View -->
+  <div id="after-sale-mobile-view" class="block lg:hidden space-y-1 p-4"></div>
+</section>
+
+ <section id="meetings-section" class="hidden">
+    <div class="flex justify-between items-center mb-4 flex-wrap">
+        <h2 class="text-xl font-semibold">Meetings Scheduler</h2>
+        <div class="flex space-x-3 mt-2 sm:mt-0">
+            <button id="new-meeting-btn" class="bg-add-green hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-xl transition-colors flex items-center">
+                <i class="fa-solid fa-plus mr-2"></i> New Meeting
+            </button>
+            <div class="flex space-x-2 p-1 bg-bg-card rounded-xl border border-border-dark">
+                <button class="meeting-view-switch-btn p-2 rounded-lg text-sm font-medium transition-colors active tab-button" data-view="list">
+                    <i class="fa-solid fa-list mr-1"></i> List View
+                </button>
+                <button class="meeting-view-switch-btn p-2 rounded-lg text-sm font-medium transition-colors tab-button" data-view="calendar">
+                    <i class="fa-solid fa-calendar-alt mr-1"></i> Calendar View
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ✅ LIST VIEW -->
+    <div id="meetings-list-view" class="meetings-view bg-bg-card rounded-2xl border border-border-dark overflow-x-auto p-4">
+        <!-- 🔹 Actual list container for JS rendering -->
+        <div id="meetings-list-container" class="grid grid-cols-1 gap-3"></div>
+
+        <!-- 🔹 Empty state (hidden until needed) -->
+        <div id="no-meetings-card" class="hidden text-center text-white/60 py-10">
+            <i class="fa-regular fa-calendar-xmark text-4xl mb-3 text-main-purple"></i>
+            <p class="text-base font-semibold">Your Meetings Will Appear Here</p>
+            <p class="text-sm text-white/50">Schedule new meetings to see them listed below.</p>
+        </div>
+    </div>
+
+    <!-- ✅ CALENDAR VIEW -->
+    <div id="meetings-calendar-view" class="meetings-view hidden bg-bg-card p-6 rounded-2xl border border-border-dark flex flex-col md:flex-row gap-6">
+        
+        <!-- Calendar half -->
+        <div class="w-full md:w-1/2 flex-shrink-0 overflow-hidden">
+            <h3 id="calendar-title" class="text-xl font-bold mb-4 text-white">Meetings for Oct 2025</h3>
+            <div id="calendar-months-scroll-container">
+                <div class="month-view-container">
+                    <div class="day-grid grid grid-cols-7 text-center text-sm font-medium text-xs md:text-sm">
+                        <div class="text-white/70">Sun</div>
+                        <div class="text-white/70">Mon</div>
+                        <div class="text-white/70">Tue</div>
+                        <div class="text-white/70">Wed</div>
+                        <div class="text-white/70">Thu</div>
+                        <div class="text-white/70">Fri</div>
+                        <div class="text-white/70">Sat</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Schedule panel -->
+        <div id="meetings-schedule-panel" class="hidden md:block md:w-1/2 border-t md:border-t-0 md:border-l border-border-dark pt-6 md:pt-0 md:pl-6">
+            <h4 id="daily-meetings-title" class="text-lg font-semibold text-white mb-4">No day selected</h4>
+            <div id="daily-meetings-list" class="space-y-3 h-full overflow-y-auto pr-2">
+                <p class="text-white/60" id="calendar-select-prompt">Select a day on the calendar to see the schedule.</p>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- Feedback cards are now shown at the top of the Follow Ups Today list so they appear above follow-ups.
+         We mark them with `preserve-top` so the JS renderer keeps them and appends follow-ups below. -->
+<section id="follow-ups-section" class="hidden">
+    <h2 class="text-xl font-semibold mb-4">Follow Ups Today</h2>
+
+    <div id="follow-up-list" class="bg-bg-card rounded-2xl border border-border-dark p-4">
+
+        <!-- Floating feedback widget (visually separate but inside the bordered section) -->
+        <div id="feedback-widget" class="mb-4 p-3 bg-bg-dark rounded-lg border-2 border-main-purple shadow-lg transform -translate-y-1 relative">
+            <button id="feedback-dismiss-btn" class="absolute -top-2 -right-2 bg-bg-dark border border-border-dark rounded-full w-7 h-7 flex items-center justify-center text-white/70 hover:text-white" onclick="document.getElementById('feedback-widget').classList.add('hidden')">✕</button>
+            <h3 class="text-lg font-semibold text-white mb-1">Give Feedback</h3>
+            <p class="text-sm text-gray-300 mb-3">Tell us How the Last Follow Ups Went</p>
+
+            <div id="feedback-widget-cards">
+                <!-- Feedback cards will be populated dynamically from the database. Removed static/dummy entries so UI awaits live data. -->
+            </div>
+        </div>
+
+        <!-- Follow-ups panel (separate outline below the feedback widget) -->
+        <div id="followups-panel" class="mt-3 p-3 bg-bg-dark rounded-lg border border-border-dark">
+            <h4 class="text-sm text-white/70 mb-2">Follow Ups Today</h4>
+            <div id="followups-list-inner">
+                <!-- Follow-ups will be rendered here from the `followups_today` view. Static/dummy entries removed. -->
+            </div>
+
+            <!-- Banner shown when there are no follow-ups remaining (hidden while follow-ups exist) -->
+            <div id="followups-empty-banner" class="hidden text-center p-6 bg-bg-dark rounded-lg border border-border-dark mt-3">
+                <i class="fa-regular fa-circle-check text-4xl mb-3 text-add-green"></i>
+                <p class="text-base font-semibold">All follow-ups completed — great work!</p>
+                <p class="text-sm text-white/60">No more follow-ups scheduled for today.</p>
+            </div>
+
+            <!-- Pending confirmation modal for marking a follow-up complete -->
+            <div id="followup-pending-modal" class="modal-backdrop hidden fixed inset-0 z-[10050] flex items-center justify-center">
+                <div class="bg-bg-card rounded-2xl border border-border-dark max-w-md w-full p-6 mx-4">
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="text-xl font-semibold">Follow Up Pending!</h3>
+                        <button data-modal-close="followup-pending-modal" class="text-white/60 hover:text-white">✕</button>
+                    </div>
+                    <p id="followup-pending-message" class="text-white/80 mb-4">Finish Following Up <span id="followup-pending-client" class="font-bold"></span> to complete.</p>
+                    <div class="flex justify-between gap-3">
+                        <button id="followup-confirm-complete" class="w-1/2 bg-add-green hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-xl">Complete</button>
+                        <button id="followup-open-followup" class="w-1/2 bg-main-purple hover:brightness-110 text-white font-semibold py-2 px-4 rounded-xl">Follow Up</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Follow-up actions and event wiring are handled centrally by the app's JS (js/crm.js).
+                 Static/demo follow-up items were removed so the UI waits for live rows from the database. -->
+        </div>
+
+    </div>
+</section>
+                </div>
+
+            <!-- Mobile controls (moved into main so they remain visible above content on narrow screens) -->
+            <div id="mobile-add-sub-menu" class="fixed bottom-[90px] right-4 bg-bg-card border border-border-dark shadow-2xl rounded-xl p-3 w-40 z-50 hidden lg:hidden transition-opacity duration-200 opacity-0">
+                <p class="text-sm font-semibold text-white/70 mb-2 border-b border-border-dark pb-1">Create New</p>
+                <div class="space-y-1">
+                    <button class="mobile-add-item-btn w-full text-left p-2 text-sm rounded-lg hover:bg-bg-dark transition-colors" data-form="contact">Contacts</button>
+                    <button class="mobile-add-item-btn w-full text-left p-2 text-sm rounded-lg hover:bg-bg-dark transition-colors" data-form="deal">Deals</button>
+                    <button class="mobile-add-item-btn w-full text-left p-2 text-sm rounded-lg hover:bg-bg-dark transition-colors" data-form="follow-up">Follow Ups</button>
+                </div>
+            </div>
+
+            <button id="mobile-add-toggle-btn" class="fixed bottom-[80px] right-6 w-14 h-14 bg-add-green rounded-full shadow-2xl flex items-center justify-center z-40 border-4 border-bg-dark hover:bg-green-600 lg:hidden transition-transform duration-300">
+                <i class="fa-solid fa-plus text-white text-2xl transition-transform duration-300" id="mobile-add-icon"></i>
+            </button>
+
+            <nav id="mobile-nav-bar" role="navigation" aria-label="Mobile navigation" class="fixed bottom-0 left-0 right-0 h-16 bg-bg-dark border-t border-border-dark overflow-x-auto whitespace-nowrap z-50 lg:hidden [mask-image:_linear-gradient(to_right,transparent_0,#000_20px,#000_calc(100%-20px),transparent_100%)]" style="padding-bottom: env(safe-area-inset-bottom);">
+                <div class="flex h-full w-max mx-auto px-4 space-x-4">
+                    <button class="mobile-nav-btn text-sm font-medium p-2 h-full inline-flex flex-col items-center justify-center text-white/60 active:text-white data-[active=true]:text-main-purple data-[active=true]:font-semibold transition-colors" data-section="contacts">
+                        <i class="fa-solid fa-users text-xl block mb-0.5"></i> Contacts
+                    </button>
+                    <button class="mobile-nav-btn text-sm font-medium p-2 h-full inline-flex flex-col items-center justify-center text-white/60 active:text-white data-[active=true]:text-main-purple data-[active=true]:font-semibold transition-colors" data-section="deals">
+                        <i class="fa-solid fa-handshake text-xl block mb-0.5"></i> Deals
+                    </button>
+                    <button id="mobile-followups-btn" class="mobile-nav-btn text-sm font-medium p-2 h-full inline-flex flex-col items-center justify-center text-white/60 active:text-white data-[active=true]:text-main-purple data-[active=true]:font-semibold transition-colors" data-section="follow-ups">
+                        <i class="fa-solid fa-bullhorn text-xl block mb-0.5"></i> Follow Ups
+                        <!-- Mobile notification bubble (hidden by default) -->
+                        <span id="mobile-alerts-bubble" class="mobile-alerts-bubble absolute -top-2 -right-2 rounded-full bg-add-green text-white hidden">•</span>
+                    </button>
+                    <button class="mobile-nav-btn text-sm font-medium p-2 h-full inline-flex flex-col items-center justify-center text-white/60 active:text-white data-[active=true]:text-main-purple data-[active=true]:font-semibold transition-colors" data-section="meetings">
+                        <i class="fa-solid fa-calendar-check text-xl block mb-0.5"></i> Meetings
+                    </button>
+                    <button class="mobile-nav-btn text-sm font-medium p-2 h-full inline-flex flex-col items-center justify-center text-white/60 active:text-white data-[active=true]:text-main-purple data-[active=true]:font-semibold transition-colors" data-section="after-sale">
+                        <i class="fa-solid fa-gift text-xl block mb-0.5"></i> After Sale
+                    </button>
+                </div>
+            </nav>
+
+            </main>
+        </div>
+    </div>
+
+    <div id="sidebar-backdrop" class="modal-backdrop hidden"></div>
+
+    <div id="hidden-drop-zones" class="hidden-zone">
+        
+        <div id="unqualified-drop-zone" class="drop-zone-drawer flex items-center" data-stage="Unqualified" title="Unqualified Deals">
+            <div class="dz-icon"><i class="fa-solid fa-folder-minus"></i></div>
+            <div class="dz-text">
+                <div class="dz-title">Unqualified</div>
+                <div class="dz-sub">Drop to archive</div>
+            </div>
+        </div>
+        
+        <div id="lost-drop-zone" class="drop-zone-drawer flex items-center" data-stage="Lost" title="Lost Deals">
+            <div class="dz-icon"><i class="fa-solid fa-ban"></i></div>
+            <div class="dz-text">
+                <div class="dz-title">Lost</div>
+                <div class="dz-sub">Drop to archive</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="drop-zone-table-modal" class="modal-backdrop hidden" data-modal="drop-zone-table-modal" data-modal-close="true">
+        <div id="drop-zone-table-content" class="drop-zone-table-content">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="drop-zone-modal-title" class="text-2xl font-bold"></h2>
+                <button class="text-white/60 hover:text-white" data-modal-close="drop-zone-table-modal">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            
+                    <div class="bg-bg-dark rounded-xl border border-border-dark overflow-x-auto">
+                <div id="drop-zone-table-header" class="deal-list-row text-white/80 font-bold bg-bg-dark sticky top-0">
+                    <div></div> 
+                    <div id="header-no">No.</div>
+                    <div>Product/Service</div>
+                    <div>Associated Contact</div>
+                    <div>Stage</div>
+                    <div>Amount</div>
+                    <div id="header-date">Date Disqualified</div>
+                </div>
+                <div id="drop-zone-table-container">
+                    </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="modals-container">
+        <div id="add-main-modal" class="modal-backdrop hidden">
+            <div class="absolute inset-0 flex items-center justify-center p-4">
+                <div id="add-main-modal-content" class="bg-bg-card rounded-2xl border border-border-dark p-6 card-animate">
+                    <div class="flex justify-between items-start mb-4 border-b border-border-dark pb-4">
+                        <h2 class="text-3xl font-bold text-add-green">Add</h2>
+                        <button class="text-white/60 hover:text-white" data-modal-close="add-main-modal">
+                            <i class="fa-solid fa-xmark text-xl"></i>
+                        </button>
+                    </div>
+
+                    <div class="flex flex-1 overflow-hidden">
+                        <div class="w-40 flex-shrink-0 border-r border-border-dark pr-4 space-y-2 py-2">
+                            <div class="add-form-menu-item p-2 rounded-lg text-white/70 hover:text-white" data-form="contact">
+                                <i class="fa-solid fa-user mr-2"></i> Contact
+                            </div>
+                            <div class="add-form-menu-item p-2 rounded-lg text-white/70 hover:text-white" data-form="deal">
+                                <i class="fa-solid fa-cart-shopping mr-2"></i> Deal
+                            </div>
+                            
+                            <div class="add-form-menu-item p-2 rounded-lg text-white/70 hover:text-white" data-form="follow-up">
+                                <i class="fa-solid fa-bullhorn mr-2"></i> Follow Up
+                            </div>
+                        </div>
+
+                        <div id="add-form-container" class="flex-1 p-2 pl-6 overflow-y-auto">
+
+                            <div id="add-form-placeholder" class="add-form-content flex flex-col items-center justify-center h-full text-white/60">
+                                <i class="fa-solid fa-arrow-left text-5xl mb-4 text-add-green/50"></i>
+                                <p class="text-lg font-medium">Select an item to add from the menu.</p>
+                            </div>
+
+                            <form id="add-contact-form" class="add-form-content hidden space-y-4">
+                                <h3 class="text-2xl font-bold text-white mb-6">Add Contact</h3>
+                                <div>
+                                    <label class="block text-sm font-medium text-white/70 mb-1" for="contact-name">Name</label>
+                                    <input type="text" id="new-contact-name" class="w-full bg-bg-dark border border-border-dark rounded-lg py-2 px-3 text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-main-purple" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-white/70 mb-1" for="contact-phone">Phone Number</label>
+                                    <input type="tel" id="new-contact-phone" class="w-full bg-bg-dark border border-border-dark rounded-lg py-2 px-3 text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-main-purple" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-white/70 mb-1" for="contact-notes">Notes</label>
+                                    <textarea id="new-contact-notes" rows="3" class="w-full bg-bg-dark border border-border-dark rounded-lg p-3 text-white focus:outline-none focus:ring-1 focus:ring-main-purple"></textarea>
+                                </div>
+                                <button type="submit" id="add-contact-submit-btn" class="w-full bg-main-purple hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                                    <i class="fa-solid fa-plus mr-2"></i> Add Contact
+                                </button>
+                            </form>
+                            
+                            <form id="add-deal-form" class="add-form-content hidden space-y-4">
+                                <h3 class="text-2xl font-bold text-white mb-6">Create Deal</h3>
+
+                                <!-- Product/Service (first) -->
+                                <div>
+                                    <label class="block text-sm font-medium text-white/70 mb-1" for="new-deal-name">Product or Service</label>
+                                    <input type="text" id="new-deal-name" class="w-full bg-bg-dark border border-border-dark rounded-lg py-2 px-3 text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-main-purple" required>
+                                </div>
+
+                                <!-- Contact search (nested contacts appear here) -->
+                                <div>
+                                    <label class="block text-sm font-medium text-white/70 mb-1" for="deal-contact-search">Contact</label>
+                                    <div class="relative">
+                                        <input type="text" id="deal-contact-search" placeholder="Search contact name or phone..." class="w-full bg-bg-dark border border-border-dark rounded-lg py-2 px-3 text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-main-purple">
+                                        <div id="deal-contact-results" class="absolute z-10 w-full bg-bg-card border border-border-dark rounded-lg mt-1 shadow-2xl max-h-40 overflow-y-auto hidden"></div>
+                                        <input type="hidden" id="new-deal-contact-id" required>
+                                    </div>
+                                    <button type="button" id="deal-add-contact-btn" class="mt-2 w-full bg-blue-600 text-white text-sm font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+                                        <i class="fa-solid fa-user-plus mr-2"></i> + Add New Contact
+                                    </button>
+                                </div>
+
+                                <!-- Amount -->
+                                <div>
+                                    <label class="block text-sm font-medium text-white/70 mb-1" for="new-deal-amount">Amount</label>
+                                    <input type="number" id="new-deal-amount" class="w-full bg-bg-dark border border-border-dark rounded-lg py-2 px-3 text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-main-purple" value="0" min="0" required>
+                                </div>
+
+                                <!-- Notes -->
+                                <div>
+                                    <label class="block text-sm font-medium text-white/70 mb-1" for="new-deal-notes">Notes</label>
+                                    <textarea id="new-deal-notes" rows="3" class="w-full bg-bg-dark border border-border-dark rounded-lg p-3 text-white focus:outline-none focus:ring-1 focus:ring-main-purple"></textarea>
+                                </div>
+
+                                <!-- Close Date -->
+                                <div>
+                                    <label class="block text-sm font-medium text-white/70 mb-1" for="new-deal-close-date">Projected Close Date</label>
+                                    <input type="date" id="new-deal-close-date" class="w-full bg-bg-dark border border-border-dark rounded-lg py-2 px-3 text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-main-purple">
+                                </div>
+
+                                <!-- Stage (populated by JS) -->
+                                <div>
+                                    <label class="block text-sm font-medium text-white/70 mb-1" for="new-deal-stage">Stage</label>
+                                    <select id="new-deal-stage" class="w-full bg-bg-dark border border-border-dark rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-main-purple"></select>
+                                </div>
+
+                                <button type="submit" class="w-full bg-main-purple hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors mt-6">
+                                    <i class="fa-solid fa-cart-plus mr-2"></i> Add Deal
+                                </button>
+                            </form>
+
+                            
+
+                            <form id="add-follow-up-form" class="add-form-content hidden space-y-4">
+                                <h3 class="text-2xl font-bold text-white mb-6">Create A Follow Up</h3>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-white/70 mb-1" for="follow-up-deal">Associated Deal</label>
+                                    <div class="relative">
+                                        <input type="text" id="follow-up-deal-search" placeholder="Search product/service..." class="w-full bg-bg-dark border border-border-dark rounded-lg py-2 px-3 text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-main-purple">
+                                        <div id="follow-up-deal-results" class="absolute z-10 w-full bg-bg-card border border-border-dark rounded-lg mt-1 shadow-2xl max-h-40 overflow-y-auto hidden">
+                                            </div>
+                                        <input type="hidden" id="new-follow-up-deal-id" required>
+                                    </div>
+                                    <button type="button" id="follow-up-new-deal-btn" class="mt-2 w-full bg-blue-600 text-white text-sm font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+                                        <i class="fa-solid fa-cart-plus mr-2"></i> + Add New Deal
+                                    </button>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-white/70 mb-1">Contact</label>
+                                    <p id="follow-up-contact-info" class="text-white/80 p-2 bg-bg-dark border border-border-dark rounded-lg">Select a Deal above to load contact info.</p>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-white/70 mb-1" for="new-follow-up-reason">Summary of Follow Up Info (Reason)</label>
+                                    <textarea id="new-follow-up-reason" rows="3" class="w-full bg-bg-dark border border-border-dark rounded-lg p-3 text-white focus:outline-none focus:ring-1 focus:ring-main-purple" required></textarea>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-white/70 mb-1" for="new-follow-up-notes">Additional Notes (optional)</label>
+                                    <textarea id="new-follow-up-notes" rows="2" class="w-full bg-bg-dark border border-border-dark rounded-lg p-3 text-white focus:outline-none focus:ring-1 focus:ring-main-purple"></textarea>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-white/70 mb-1" for="new-follow-up-due-date">Set Time</label>
+                                    <input type="datetime-local" id="new-follow-up-due-date" class="w-full bg-bg-dark border border-border-dark rounded-lg py-2 px-3 text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-main-purple" required>
+                                </div>
+
+                                <button type="submit" class="w-full bg-main-purple hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors mt-6">
+                                    <i class="fa-solid fa-clock-rotate-left mr-2"></i> Create Follow Up
+                                </button>
+                            </form>
+                            
+                        </div>
+                    </div>
+                </div>
+            </div>
+        
+        <div id="meeting-call-log-modal" class="modal-backdrop hidden">
+            <div class="absolute inset-0 flex items-center justify-center p-4">
+                <div class="bg-bg-card rounded-2xl border border-border-dark max-w-lg w-full p-6 card-animate">
+                    <h2 class="text-2xl font-bold mb-4">Log Reminder Outcome</h2>
+                    <p id="meeting-call-log-contact" class="text-white/60 mb-4">Logging reminder for: </p>
+                    
+                    <label class="block text-sm font-medium text-white/70 mb-2">Call Outcome:</label>
+                    <select id="meeting-call-outcome" class="w-full mb-4 bg-bg-dark border border-border-dark rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        <option value="connected" class="bg-bg-dark">Connected - Reminder Given</option>
+                        <option value="no_answer" class="bg-bg-dark">No Answer / Left Voicemail</option>
+                        <option value="cancelled" class="bg-bg-dark">Meeting Cancelled</option>
+                        <option value="rescheduled" class="bg-bg-dark">Meeting Rescheduled</option>
+                    </select>
+                    
+                    <label class="block text-sm font-medium text-white/70 mb-2">Detailed Notes:</label>
+                    <textarea id="meeting-call-notes" rows="4" class="w-full bg-bg-dark border border-border-dark rounded-lg p-3 text-white focus:outline-none focus:ring-1 focus:ring-blue-500 mb-6"></textarea>
+
+                    <button id="log-reminder-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors">
+                        <i class="fa-solid fa-check mr-2"></i> Log Reminder
+                    </button>
+                    <button id="cancel-meeting-call-log-modal" class="mt-4 w-full text-white/60 hover:text-white transition-colors" data-modal-close="meeting-call-log-modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="whatsapp-reminder-modal" class="modal-backdrop hidden">
+            <div class="absolute inset-0 flex items-center justify-center p-4">
+                <div class="bg-bg-card rounded-2xl border border-border-dark max-w-xl w-full p-6 card-animate">
+                    <h2 class="text-2xl font-bold mb-4">Compose Meeting Reminder</h2>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-white/70 mb-1">To (Phone Number):</label>
+                        <input type="text" id="reminder-whatsapp-to" readonly class="w-full bg-bg-dark border border-border-dark rounded-lg p-2 text-white/80" value="254712345678">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-white/70 mb-1">Subject / Template:</label>
+                        <select id="reminder-whatsapp-subject" class="w-full bg-bg-dark border border-border-dark rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            <option value="Meeting Reminder" class="bg-bg-dark" selected>Meeting Reminder</option>
+                            <option value="Custom" class="bg-bg-dark">Custom Subject</option>
+                        </select>
+                    </div>
+
+                    <label class="block text-sm font-medium text-white/70 mb-2">Message Body:</label>
+                    <div class="relative mb-6">
+                        <textarea id="reminder-whatsapp-message-body" rows="6" class="w-full bg-bg-dark border border-border-dark rounded-lg p-3 pt-8 text-white focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="type your message here or let AI help you">This is to remind you of a meeting with VV Studios which is coming up in 2 Days, 4 hrs.</textarea>
+                        <button id="reminder-ai-assist-btn" class="absolute top-2 right-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1 px-2 rounded-lg transition-colors">
+                            <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> AI
+                        </button>
+                    </div>
+
+                    <button id="send-reminder-whatsapp-btn" class="w-full bg-whatsapp-green hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors flex items-center justify-center">
+                        <i class="fab fa-whatsapp mr-2 text-xl"></i> Send on WhatsApp
+                    </button>
+                    <button id="cancel-reminder-whatsapp-modal" class="mt-4 w-full text-white/60 hover:text-white transition-colors" data-modal-close="whatsapp-reminder-modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+        </div>
+        
+        <div id="follow-up-modal" class="modal-backdrop hidden">
+            <div class="absolute inset-0 flex items-center justify-center p-4">
+                <div id="follow-up-modal-content" class="bg-bg-card rounded-2xl border border-border-dark max-w-xl w-full p-6 card-animate">
+                    <h2 id="modal-title" class="text-2xl font-bold mb-4">Follow Up with [Contact Name]</h2>
+                    
+                    <div class="flex justify-between items-center text-center mb-4 p-3 bg-bg-dark rounded-lg border border-border-dark">
+                        <div>
+                            <p class="text-sm font-medium text-white/70">Close Date</p>
+                            <div id="modal-close-date-container" class="flex items-center space-x-2 justify-center mt-1">
+                                </div>
+                        </div>
+                        <div class="text-3xl font-extrabold text-faint-gold" id="modal-amount">Ksh 45,000</div>
+                        <div>
+                            <p class="text-sm font-medium text-white/70">Details</p>
+                            <span id="modal-details" class="font-medium text-white block mt-1"></span>
+                        </div>
+                    </div>
+
+                    <label class="block text-sm font-medium text-white/70 mb-2">Notes (Editable):</label>
+                    <textarea id="modal-notes" rows="3" class="w-full bg-bg-dark border border-border-dark rounded-lg p-3 text-white focus:outline-none focus:ring-1 focus:ring-blue-500 mb-6"></textarea>
+                    
+                    <div class="flex justify-between space-x-4">
+                        <button id="call-btn" class="flex-1 bg-main-purple hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors">
+                            <i class="fa-solid fa-phone mr-2"></i> Call
+                        </button>
+                        <button id="whatsapp-btn" class="flex-1 bg-whatsapp-green hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors">
+                            <i class="fab fa-whatsapp mr-2"></i> Send WhatsApp
+                        </button>
+                    </div>
+                    <button id="cancel-follow-up-modal" class="mt-4 w-full text-white/60 hover:text-white transition-colors" data-modal-close="follow-up-modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="call-log-modal" class="modal-backdrop hidden">
+            <div class="absolute inset-0 flex items-center justify-center p-4">
+                <div class="bg-bg-card rounded-2xl border border-border-dark max-w-lg w-full p-6 card-animate">
+                    <h2 class="text-2xl font-bold mb-4">Log Call Outcome</h2>
+                    <p id="call-log-contact" class="text-white/60 mb-4">Logging call for: </p>
+                    
+                    <label class="block text-sm font-medium text-white/70 mb-2">Call Outcome:</label>
+                    <select id="call-outcome" class="w-full mb-4 bg-bg-dark border border-border-dark rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        <option value="connected" class="bg-bg-dark">Connected - Positive</option>
+                        <option value="connected_negative" class="bg-bg-dark">Connected - Negative</option>
+                        <option value="no_answer" class="bg-bg-dark">No Answer / Left Voicemail</option>
+                        <option value="scheduled_later" class="bg-bg-dark">Scheduled Follow-up</option>
+                    </select>
+                    
+                    <label class="block text-sm font-medium text-white/70 mb-2">Detailed Notes:</label>
+                    <textarea id="call-notes" rows="4" class="w-full bg-bg-dark border border-border-dark rounded-lg p-3 text-white focus:outline-none focus:ring-1 focus:ring-blue-500 mb-6"></textarea>
+
+                    <button id="log-call-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors">
+                        <i class="fa-solid fa-check mr-2"></i> Log & Complete Follow Up
+                    </button>
+                    <button id="cancel-call-log-modal" class="mt-4 w-full text-white/60 hover:text-white transition-colors" data-modal-close="call-log-modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Business Profile Modal -->
+        <div id="business-profile-modal" class="modal-backdrop hidden">
+            <div class="absolute inset-0 flex items-center justify-center p-4">
+                <!-- Wider on desktop (max-w-4xl), scrollable on small screens -->
+                <div class="bg-bg-card rounded-2xl border border-border-dark max-w-4xl w-full p-6 card-animate max-h-[calc(100vh-4rem)] overflow-hidden flex flex-col" style="box-sizing: border-box;">
+                                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-3xl font-bold">Business Profile</h2>
+                        <button class="text-white/50 hover:text-white" data-modal-close="business-profile-modal"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+
+                                    <!-- Thin scrollbar styles scoped to this modal -->
+                                    <style>
+                                        #business-profile-modal .overflow-y-auto{ scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.14) transparent; }
+                                        #business-profile-modal .overflow-y-auto::-webkit-scrollbar{ width:8px; }
+                                        #business-profile-modal .overflow-y-auto::-webkit-scrollbar-thumb{ background: rgba(255,255,255,0.12); border-radius:8px; }
+                                        #business-profile-modal .overflow-y-auto::-webkit-scrollbar-track{ background: transparent; }
+                                    </style>
+
+                                        <!-- Inner content: flex-1 and scrollable so scrollbar stays inside the modal card -->
+                        <div class="flex-1 overflow-y-auto py-1 pr-4" style="max-height: calc(100vh - 8rem); box-sizing: border-box;">
+                            <form id="business-profile-form" class="space-y-4 text-lg">
+                        <div>
+                            <label class="block text-base font-medium text-white">Business name</label>
+                            <p class="text-sm text-white/60 mb-2">What’s the name of your business?</p>
+                            <input id="bp-business-name" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-base font-medium text-white">Industry</label>
+                                <p class="text-sm text-white/60 mb-2">What type of business do you run? (e.g., salon, electronics, real estate)</p>
+                                <input id="bp-industry" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                            </div>
+                            <div>
+                                <label class="block text-base font-medium text-white">Location</label>
+                                <p class="text-sm text-white/60 mb-2">Where are you based?</p>
+                                <input id="bp-location" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-base font-medium text-white">Tagline</label>
+                            <p class="text-sm text-white/60 mb-2">What’s your slogan or short tagline?</p>
+                            <input id="bp-tagline" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                        </div>
+
+                        <div>
+                            <label class="block text-base font-medium text-white">Short description</label>
+                            <p class="text-sm text-white/60 mb-2">Describe your business in one short sentence.</p>
+                            <input id="bp-short-desc" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                        </div>
+
+                        <div>
+                            <label class="block text-base font-medium text-white">Long description</label>
+                            <p class="text-sm text-white/60 mb-2">Describe the problem you're solving and how your product or service is positioned as the solution.</p>
+                            <textarea id="bp-long-desc" rows="5" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-base font-medium text-white">Target audience</label>
+                            <p class="text-sm text-white/60 mb-2">Who are your typical customers?</p>
+                            <input id="bp-target-audience" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                        </div>
+
+                        <div>
+                            <label class="block text-base font-medium text-white">Unique value</label>
+                            <p class="text-sm text-white/60 mb-2">What makes your business different or special?</p>
+                            <input id="bp-unique-value" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-base font-medium text-white">Main offer</label>
+                                <p class="text-sm text-white/60 mb-2">What’s your main product or service?</p>
+                                <input id="bp-main-offer" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                            </div>
+                            <div>
+                                <label class="block text-base font-medium text-white">Secondary offers</label>
+                                <p class="text-sm text-white/60 mb-2">What other related products or services do you offer?</p>
+                                <input id="bp-secondary-offers" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-base font-medium text-white">Tone of voice</label>
+                                <p class="text-sm text-white/60 mb-2">How should your messages sound? (e.g., friendly, expert)</p>
+                                <select id="bp-tone-of-voice" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg">
+                                    <option value="friendly">Friendly</option>
+                                    <option value="expert">Expert</option>
+                                    <option value="casual">Casual</option>
+                                    <option value="playful">Playful</option>
+                                    <option value="formal">Formal</option>
+                                    <option value="energetic">Energetic</option>
+                                    <option value="conversational">Conversational</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-base font-medium text-white">Website & socials</label>
+                            <p class="text-sm text-white/60 mb-2">Share your website or social media links.</p>
+                            <input id="bp-website" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg mb-3" />
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div>
+                                    <label class="block text-sm text-white/70">Facebook</label>
+                                    <input id="bp-facebook" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-white/70">Instagram</label>
+                                    <input id="bp-instagram" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-white/70">X (formerly Twitter)</label>
+                                    <input id="bp-twitter" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Save full-width purple button, cancel below (match other modals style) -->
+                                                <div class="mt-4">
+                                                        <button type="submit" id="bp-save-btn" class="w-full bg-main-purple hover:bg-purple-700 text-white font-semibold py-3 rounded-xl mb-3">Save Business Profile</button>
+                                                        <button type="button" id="bp-cancel-btn" class="w-full text-white/60 hover:text-white py-3">Cancel</button>
+                                                </div>
+                      </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Follow-Up Schedules placeholder removed; schedules modal now lives near the end of the body as #schedules-modal-backdrop -->
+
+                <!-- Unsaved changes confirm modal for Business Profile -->
+                <div id="business-profile-confirm-modal" class="modal-backdrop hidden">
+                    <div class="absolute inset-0 flex items-center justify-center p-4">
+                        <div class="bg-bg-card rounded-2xl border border-border-dark max-w-md w-full p-6 card-animate">
+                            <h3 class="text-xl font-bold mb-3">You Have Made Some Changes</h3>
+                            <p class="text-white/60 mb-4">Discard your changes or save them?</p>
+                            <div class="flex gap-3">
+                                <button id="bp-discard-btn" class="flex-1 bg-bg-dark text-white/80 py-3 rounded-lg">Discard</button>
+                                <button id="bp-confirm-save-btn" class="flex-1 bg-main-purple text-white py-3 rounded-lg">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+        <div id="whatsapp-modal" class="modal-backdrop hidden">
+            <div class="absolute inset-0 flex items-center justify-center p-4">
+                <div class="bg-bg-card rounded-2xl border border-border-dark max-w-xl w-full p-6 card-animate">
+                    <h2 class="text-2xl font-bold mb-4">Compose WhatsApp Message</h2>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-white/70 mb-1">To (Phone Number):</label>
+                        <input type="text" id="whatsapp-to" readonly class="w-full bg-bg-dark border border-border-dark rounded-lg p-2 text-white/80" value="254712345678">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-white/70 mb-1">Subject / Template:</label>
+                        <select id="whatsapp-subject" class="w-full bg-bg-dark border border-border-dark rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            <option value="New Offer Alert" class="bg-bg-dark">New Offer Alert</option>
+                            <option value="Abandoned Cart Follow-up" class="bg-bg-dark">Abandoned Cart Nudge</option>
+                            <option value="Urge to Place Order Now" class="bg-bg-dark">Urge to Place Order Now</option>
+                            <option value="Custom" class="bg-bg-dark">Custom Subject</option>
+                        </select>
+                    </div>
+
+                    <label class="block text-sm font-medium text-white/70 mb-2">Message Body:</label>
+                    <div class="relative mb-6">
+                        <textarea id="whatsapp-message-body" rows="6" class="w-full bg-bg-dark border border-border-dark rounded-lg p-3 pt-8 text-white focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="type your message here or let AI help you"></textarea>
+                        <button id="ai-assist-btn" class="absolute top-2 right-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1 px-2 rounded-lg transition-colors">
+                            <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> AI
+                        </button>
+                    </div>
+
+                    <button id="send-whatsapp-btn" class="w-full bg-whatsapp-green hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors flex items-center justify-center">
+                        <i class="fab fa-whatsapp mr-2 text-xl"></i> Send on WhatsApp
+                    </button>
+                    <button id="cancel-whatsapp-modal" class="mt-4 w-full text-white/60 hover:text-white transition-colors" data-modal-close="whatsapp-modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+        <!-- ADD MEETING MODAL (2-step) -->
+<div id="add-meeting-modal" class="hidden fixed inset-0 z-[9999] flex items-center justify-center p-4">
+  <div class="modal-backdrop" aria-hidden="true"></div>
+
+  <div class="bg-bg-card w-full max-w-4xl rounded-2xl overflow-hidden relative z-50" role="dialog" aria-modal="true">
+    <!-- Header -->
+    <div class="flex items-center justify-between p-4 border-b border-border-dark">
+      <h3 class="text-xl font-bold">Schedule Meeting</h3>
+      <button data-modal-close="add-meeting-modal" class="text-white/60 hover:text-white">✕</button>
+    </div>
+
+    <!-- Body -->
+    <div id="add-meeting-modal-body" class="p-6 space-y-4">
+
+      <!-- ========== STEP 1 ========== -->
+      <div id="meeting-step-1">
+        <label class="block text-sm text-white/70 mb-2">Contact</label>
+
+        <div id="meeting-contact-select-area" class="space-y-2">
+          <div class="flex items-center space-x-2">
+            <input id="new-meeting-contact-search"
+                   class="flex-1 bg-bg-dark border border-border-dark rounded-lg p-3 text-white placeholder-white/50"
+                   placeholder="Search or select contact..." autocomplete="off" />
+            <input type="hidden" id="new-meeting-contact-id" value="" />
+            <button id="meeting-add-contact-btn" type="button"
+                    class="px-3 py-2 rounded-lg bg-main-purple hover:bg-purple-700 text-white">
+              <i class="fa-solid fa-plus mr-1"></i> Add
+            </button>
+          </div>
+                    <div id="new-meeting-contact-results" class="absolute z-10 w-full bg-bg-card border border-border-dark rounded-lg mt-1 shadow-2xl max-h-40 overflow-y-auto hidden"></div>
+          <div id="meeting-selected-contact-card" class="mt-2"></div>
+        </div>
+
+        <!-- keep nested contact form in DOM; your JS toggles it -->
+        <div id="add-meeting-nested-contact" class="hidden"></div>
+
+        <div id="meeting-contact-associated-deal" class="text-white/60 text-sm mt-2">
+          Associated deal: <span id="meeting-associated-deal-text">—</span>
+        </div>
+
+        <!-- Agenda -->
+        <label class="block text-sm text-white/70 mt-4 mb-2">Agenda</label>
+        <input id="new-meeting-agenda"
+               class="w-full bg-bg-dark border border-border-dark rounded-lg p-3 text-white"
+               placeholder="E.g., Sales demo, Contract review" />
+
+        <!-- Location Buttons -->
+        <label class="block text-sm text-white/70 mt-4 mb-2">Location</label>
+        <div id="meeting-location-buttons" class="flex flex-wrap gap-3 mt-2">
+          <!-- Zoom -->
+          <button type="button"
+                  class="meeting-location-btn flex items-center space-x-2 px-4 py-3 rounded-xl border border-border-dark text-white/90"
+                  data-transport="zoom" aria-pressed="false">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M21 6.5v11l-3.5-2.25V8.75L21 6.5zM3 7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1H13V7H5v10h8v-1h2v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>
+            </svg>
+            <span class="font-medium">Zoom</span>
+          </button>
+
+          <!-- Google Meet -->
+          <button type="button"
+                  class="meeting-location-btn flex items-center space-x-2 px-4 py-3 rounded-xl border border-border-dark text-white/90"
+                  data-transport="meet" aria-pressed="false">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M17 10.5V8c0-1.1-.9-2-2-2H5C3.9 6 3 6.9 3 8v8c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-2.5l4 3v-9l-4 3z"/>
+            </svg>
+            <span class="font-medium">Google Meet</span>
+          </button>
+
+          <!-- Physical -->
+          <button type="button"
+                  class="meeting-location-btn flex items-center space-x-2 px-4 py-3 rounded-xl border border-border-dark text-white/90"
+                  data-transport="physical" aria-pressed="false">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/>
+            </svg>
+            <span class="font-medium">Physical</span>
+          </button>
+        </div>
+
+        <div class="flex justify-end mt-6">
+          <button id="meeting-step-1-next"
+                  class="bg-main-purple px-6 py-2 rounded-full text-white font-semibold">
+            Next
+          </button>
+        </div>
+      </div>
+
+      <!-- ========== STEP 2 ========== -->
+      <!-- ✅ STEP 2 (Calendar + Time Slots hooked to existing calendar system) -->
+    <div id="meeting-step-2" class="hidden">
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+    <!-- ✅ Existing calendar feed -->
+                <div class="md:col-span-2">
+                    <!-- Step-2 calendar header with arrows + title -->
+                    <div class="flex items-center justify-between mb-3">
+                        <button id="add-cal-prev" class="px-3 py-1 rounded-lg border border-border-dark text-white/80 hover:bg-bg-dark">◀</button>
+                        <h3 id="add-meeting-calendar-title" class="text-lg font-semibold text-white">Oct 2025</h3>
+                        <button id="add-cal-next" class="px-3 py-1 rounded-lg border border-border-dark text-white/80 hover:bg-bg-dark">▶</button>
+                    </div>
+                    <div class="relative">
+                        <div id="add-meeting-calendar" class="month-scroll h-[360px]"></div>
+                    </div>
+                </div>
+
+        <!-- ✅ Time slots + duration -->
+        <div class="md:col-span-1 flex flex-col h-[360px]">
+            <h4 id="daily-meetings-title" class="text-lg font-semibold mb-1">Select a Day</h4>
+            <!-- Selected date shown under the title (populated by JS) -->
+            <div id="daily-selected-date" class="text-sm text-white/70 mb-3">No date selected</div>
+
+            <!-- Time slots grid: fill available height and scroll if needed -->
+          <div id="meeting-times-grid" class="grid grid-cols-3 gap-3 mb-4 overflow-y-auto flex-1"></div>
+          <!-- Mobile-specific timeslot container: populated only on small screens by JS. 
+              We keep it in the DOM but hidden on desktop via CSS so desktop rendering is unaffected. -->
+          <div id="meeting-times-grid-mobile" class="hidden mb-4 overflow-y-auto flex-1"></div>
+
+            <!-- Duration -->
+            <label class="block text-sm text-white/70 mb-2">Select meeting duration</label>
+            <select id="meeting-duration-select" class="w-full bg-bg-dark border border-border-dark rounded-lg p-2 text-white"></select>
+
+                    <!-- Actions pinned to bottom-right; made sticky on mobile so buttons remain reachable -->
+                    <div class="meeting-actions flex justify-end mt-4 mt-auto">
+                        <button id="meeting-back-to-step1" class="mr-2 px-4 py-2 rounded-lg border border-border-dark text-white">Back</button>
+                        <button id="meeting-schedule-btn" class="bg-main-purple px-4 py-2 rounded-lg text-white font-semibold">Schedule</button>
+                    </div>
+        </div>
+
+  </div>
+</div>
+
+
+<!-- ========== SMALL CONFIRM MODAL (Step 3) ========== -->
+<div id="confirm-meeting-modal"
+     class="hidden fixed inset-0 z-[10000] flex items-center justify-center p-4">
+  <div class="modal-backdrop" aria-hidden="true"></div>
+  <div class="bg-bg-card w-full max-w-md rounded-xl p-4 z-50 border border-border-dark">
+    <h3 class="text-lg font-semibold mb-2">Confirm meeting</h3>
+    <div id="confirm-meeting-summary"
+         class="text-sm text-white/80 space-y-1 mb-4"></div>
+    <div class="flex justify-end space-x-2">
+      <button id="confirm-meeting-cancel"
+              class="px-3 py-2 rounded-lg border border-border-dark text-white">
+        Cancel
+      </button>
+      <button id="confirm-meeting-confirm"
+              class="bg-main-purple px-4 py-2 rounded-lg text-white font-semibold">
+        Confirm 
+      </button>
+    </div>
+  </div>
+</div>
+<!-- =================== END ADD MEETING MODAL =================== -->
+
+        <div id="contact-details-modal" class="modal-backdrop hidden">
+            <div class="absolute inset-0 flex items-center justify-center p-4">
+                <div class="bg-bg-card rounded-2xl border border-border-dark max-w-lg w-full p-6 card-animate">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="contact-details-title" class="text-2xl font-bold"></h2>
+                <button class="text-white/60 hover:text-white" data-modal-close="contact-details-modal">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-white/70 mb-1">Name:</label>
+                            <p id="contact-details-name" class="text-white p-2 bg-bg-dark border border-border-dark rounded-lg"></p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-white/70 mb-1">Phone Number:</label>
+                            <p id="contact-details-phone" class="text-white p-2 bg-bg-dark border border-border-dark rounded-lg"></p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-white/70 mb-2">Notes (Editable):</label>
+                            <textarea id="contact-details-notes" rows="4" class="w-full bg-bg-dark border border-border-dark rounded-lg p-3 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"></textarea>
+                        </div>
+                        <button id="contact-follow-up-btn" class="w-full bg-main-purple hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors">
+                            <i class="fa-solid fa-clock-rotate-left mr-2"></i> Follow Up
+                        </button>
+                    </div>
+                    <button id="cancel-contact-details-modal" class="mt-4 w-full text-white/60 hover:text-white transition-colors" data-modal-close="contact-details-modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+   </div>
+   <div id="meetings-day-details-modal" class="hidden fixed inset-0 z-[999] bg-black/80 flex items-end md:items-center justify-center p-4 transition-opacity duration-300 opacity-0">
+    <div class="bg-bg-card rounded-t-xl md:rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden transition-transform duration-300 transform translate-y-full md:translate-y-0">
+        <div class="p-6">
+            <h3 id="day-details-title" class="text-xl font-bold text-white mb-4 border-b border-border-dark pb-2">Schedule</h3>
+            
+            <div id="day-details-content" class="space-y-4 max-h-[65vh] md:max-h-[50vh] overflow-y-auto pr-2">
+                <p class="text-white/60 text-center py-4">Loading schedule...</p>
+            </div>
+
+            <button id="cancel-day-details-modal" class="mt-6 w-full text-white/60 hover:text-white transition-colors">Close</button>
+        </div>
+    </div>
+</div>
+<!-- 🟣 After Sale Modal -->
+<div id="after-sale-modal" class="fixed inset-0 z-[9998] bg-black/70 hidden items-center justify-center">
+  <div class="bg-bg-card text-white rounded-2xl w-full max-w-lg shadow-2xl border border-border-dark p-6 relative">
+    <!-- Close button -->
+    <button id="close-after-sale-modal" class="absolute top-4 right-4 text-white/60 hover:text-white text-xl">
+      <i class="fa-solid fa-times"></i>
+    </button>
+
+   <!-- Customer Info -->
+<div class="mb-6 text-center border-b border-border-dark pb-4">
+  <h2 id="after-sale-customer-name" class="text-2xl font-semibold mb-1">Customer Name</h2>
+  <p id="after-sale-customer-phone" class="text-sm text-white/60">+254700000000</p>
+</div>
+
+        <!-- Purchase History -->
+        <div class="mb-6">
+            <div class="flex items-center justify-between mb-2 border-b border-border-dark pb-2">
+                <h3 class="font-semibold text-white/80">Purchase History</h3>
+                <button id="upsell-btn" class="bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium py-1 px-3 rounded-lg">
+                    Upsell
+                </button>
+            </div>
+            <div id="after-sale-purchases" class="space-y-1 text-sm text-white/80">
+                <p>No purchases found.</p>
+            </div>
+        </div>
+
+    <!-- Referrals -->
+    <div class="mb-6">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="font-semibold text-white/80">Referrals</h3>
+        <button id="ask-referral-btn" class="bg-main-purple hover:bg-purple-700 text-white text-sm font-medium py-1 px-3 rounded-lg">
+          Ask for Referral
+        </button>
+      </div>
+      <div id="after-sale-referrals" class="space-y-1 text-sm text-white/80">
+        <p>No referrals yet.</p>
+      </div>
+    </div>
+
+    <!-- Review -->
+    <div>
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="font-semibold text-white/80">Review</h3>
+        <button id="review-action-btn" class="bg-main-purple hover:bg-purple-700 text-white text-sm font-medium py-1 px-3 rounded-lg">
+          Ask for Review
+        </button>
+      </div>
+      <div id="after-sale-review" class="space-y-2 text-sm text-white/80">
+        <p>No review given yet.</p>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- 🟣 Ask for Referral Modal -->
+<div id="ask-referral-modal" class="fixed inset-0 z-[9999] bg-black/70 hidden items-center justify-center">
+  <div class="bg-bg-card text-white rounded-2xl w-full max-w-md shadow-2xl border border-border-dark p-6 relative">
+    <button id="close-referral-modal" class="absolute top-4 right-4 text-white/60 hover:text-white text-xl">
+      <i class="fa-solid fa-times"></i>
+    </button>
+
+    <h2 class="text-lg font-semibold mb-4 text-center">Ask for Referral</h2>
+
+    <div class="space-y-4">
+      <div>
+        <p id="referral-customer-name" class="text-white/80 text-center text-sm mb-1">Customer Name</p>
+        <p id="referral-customer-phone" class="text-white/50 text-center text-xs mb-2">+254700000000</p>
+      </div>
+
+      <div>
+        <label class="block text-white/70 text-sm mb-1">Referral Offer</label>
+        <input id="referral-offer-input" type="text" class="w-full bg-bg-dark border border-border-dark rounded-lg p-2 text-sm focus:outline-none focus:border-main-purple" placeholder="E.g. Get 10% off for every friend you refer">
+      </div>
+
+      <div class="flex justify-around mt-5">
+  <button id="referral-call-btn" class="bg-main-purple hover:bg-purple-700 text-white text-sm font-medium py-2 px-4 rounded-lg flex items-center gap-2">
+    <i class="fa-solid fa-phone"></i> Call
+  </button>
+  <button id="referral-whatsapp-btn" class="bg-[#25D366] hover:bg-[#20ba5a] text-white text-sm font-medium py-2 px-4 rounded-lg flex items-center gap-2">
+    <i class="fa-brands fa-whatsapp"></i> WhatsApp
+  </button>
+</div>
+
+    </div>
+  </div>
+</div>
+
+<!-- 🟣 Ask for Review Modal -->
+<div id="ask-review-modal" class="fixed inset-0 z-[9999] bg-black/70 hidden items-center justify-center">
+  <div class="bg-bg-card text-white rounded-2xl w-full max-w-md shadow-2xl border border-border-dark p-6 relative">
+    <button id="close-review-modal" class="absolute top-4 right-4 text-white/60 hover:text-white text-xl">
+      <i class="fa-solid fa-times"></i>
+    </button>
+
+    <h2 class="text-lg font-semibold mb-4 text-center">Ask for Review</h2>
+
+    <div class="space-y-4">
+      <div>
+        <p id="review-customer-name" class="text-white/80 text-center text-sm mb-1">Customer Name</p>
+        <p id="review-customer-phone" class="text-white/50 text-center text-xs mb-2">+254700000000</p>
+      </div>
+
+      <div>
+        <label class="block text-white/70 text-sm mb-1">Review Offer</label>
+        <input id="review-offer-input" type="text" class="w-full bg-bg-dark border border-border-dark rounded-lg p-2 text-sm focus:outline-none focus:border-main-purple" placeholder="E.g. Leave a review & get 10% off your next order">
+      </div>
+
+      <div class="flex justify-around mt-5">
+  <button id="review-call-btn" class="bg-main-purple hover:bg-purple-700 text-white text-sm font-medium py-2 px-4 rounded-lg flex items-center gap-2">
+    <i class="fa-solid fa-phone"></i> Call
+  </button>
+  <button id="review-whatsapp-btn" class="bg-[#25D366] hover:bg-[#20ba5a] text-white text-sm font-medium py-2 px-4 rounded-lg flex items-center gap-2">
+    <i class="fa-brands fa-whatsapp"></i> WhatsApp
+  </button>
+</div>
+
+    </div>
+  </div>
+</div>
+
+    </div>
+    <!-- 🟣 Feedback Modal (styled like other modals, dark theme) -->
+    <div id="feedbackModal" class="modal-backdrop hidden fixed inset-0 z-[10050]" data-modal="feedbackModal">
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-bg-card text-white rounded-2xl border border-border-dark max-w-md w-full p-6 card-animate relative">
+                <button data-modal-close="feedbackModal" class="absolute top-3 right-3 text-white/60 hover:text-white">✕</button>
+
+                <!-- Dynamic Icon + Header -->
+                <div id="feedbackIcon" class="flex justify-center mb-2"></div>
+                <h2 id="feedbackDealTitle" class="text-xl font-semibold text-white text-center"></h2>
+                <p id="feedbackContactName" class="text-sm text-white/70 text-center mb-2"></p>
+                <p id="feedbackHelper" class="text-sm text-white/70 text-center mb-4"></p>
+
+                <form id="feedbackForm" onsubmit="submitFeedback(event)">
+                    <!-- Outcome Container (wno ill be adjusted by JS for channel-specific UI) -->
+                    <div id="feedbackOutcomeContainer" class="mb-4">
+                        <label class="block text-sm font-medium text-white/70 mb-1">Follow-Up Outcome</label>
+                        <!-- Default select (used for 'call' and others). Hidden for WhatsApp via JS -->
+                        <select id="feedbackOutcome" class="w-full max-w-full bg-bg-dark border border-border-dark rounded-lg p-2 mb-2 focus:ring-2 focus:ring-main-purple focus:border-main-purple text-white overflow-visible">
+                            <option value="">Select outcome</option>
+                            <option value="responded">Client responded positively</option>
+                            <option value="not_interested">Client not interested</option>
+                            <option value="no_response">No response yet</option>
+                            <option value="scheduled_meeting">Scheduled a meeting</option>
+                            <option value="request_info">Requested more info</option>
+                            <option value="negotiation">Negotiation ongoing</option>
+                            <option value="closed_deal">Deal closed successfully 🎉</option>
+                            <option value="other">Other (please explain below)</option>
+                        </select>
+
+                        <!-- WhatsApp specific outcome UI (hidden by default). Shows default text and an "Other" toggle -->
+                        <div id="feedbackOutcomeWhatsApp" class="hidden bg-bg-dark border border-border-dark rounded-lg p-3 text-sm text-white/80">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-3">
+                                    <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/whatsapp.svg" alt="WhatsApp" class="w-6 h-6" />
+                                    <div>
+                                        <div class="font-medium">WhatsApp message sent</div>
+                                        <div id="feedbackWhatsAppSentTime" class="text-xs text-white/60">Sent just now</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Outcome will be chosen from the dropdown above; 'Other' is available there -->
+                        </div>
+                    </div>
+
+                    <!-- Feedback Notes -->
+                    <label class="block text-sm font-medium text-white/70 mb-1">Summarise conversation or Paste the reply message here</label>
+                    <textarea 
+                        id="feedbackNotes" 
+                        rows="4" 
+                        class="w-full bg-bg-dark border border-border-dark rounded-lg p-2 mb-4 focus:ring-2 focus:ring-main-purple focus:border-main-purple text-white"
+                        placeholder="Summarise conversation or Paste the reply message here"></textarea>
+
+                    <button 
+                        type="submit"
+                        class="bg-orange-500 hover:bg-orange-600 text-white w-full py-2 rounded-lg font-medium">
+                        Save Feedback
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ✅ Place this near the end of <body>, outside all hidden sections -->
+<div id="meeting-reminder-modal" class="modal-backdrop hidden" data-modal="meeting-reminder-modal" data-modal-close="true">
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div id="meeting-reminder-content" 
+             class="w-full max-w-md bg-bg-card rounded-3xl border border-border-dark p-8 shadow-2xl transition-all duration-300 transform scale-100 opacity-100" 
+             style="box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);">
+            
+            <div class="flex justify-between items-center mb-6 border-b border-border-dark pb-4">
+                <div class="flex items-center space-x-3">
+                    <i class="fa-solid fa-calendar-check text-3xl text-main-purple"></i>
+                    <h2 id="meeting-modal-title" class="text-2xl font-extrabold text-white">Action: Remind Client of Meeting</h2>
+                </div>
+                <button class="text-white/50 hover:text-white transition-colors" data-modal-close="meeting-reminder-modal">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <p class="text-sm text-white/70 mb-4">
+                It's time to send a quick reminder to ensure the meeting goes ahead smoothly. Choose a contact method below.
+            </p> 
+
+            <div class="space-y-4 mb-6 p-4 bg-bg-dark rounded-xl border border-border-dark">
+                
+                <div class="flex items-center space-x-3">
+                    <i class="fa-solid fa-user w-5 h-5 text-faint-gold"></i>
+                    <span id="meeting-modal-contact-name" data-contact-id="" class="font-semibold text-lg hover:underline cursor-pointer">Contact Name</span> 
+                </div>
+                
+                <div class="flex items-center space-x-3">
+                    <i class="fa-solid fa-cart-shopping w-5 h-5 text-add-green"></i>
+                    <span id="meeting-modal-deal-name" data-deal-id="" class="text-white/80">Associated Deal</span>
+                </div>
+                
+                <div id="meeting-modal-time-container" class="flex items-center space-x-3">
+                    <i class="fa-solid fa-clock w-5 h-5 text-main-purple"></i>
+                    <span id="meeting-modal-time" class="text-white font-medium">Scheduled Time</span>
+                </div>
+            </div>
+
+            <label class="block text-sm font-medium text-white/70 mb-2">
+                Last Notes (Read Only):
+            </label>
+            <textarea id="meeting-modal-notes" rows="3" readonly
+                class="w-full bg-bg-dark border border-border-dark rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-main-purple mb-6 resize-none opacity-80"
+                placeholder="Notes from the previous interaction or meeting setup..."
+                title="Notes are read-only here. Use the main record to edit."></textarea>
+
+            <div class="flex flex-col space-y-3">
+                <button id="meeting-reminder-call-btn"
+                    class="w-full bg-main-purple hover:bg-purple-600 text-white font-bold py-3 px-4 rounded-xl transition-colors shadow-lg shadow-main-purple/30 flex items-center justify-center">
+                    <i class="fa-solid fa-phone mr-2"></i> Call
+                </button>
+                <button id="meeting-reminder-whatsapp-btn"
+                    class="w-full bg-whatsapp-green hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl transition-colors shadow-lg shadow-whatsapp-green/30 flex items-center justify-center">
+                    <i class="fab fa-whatsapp mr-2"></i> Send WhatsApp Message
+                </button>
+            </div>
+
+            <div class="flex justify-between items-center mt-4">
+                 <button id="reschedule-meeting-reminder-modal"
+                    class="text-sm font-medium text-white/60 hover:text-white transition-colors">
+                    Reschedule Meeting
+                </button>
+                <button id="cancel-meeting-reminder-modal"
+                    class="text-sm font-medium text-red-400 hover:text-red-500 transition-colors"
+                    data-modal-close="meeting-reminder-modal">
+                    Dismiss Reminder
+                </button>
+            </div>
+        </div>
+    </div>
+ </div>
+
+    <!-- Schedules modal (opens when "Schedules" submenu is opened) -->
+    <div id="schedules-modal-backdrop" class="modal-backdrop hidden" aria-hidden="true">
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div id="schedules-modal" class="bg-bg-card rounded-2xl border border-border-dark max-w-3xl w-full p-6 card-animate max-h-[calc(100vh-4rem)] overflow-hidden flex flex-col">
+                <div class="flex items-center justify-between p-4 border-b border-border-dark">
+                    <div>
+                        <h2 class="text-xl font-semibold">Follow-Up Schedules</h2>
+                        <p class="text-sm text-white/60">Preset System Follow-Ups</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="create-followup-btn" class="bg-add-green hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors shadow-md flex items-center" title="Create follow-up">
+                            <i class="fa-solid fa-plus mr-2"></i>
+                            <span>Create</span>
+                        </button>
+                        <button data-modal-close="schedules-modal-backdrop" class="text-white/60 hover:text-white px-3 py-2 rounded-md" title="Close modal">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="p-4 border-b border-border-dark">
+                
+                    <div class="flex items-center justify-center">
+                        <div class="flex bg-bg-dark rounded-lg p-1">
+                            <button class="tab-button p-2 px-4 rounded-md font-medium active" data-schedules-tab="system">System</button>
+                            <button class="tab-button p-2 px-4 rounded-md font-medium" data-schedules-tab="special">Special</button>
+                        </div>
+                    </div>
+                    <div class="mt-2 text-center text-sm text-white/50">Click for details, hover for edit</div>
+                </div>
+
+                <div class="p-4 overflow-auto flex-1">
+                    <!-- System schedules (blue numbers) -->
+                    <div class="relative">
+                        <!-- section info button removed per UX request -->
+                        <div id="schedules-system" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <!-- 13 System follow-ups. Days sequence chosen to provide typical cadences -->
+                        <!-- 0,1,3,7,14,21,30,45,60,90,120,180,365 -->
+                        <div class="schedule-card bg-bg-dark border border-border-dark rounded-xl p-4 flex items-start gap-3 relative cursor-pointer" data-days="0" data-type="system" data-info="Immediate follow-up to greet and confirm details.">
+                            <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-blue-600 text-white font-bold text-lg flex-shrink-0">0</div>
+                            <div class="flex-1">
+                                <div class="font-semibold text-white">Initial Follow Up</div>
+                                <div class="text-sm text-white/60 mt-1">Hi there — checking in after your deal creation.</div>
+                            </div>
+                            
+                            <button class="card-edit-btn opacity-0 pointer-events-none absolute right-3 top-3 w-9 h-9 bg-white/10 rounded-md border border-border-dark text-white hover:bg-white/12 transition-opacity" title="Edit">
+                                <i class="fa fa-pen"></i>
+                            </button>
+                        </div>
+                        <div class="schedule-card bg-bg-dark border border-border-dark rounded-xl p-4 flex items-start gap-3 relative cursor-pointer" data-days="1" data-type="system" data-info="Welcome message to start conversation.">
+                            <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-blue-600 text-white font-bold text-lg flex-shrink-0">1</div>
+                            <div class="flex-1">
+                                <div class="font-semibold text-white">Welcome Message</div>
+                                <div class="text-sm text-white/60 mt-1">Quick welcome message and next steps.</div>
+                            </div>
+                            
+                            <button class="card-edit-btn opacity-0 pointer-events-none absolute right-3 top-3 w-9 h-9 bg-white/10 rounded-md border border-border-dark text-white hover:bg-white/12 transition-opacity" title="Edit">
+                                <i class="fa fa-pen"></i>
+                            </button>
+                        </div>
+                        <div class="schedule-card bg-bg-dark border border-border-dark rounded-xl p-4 flex items-start gap-3 relative cursor-pointer" data-days="3" data-type="system" data-info="Encourage purchase with a special offer.">
+                            <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-blue-600 text-white font-bold text-lg flex-shrink-0">3</div>
+                            <div class="flex-1">
+                                <div class="font-semibold text-white">Special Offer</div>
+                                <div class="text-sm text-white/60 mt-1">Send special coupon 3 days after creation.</div>
+                            </div>
+                            
+                            <button class="card-edit-btn opacity-0 pointer-events-none absolute right-3 top-3 w-9 h-9 bg-white/10 rounded-md border border-border-dark text-white hover:bg-white/12 transition-opacity" title="Edit">
+                                <i class="fa fa-pen"></i>
+                            </button>
+                        </div>
+                        <div class="schedule-card bg-bg-dark border border-border-dark rounded-xl p-4 flex items-start gap-3 relative cursor-pointer" data-days="7" data-type="system" data-info="Reminder after a week to check progress.">
+                            <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-blue-600 text-white font-bold text-lg flex-shrink-0">7</div>
+                            <div class="flex-1">
+                                <div class="font-semibold text-white">Weekly Check</div>
+                                <div class="text-sm text-white/60 mt-1">Touch base after a week to keep engagement.</div>
+                            </div>
+                            
+                            <button class="card-edit-btn opacity-0 pointer-events-none absolute right-3 top-3 w-9 h-9 bg-white/10 rounded-md border border-border-dark text-white hover:bg-white/12 transition-opacity" title="Edit">
+                                <i class="fa fa-pen"></i>
+                            </button>
+                        </div>
+                        <div class="schedule-card bg-bg-dark border border-border-dark rounded-xl p-4 flex items-start gap-3 relative cursor-pointer" data-days="14" data-type="system" data-info="Follow-up to re-engage after two weeks.">
+                            <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-blue-600 text-white font-bold text-lg flex-shrink-0">14</div>
+                            <div class="flex-1">
+                                <div class="font-semibold text-white">Fortnight Follow Up</div>
+                                <div class="text-sm text-white/60 mt-1">Check-in after two weeks.</div>
+                            </div>
+                            
+                            <button class="card-edit-btn opacity-0 pointer-events-none absolute right-3 top-3 w-9 h-9 bg-white/10 rounded-md border border-border-dark text-white hover:bg-white/12 transition-opacity" title="Edit">
+                                <i class="fa fa-pen"></i>
+                            </button>
+                        </div>
+                        <div class="schedule-card bg-bg-dark border border-border-dark rounded-xl p-4 flex items-start gap-3 relative cursor-pointer" data-days="21" data-type="system" data-info="Three-week check for ongoing interest.">
+                            <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-blue-600 text-white font-bold text-lg flex-shrink-0">21</div>
+                            <div class="flex-1">
+                                <div class="font-semibold text-white">Three-week Check</div>
+                                <div class="text-sm text-white/60 mt-1">Follow up after three weeks.</div>
+                            </div>
+                            
+                            <button class="card-edit-btn opacity-0 pointer-events-none absolute right-3 top-3 w-9 h-9 bg-white/10 rounded-md border border-border-dark text-white hover:bg-white/12 transition-opacity" title="Edit">
+                                <i class="fa fa-pen"></i>
+                            </button>
+                        </div>
+                        <div class="schedule-card bg-bg-dark border border-border-dark rounded-xl p-4 flex items-start gap-3 relative cursor-pointer" data-days="30" data-type="system" data-info="Monthly check to maintain relationship.">
+                            <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-blue-600 text-white font-bold text-lg flex-shrink-0">30</div>
+                            <div class="flex-1">
+                                <div class="font-semibold text-white">Monthly Follow Up</div>
+                                <div class="text-sm text-white/60 mt-1">Monthly check-in to maintain relationship.</div>
+                            </div>
+                            
+                            <button class="card-edit-btn opacity-0 pointer-events-none absolute right-3 top-3 w-9 h-9 bg-white/10 rounded-md border border-border-dark text-white hover:bg-white/12 transition-opacity" title="Edit">
+                                <i class="fa fa-pen"></i>
+                            </button>
+                        </div>
+                        <div class="schedule-card bg-bg-dark border border-border-dark rounded-xl p-4 flex items-start gap-3 relative cursor-pointer" data-days="45" data-type="system" data-info="Longer-term engagement check.">
+                            <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-blue-600 text-white font-bold text-lg flex-shrink-0">45</div>
+                            <div class="flex-1">
+                                <div class="font-semibold text-white">45 Day Check</div>
+                                <div class="text-sm text-white/60 mt-1">Longer-term engagement check.</div>
+                            </div>
+                            
+                            <button class="card-edit-btn opacity-0 pointer-events-none absolute right-3 top-3 w-9 h-9 bg-white/10 rounded-md border border-border-dark text-white hover:bg-white/12 transition-opacity" title="Edit">
+                                <i class="fa fa-pen"></i>
+                            </button>
+                        </div>
+                        <div class="schedule-card bg-bg-dark border border-border-dark rounded-xl p-4 flex items-start gap-3 relative cursor-pointer" data-days="60" data-type="system" data-info="Two-month progress check.">
+                            <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-blue-600 text-white font-bold text-lg flex-shrink-0">60</div>
+                            <div class="flex-1">
+                                <div class="font-semibold text-white">60 Day Follow</div>
+                                <div class="text-sm text-white/60 mt-1">Check progress after two months.</div>
+                            </div>
+                            
+                            <button class="card-edit-btn opacity-0 pointer-events-none absolute right-3 top-3 w-9 h-9 bg-white/10 rounded-md border border-border-dark text-white hover:bg-white/12 transition-opacity" title="Edit">
+                                <i class="fa fa-pen"></i>
+                            </button>
+                        </div>
+                        <div class="schedule-card bg-bg-dark border border-border-dark rounded-xl p-4 flex items-start gap-3 relative cursor-pointer" data-days="90" data-type="system" data-info="Quarterly review of needs.">
+                            <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-blue-600 text-white font-bold text-lg flex-shrink-0">90</div>
+                            <div class="flex-1">
+                                <div class="font-semibold text-white">Quarterly Check</div>
+                                <div class="text-sm text-white/60 mt-1">90-day follow up for longer cycles.</div>
+                            </div>
+                            
+                            <button class="card-edit-btn opacity-0 pointer-events-none absolute right-3 top-3 w-9 h-9 bg-white/10 rounded-md border border-border-dark text-white hover:bg-white/12 transition-opacity" title="Edit">
+                                <i class="fa fa-pen"></i>
+                            </button>
+                        </div>
+                        <div class="schedule-card bg-bg-dark border border-border-dark rounded-xl p-4 flex items-start gap-3 relative cursor-pointer" data-days="120" data-type="system" data-info="Periodic satisfaction check.">
+                            <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-blue-600 text-white font-bold text-lg flex-shrink-0">120</div>
+                            <div class="flex-1">
+                                <div class="font-semibold text-white">120 Day Follow</div>
+                                <div class="text-sm text-white/60 mt-1">Periodic touch to ensure satisfaction.</div>
+                            </div>
+                            
+                            <button class="card-edit-btn opacity-0 pointer-events-none absolute right-3 top-3 w-9 h-9 bg-white/10 rounded-md border border-border-dark text-white hover:bg-white/12 transition-opacity" title="Edit">
+                                <i class="fa fa-pen"></i>
+                            </button>
+                        </div>
+                        <div class="schedule-card bg-bg-dark border border-border-dark rounded-xl p-4 flex items-start gap-3 relative cursor-pointer" data-days="180" data-type="system" data-info="Half-year retention follow-up.">
+                            <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-blue-600 text-white font-bold text-lg flex-shrink-0">180</div>
+                            <div class="flex-1">
+                                <div class="font-semibold text-white">Half-Year Check</div>
+                                <div class="text-sm text-white/60 mt-1">Check-in after six months.</div>
+                            </div>
+                            
+                            <button class="card-edit-btn opacity-0 pointer-events-none absolute right-3 top-3 w-9 h-9 bg-white/10 rounded-md border border-border-dark text-white hover:bg-white/12 transition-opacity" title="Edit">
+                                <i class="fa fa-pen"></i>
+                            </button>
+                        </div>
+                        <div class="schedule-card bg-bg-dark border border-border-dark rounded-xl p-4 flex items-start gap-3 relative cursor-pointer" data-days="365" data-type="system" data-info="Annual re-engagement campaign.">
+                            <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-blue-600 text-white font-bold text-lg flex-shrink-0">365</div>
+                            <div class="flex-1">
+                                <div class="font-semibold text-white">One Year Check</div>
+                                <div class="text-sm text-white/60 mt-1">Annual follow-up to re-engage.</div>
+                            </div>
+                            
+                            <button class="card-edit-btn opacity-0 pointer-events-none absolute right-3 top-3 w-9 h-9 bg-white/10 rounded-md border border-border-dark text-white hover:bg-white/12 transition-opacity" title="Edit">
+                                <i class="fa fa-pen"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Special schedules (orange numbers) -->
+                    <div id="schedules-special" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                        <div class="schedule-card bg-bg-dark border border-border-dark rounded-xl p-4 flex items-start gap-3 relative cursor-pointer" data-days="3" data-type="special" data-info="Send special coupon 3 days after creation to incentivize conversion.">
+                            <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-orange-500 text-white font-bold text-lg flex-shrink-0">3</div>
+                            <div class="flex-1">
+                                <div class="font-semibold text-white">Special Offer</div>
+                                <div class="text-sm text-white/60 mt-1">Send special coupon 3 days after creation.</div>
+                            </div>
+                            <button class="card-edit-btn opacity-0 pointer-events-none absolute right-3 top-3 w-9 h-9 bg-white/10 rounded-md border border-border-dark text-white hover:bg-white/12 transition-opacity" title="Edit">
+                                <i class="fa fa-pen"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-4 border-t border-border-dark flex justify-end gap-3">
+                    <button class="text-sm font-medium text-white/80 bg-bg-dark px-4 py-2 rounded-lg border border-border-dark" data-modal-close="schedules-modal-backdrop">Close</button>
+                    <button class="text-sm font-semibold bg-main-purple text-white px-4 py-2 rounded-lg">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <!-- Create Special Follow-Up Modal -->
+        <div id="create-followup-modal-backdrop" class="modal-backdrop hidden" aria-hidden="true">
+            <div class="absolute inset-0 flex items-center justify-center p-4">
+                <div class="bg-bg-card rounded-2xl border border-border-dark max-w-2xl w-full p-6 card-animate max-h-[calc(100vh-4rem)] overflow-hidden flex flex-col">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-2xl font-semibold">Create Special Follow-Up</h3>
+                        <button data-modal-close="create-followup-modal-backdrop" class="text-white/60 hover:text-white px-3 py-2 rounded-md"><i class="fa fa-times"></i></button>
+                    </div>
+                    <div class="flex-1 overflow-auto py-2 pr-2">
+                        <form id="create-followup-form" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-white/70">Follow up on</label>
+                                <div class="mt-2">
+                                    <select id="create-followupon-select" class="w-full bg-bg-dark border border-border-dark rounded-lg p-2 text-white">
+                                        <option value="all_contacts">All Contacts</option>
+                                        <option value="all_deals">All Deals</option>
+                                        <option value="all_meetings">All Meetings</option>
+                                        <option value="selected_contacts">Selected Contacts</option>
+                                        <option value="selected_deals">Selected Deals</option>
+                                        <option value="selected_meetings">Selected Meetings</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div id="nested-selector-area" class="hidden">
+                                <label class="block text-sm font-medium text-white/70">Select items</label>
+                                <div class="mt-2 relative">
+                                    <input id="nested-search-input" type="text" placeholder="Type to search and select..." class="w-full bg-bg-dark border border-border-dark rounded-lg py-2 px-3 text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-main-purple" autocomplete="off">
+                                    <div id="nested-search-results" class="absolute z-20 w-full bg-bg-card border border-border-dark rounded-lg mt-1 shadow-2xl max-h-[150px] overflow-auto hidden"></div>
+                                </div>
+                                <!-- selected chips shown in a single horizontal line, scrollable to reveal older selections -->
+                                <div id="nested-selected-list" class="mt-2 flex items-center gap-2 overflow-x-auto py-1" style="max-width:100%;">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-white/70">Follow up name</label>
+                                <input id="create-name" class="w-full bg-bg-dark border border-border-dark rounded-lg p-2 text-white" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-white/70">Reason (short)</label>
+                                <input id="create-reason" class="w-full bg-bg-dark border border-border-dark rounded-lg p-2 text-white" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-white/70">Message template</label>
+                                <textarea id="create-message" rows="4" placeholder="Hi {name}, ..." class="w-full bg-bg-dark border border-border-dark rounded-lg p-2 text-white"></textarea>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-white/70">Event Triggering</label>
+                                <select id="create-trigger" class="w-full bg-bg-dark border border-border-dark rounded-lg p-2 text-white mt-2">
+                                    <option value="">-- Select trigger --</option>
+                                    <option value="deal_created">Deal Created</option>
+                                    <option value="deal_stage_changed">Deal Stage Changed</option>
+                                    <option value="contact_created">Contact Created</option>
+                                    <option value="meeting_created">Meeting Created</option>
+                                </select>
+                                <div id="create-pipeline-select" class="hidden mt-2">
+                                    <label class="block text-sm text-white/70">Pipeline stage</label>
+                                    <select id="create-pipeline" class="w-full bg-bg-dark border border-border-dark rounded-lg p-2 text-white mt-1">
+                                        <option value="">-- select stage --</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-white/70">Interval (days)</label>
+                                <input id="create-interval" type="number" min="0" value="0" class="w-32 bg-bg-dark border border-border-dark rounded-lg p-2 text-white">
+                            </div>
+
+                        </form>
+                    </div>
+                    <div class="border-t border-border-dark p-3 flex gap-3">
+                        <button id="create-cancel-btn" class="text-sm text-white/80 bg-bg-dark px-4 py-2 rounded-lg border border-border-dark" data-modal-close="create-followup-modal-backdrop">Cancel</button>
+                        <button id="create-submit-btn" class="ml-auto text-sm font-semibold bg-main-purple text-white px-4 py-2 rounded-lg">Submit for Review</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create confirm modal -->
+        <div id="create-followup-confirm" class="modal-backdrop hidden">
+            <div class="absolute inset-0 flex items-center justify-center p-4">
+                <div class="bg-bg-card rounded-lg border border-border-dark max-w-md w-full p-4">
+                    <h4 class="text-lg font-semibold">Submit for review?</h4>
+                    <p class="text-sm text-white/70 mt-2">VV Studios Admins will approve your Schedule and when Approved it will be set live.</p>
+                    <div class="mt-4 flex gap-3">
+                        <button id="confirm-cancel" class="flex-1 text-sm text-white/80 bg-bg-dark px-4 py-2 rounded-lg border border-border-dark" data-modal-close="create-followup-confirm">Cancel</button>
+                        <button id="confirm-submit" class="flex-1 text-sm font-semibold bg-main-purple text-white px-4 py-2 rounded-lg">Okay</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    <!-- Schedule detail modal (opens on card click; does not close main modal) -->
+    <div id="schedule-detail-modal-backdrop" class="modal-backdrop hidden" aria-hidden="true">
+        <div class="absolute inset-0 flex items-center justify-center p-6">
+            <div id="schedule-detail-modal" class="bg-bg-card border border-border-dark rounded-2xl shadow-2xl w-full max-w-xl mx-auto max-h-[calc(100vh-6rem)] overflow-auto">
+                <div class="flex items-center justify-between p-4 border-b border-border-dark">
+                    <h3 class="text-lg font-semibold">Schedule details</h3>
+                    <div class="flex gap-2 items-center">
+                        <!-- detail info button removed per UX request -->
+                        <button data-modal-close="schedule-detail-modal-backdrop" class="text-white/60 hover:text-white px-3 py-2 rounded-md" title="Close detail modal"><i class="fa fa-times"></i></button>
+                    </div>
+                </div>
+                <div class="p-4">
+                    <table class="w-full text-left text-sm text-white/80">
+                        <tr class="border-b border-border-dark"><th class="py-2 w-36">Days</th><td id="detail-days">0</td></tr>
+                        <tr class="border-b border-border-dark"><th class="py-2">Stage</th><td id="detail-stage">system</td></tr>
+                        <tr class="border-b border-border-dark"><th class="py-2">Title</th><td id="detail-title">Initial Follow Up</td></tr>
+                        <tr class="border-b border-border-dark"><th class="py-2 align-top">Message</th><td id="detail-message">Message body...</td></tr>
+                    </table>
+                </div>
+                <div class="p-4 border-t border-border-dark flex justify-end gap-3">
+                    <button id="detail-left-btn" class="text-sm text-white/80 bg-bg-dark px-4 py-2 rounded-lg border border-border-dark" data-modal-close="schedule-detail-modal-backdrop">Cancel</button>
+                    <button id="detail-right-btn" class="text-sm font-semibold bg-main-purple text-white px-4 py-2 rounded-lg">Edit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* Reveal edit button on desktop hover */
+        .schedule-card:hover .card-edit-btn { opacity: 1; pointer-events: auto; }
+        /* Section-level faint info button (placed at right of the schedules section) */
+        .section-info-btn { background: transparent; border: none; color: rgba(255,255,255,0.35); cursor: pointer; }
+        .section-info-btn:hover { color: rgba(255,255,255,0.55); }
+        /* Tab highlights by type */
+        .tab-button.active[data-schedules-tab="system"] { background-color: #3b82f6; color: white; }
+        .tab-button.active[data-schedules-tab="special"] { background-color: #f97316; color: white; }
+        /* Hide hover edit on small screens (edit button moved to detail modal) */
+        @media (max-width: 768px) { .schedule-card .card-edit-btn { display: none; } }
+
+    /* Follow-up info popup scrollbar and sizing */
+    .followup-info-popup { max-height: 220px; overflow: auto; -webkit-overflow-scrolling: touch; }
+    .followup-info-popup::-webkit-scrollbar { width: 8px; }
+    .followup-info-popup::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 8px; }
+    .followup-info-popup { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent; }
+
+    /* Ensure schedules modal body is scrollable on mobile with visible scrollbar */
+    #schedules-modal .overflow-auto { -webkit-overflow-scrolling: touch; }
+    #schedules-modal .overflow-auto::-webkit-scrollbar { width: 8px; }
+    #schedules-modal .overflow-auto::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 8px; }
+    #schedules-modal .overflow-auto { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.06) transparent; }
+    </style>
+
+    <script>
+        // Populate header/profile dynamically and wire logout & dropdown toggle
+        document.addEventListener('DOMContentLoaded', function () {
+            try {
+                const stored = localStorage.getItem('vvUser');
+                if (stored) {
+                    const user = JSON.parse(stored);
+                    const business = user.business_name || user.business || 'Your Business';
+                    const admin = user.admin_name || user.firstName || user.first_name || '';
+
+                    const businessEl = document.getElementById('businessName');
+                    const welcomeEl = document.getElementById('welcomeName');
+                    const profileName = document.getElementById('profileName');
+                    const avatar = document.getElementById('profile-avatar');
+
+                    if (businessEl) businessEl.textContent = business;
+                    if (welcomeEl) welcomeEl.textContent = admin;
+                    if (profileName) profileName.textContent = admin || business;
+                    if (avatar && admin) avatar.textContent = admin.charAt(0).toUpperCase();
+                }
+            } catch (err) {
+                console.warn('Error parsing vvUser for header population', err);
+            }
+
+            // Dropdown toggle and outside click handling
+            const pmBtn = document.getElementById('profile-menu-button');
+            const dropdown = document.getElementById('profile-dropdown');
+            if (pmBtn && dropdown) {
+                pmBtn.addEventListener('click', function (e) {
+                    dropdown.classList.toggle('hidden');
+                    e.stopPropagation();
+                });
+
+                document.addEventListener('click', function (ev) {
+                    if (!pmBtn.contains(ev.target) && !dropdown.contains(ev.target)) {
+                        dropdown.classList.add('hidden');
+                    }
+                });
+            }
+
+            // Logout
+            const logoutBtn = document.getElementById('logoutButton');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    localStorage.removeItem('vvUser');
+                    // Optionally send to login page or reload to show login
+                    window.location.reload();
+                });
+            }
+
+            // --- Notification bubble helpers (demo) ---
+            // Show or hide the desktop alerts bubble and mobile bubble.
+            window.showNotificationBubble = function(count) {
+                const desktop = document.getElementById('alerts-bubble');
+                const mobile = document.getElementById('mobile-alerts-bubble');
+                if (desktop) {
+                    if (count && count > 0) {
+                        desktop.textContent = count;
+                        desktop.classList.remove('hidden');
+                    } else {
+                        desktop.textContent = '';
+                        desktop.classList.add('hidden');
+                    }
+                }
+                if (mobile) {
+                    if (count && count > 0) {
+                        mobile.classList.remove('hidden');
+                    } else {
+                        mobile.classList.add('hidden');
+                    }
+                }
+            }
+
+            // Expose a quick demo toggle on double-click of the bell for development
+            const alertsBtn = document.getElementById('alerts-button');
+            if (alertsBtn) {
+                let demoCount = 1;
+                alertsBtn.addEventListener('dblclick', function () {
+                    // toggle between shown and hidden
+                    if (document.getElementById('alerts-bubble') && !document.getElementById('alerts-bubble').classList.contains('hidden')) {
+                        window.showNotificationBubble(0);
+                    } else {
+                        demoCount = demoCount + 1;
+                        window.showNotificationBubble(demoCount);
+                    }
+                });
+            }
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <!-- Alerts dropdown (anchored under the bell) -->
+    <div id="alerts-panel" class="" aria-hidden="true">
+        <div class="alerts-header">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <i class="fa-solid fa-bell"></i>
+                <strong>Alerts</strong>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <button id="alerts-mark-read" class="text-sm text-white/80 hover:text-white">Mark all read</button>
+                <button id="alerts-close-btn" class="text-white/50 hover:text-white" aria-label="Close alerts"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+        </div>
+        <div class="alerts-list" id="alerts-list">
+            <div class="alerts-empty">Your Alerts will Appear Here</div>
+        </div>
+    </div>
+
+    <script src="/crm.js"></script>
+    <script>
+        /* Mobile hide-on-scroll behavior.
+           - Hides the bottom nav on scroll down and shows it on scroll up.
+           - Uses rAF to throttle scroll handling for better performance.
+           - Watches the main scrollable container when present (preferred),
+             otherwise falls back to window scroll.
+        */
+        (function () {
+            const nav = document.getElementById('mobile-nav-bar');
+            if (!nav) return; // nothing to do on desktop-only pages
+
+            const scrollContainer = document.querySelector('main') || window;
+            let lastPos = (scrollContainer === window) ? window.pageYOffset : scrollContainer.scrollTop;
+            let ticking = false;
+            const THRESHOLD = 8; // minimum px change to react
+
+            function onUpdate() {
+                const current = (scrollContainer === window) ? window.pageYOffset : scrollContainer.scrollTop;
+                // ignore tiny changes
+                if (Math.abs(current - lastPos) < THRESHOLD) {
+                    ticking = false;
+                    return;
+                }
+
+                if (current > lastPos) {
+                    // scrolling down -> hide nav
+                    nav.classList.add('mobile-hidden');
+                } else {
+                    // scrolling up -> show nav
+                    nav.classList.remove('mobile-hidden');
+                }
+
+                lastPos = Math.max(0, current);
+                ticking = false;
+            }
+
+            function onScroll() {
+                if (!ticking) {
+                    window.requestAnimationFrame(onUpdate);
+                    ticking = true;
+                }
+            }
+
+            // For touch devices, also listen for touchend so quick fling still restores nav on upward scroll
+            function onTouchEnd() {
+                // small timeout to allow momentum scrolling to finish
+                setTimeout(() => {
+                    // If user is near top, ensure nav is visible
+                    const current = (scrollContainer === window) ? window.pageYOffset : scrollContainer.scrollTop;
+                    if (current <= 20) nav.classList.remove('mobile-hidden');
+                }, 120);
+            }
+
+            // Attach events
+            try {
+                if (scrollContainer === window) {
+                    window.addEventListener('scroll', onScroll, { passive: true });
+                    window.addEventListener('touchend', onTouchEnd, { passive: true });
+                } else {
+                    scrollContainer.addEventListener('scroll', onScroll, { passive: true });
+                    scrollContainer.addEventListener('touchend', onTouchEnd, { passive: true });
+                }
+            } catch (e) {
+                // If passive options not supported, fallback without them
+                if (scrollContainer === window) {
+                    window.addEventListener('scroll', onScroll);
+                    window.addEventListener('touchend', onTouchEnd);
+                } else {
+                    scrollContainer.addEventListener('scroll', onScroll);
+                    scrollContainer.addEventListener('touchend', onTouchEnd);
+                }
+            }
+
+            // Expose a small helper for debugging/force show
+            window.__vv_mobile_nav = {
+                show: () => nav.classList.remove('mobile-hidden'),
+                hide: () => nav.classList.add('mobile-hidden')
+            };
+        })();
+    </script>
+</body>
+</html>

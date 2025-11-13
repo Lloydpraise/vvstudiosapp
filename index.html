@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VV Studios Analytics Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.5.1/chart.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar styling for the dashboard content */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background-color: transparent;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        .card-animate {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card-animate:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .sidebar-link {
+            position: relative;
+            transition: all 0.2s ease;
+        }
+        .sidebar-link:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        .tooltip {
+            position: absolute;
+            left: calc(100% + 15px);
+            top: 50%;
+            transform: translateY(-50%);
+            visibility: hidden;
+            opacity: 0;
+            background-color: #2b2f3a;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            white-space: nowrap;
+            font-size: 0.875rem;
+            z-index: 10;
+            transition: opacity 0.3s ease;
+        }
+        .tooltip::after {
+            content: '';
+            position: absolute;
+            right: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+            border-width: 5px;
+            border-style: solid;
+            border-color: transparent #2b2f3a transparent transparent;
+        }
+        .sidebar-link.active {
+            color: #FFD700;
+            background-color: rgba(255, 215, 0, 0.1);
+        }
+        .sidebar-link.faint-gold {
+            color: #FFD700;
+        }
+        .progress-bar-container {
+            height: 8px;
+            background-color: #4b5563;
+            border-radius: 9999px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            border-radius: 9999px;
+            transition: width 0.5s ease, background-color 0.5s ease;
+        }
+        .progress-green {
+            background-color: #10B981;
+        }
+        .progress-yellow {
+            background-color: #FBBF24;
+        }
+        .progress-red {
+            background-color: #EF4444;
+        }
+        .upgrade-button {
+            transition: background-color 0.3s ease;
+        }
+        .text-green { color: #22c55e; }
+        .text-yellow { color: #eab308; }
+        .text-red { color: #ef4444; }
+        /* Additional styling from index.html */
+        .chart-placeholder {
+            background: linear-gradient(135deg, #1f2937 0%, #2a3547 100%);
+            border: 1px solid #374151;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9ca3af;
+            font-size: 1.125rem;
+            font-style: italic;
+            min-height: 250px;
+        }
+        .toggle-switch-container {
+            display: flex;
+            background-color: #2b2f3a;
+            border-radius: 9999px;
+            padding: 4px;
+        }
+        .toggle-button {
+            padding: 8px 16px;
+            cursor: pointer;
+            color: #d1d5db;
+            border-radius: 9999px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        .toggle-button.active {
+            background-color: #1a1d23;
+            color: white;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+        .logout-button {
+            background-color: #ef4444;
+            color: white;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+            transition: background-color 0.3s ease;
+        }
+        .logout-button:hover {
+            background-color: #dc2626;
+        }
+    </style>
+</head>
+<body class="bg-[#0f1115] text-white" data-page="main">
+
+    <div id="login-container" class="flex items-center justify-center min-h-screen">
+        <div class="bg-[#1a1d23] p-8 md:p-12 rounded-2xl border border-[#2b2f3a] max-w-lg w-full text-center card-animate">
+            <h1 class="text-2xl md:text-3xl font-bold mb-4">VV Studios Login</h1>
+            <p class="text-white/60 mb-8">Please enter your credentials to access the dashboard.</p>
+            <form id="login-form" class="space-y-6">
+                <div>
+                    <input type="text" id="firstName" placeholder="First Name" class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                </div>
+                <div>
+                    <input type="tel" id="phone" placeholder="Phone Number" class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                </div>
+                <div id="errorMessage" class="mt-4 text-red-500 text-center" style="display: none;"></div>
+                <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors duration-200">
+                    Sign In
+                </button>
+                <div class="mt-4 text-center">
+                    <input type="checkbox" id="rememberMe" name="rememberMe" class="mr-2">
+                    <label for="rememberMe" class="text-gray-400">Remember me</label>
+                </div>
+            </form>
+            <p id="error-message" class="text-red-400 text-sm font-medium hidden"></p>
+        </div>
+    </div>
+
+    <div id="dashboard-container" style="display: none;">
+        <div class="flex min-h-screen">
+            <!-- Mobile Menu Backdrop -->
+            <div id="mobile-menu-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-300 lg:hidden hidden"></div>
+
+            <!-- Sidebar -->
+            <aside id="sidebar" class="w-64 bg-[#14161a] p-6 flex-shrink-0 fixed inset-y-0 left-0 transform -translate-x-full transition-transform duration-300 z-50 lg:relative lg:translate-x-0">
+                <div class="flex flex-col items-center space-y-2 mb-8">
+                    <img src="assets/logo.png" alt="VV Studios Logo" class="w-16 h-16">
+                    <span class="text-xl font-bold">VV Studios</span>
+                    <span class="text-sm text-white/60">Client Portal</span>
+                </div>
+                <nav>
+    <ul class="space-y-2">
+        <!-- My Business (highlighted) -->
+        <li class="mb-4">
+            <a href="index.html"
+                class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors active">
+                <i class="fa-solid fa-briefcase w-5 h-5"></i>
+                <span>My Business</span>
+                <span class="tooltip">View your business overview and key insights</span>
+            </a>
+        </li>
+
+        <!-- Ads -->
+        <li class="mb-4">
+            <a href="ads_management_dashboard.html"
+                class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                <i class="fa-solid fa-bullhorn w-5 h-5"></i>
+                <span>Ads</span>
+                <span class="tooltip">Optimize your ad campaigns for maximum ROI!</span>
+            </a>
+        </li>
+
+        <!-- Sales & Follow-Ups (CRM) -->
+        <li class="mb-4">
+            <a href="crmlanding.html"
+                class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                <i class="fa-solid fa-handshake w-5 h-5"></i>
+                <span>Sales & Follow-Ups</span>
+                <span class="tooltip">Track and manage your customers easily</span>
+            </a>
+        </li>
+
+        <!-- Business Assistant (Copilot) -->
+        <li class="mb-4">
+            <a href="copilot.html"
+                class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                <i class="fa-solid fa-robot w-5 h-5"></i>
+                <span>Business Assistant</span>
+                <span class="tooltip">Your AI Copilot that helps you run the business</span>
+            </a>
+        </li>
+
+        <!-- AI Sales Assistant -->
+        <li class="mb-4">
+            <a href="salesassistant.html"
+                class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                <i class="fa-solid fa-robot w-5 h-5"></i>
+                <span>AI Sales Assistant</span>
+                <span class="tooltip">Unlock our smartest AI to blow up your sales!</span>
+            </a>
+        </li>
+
+        <!-- Automations (locked) -->
+        <li class="mb-4">
+            <a href="#"
+                class="flex items-center space-x-3 text-white/30 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                <i class="fa-solid fa-arrows-spin w-5 h-5"></i>
+                <span>Automations</span>
+                <span class="tooltip">Automate your business and save 10+ hours a week!</span>
+                <i class="fa-solid fa-lock w-3 h-3 text-white/30 ml-auto"></i>
+            </a>
+        </li>
+
+        <!-- Marketing Systems (locked) -->
+        <li class="mb-4">
+            <a href="#"
+                class="flex items-center space-x-3 text-white/30 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                <i class="fa-solid fa-gear w-5 h-5"></i>
+                <span>Marketing Systems</span>
+                <span class="tooltip">Sales and marketing on autopilot!</span>
+                <i class="fa-solid fa-lock w-3 h-3 text-white/30 ml-auto"></i>
+            </a>
+        </li>
+
+        <!-- Content Creation -->
+        <li class="mb-4">
+            <a href="#"
+                class="flex items-center space-x-3 text-white/60 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                <i class="fa-solid fa-pen-nib w-5 h-5"></i>
+                <span>Content Creation</span>
+            </a>
+        </li>
+
+        <!-- Live Chat -->
+        <li class="mb-4">
+            <a href="livechat.html"
+                class="flex items-center space-x-3 text-white/60 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                <i class="fa-solid fa-comments w-5 h-5"></i>
+                <span>Live Chat</span>
+                <span class="tooltip">Engage with customers in real-time!</span>
+            </a>
+        </li>
+    </ul>
+</nav>
+            </aside>
+            <main class="flex-1 overflow-y-auto p-8 lg:p-12">
+                <div class="flex justify-between items-center mb-10 flex-wrap">
+                    <div class="flex items-center w-full md:w-auto">
+                        <!-- Mobile Menu Button -->
+                        <button id="mobile-menu-button" class="lg:hidden mr-4 text-white focus:outline-none">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+                            </svg>
+                        </button>
+                        <div class="flex-1 min-w-[200px]">
+                            <h1 id="businessName" class="text-3xl lg:text-4xl font-bold mb-1">Business Name</h1>
+                            <p class="text-white/60 text-sm">Good to see you <span id="welcomeName" class="font-bold"></span>.</p>
+                        </div>
+                    </div>
+                    <div class="relative flex items-center space-x-4 mt-4 lg:mt-0">
+                        <div class="relative w-full max-w-xs hidden md:block">
+                            <input type="text" placeholder="Search..." class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded-xl py-2 px-4 pl-10 text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 19l-6-6M10 16a6 6 0 100-12 6 6 0 000 12z"></path></svg>
+                        </div>
+                        <button class="w-10 h-10 rounded-xl bg-[#1a1d23] flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-white/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 01-3.46 0"></path></svg>
+                        </button>
+                        
+                        <div id="profile-menu-button" class="flex items-center space-x-2 p-2 bg-[#1a1d23] rounded-xl cursor-pointer">
+                            <div id="profile-avatar" class="rounded-full w-8 h-8 bg-blue-500 flex items-center justify-center text-white font-bold text-sm">L</div>
+                            <p id="profileName" class="font-medium text-sm hidden sm:block">Lloyd</p>
+                        </div>
+                        
+                        <div id="profile-dropdown" class="absolute top-14 right-0 z-50 w-48 bg-[#1a1d23] rounded-xl border border-[#2b2f3a] p-2 shadow-lg hidden transition-opacity duration-200">
+                            <a href="#" class="block p-2 text-sm text-white/80 hover:bg-[#2b2f3a] rounded-lg transition-colors">Change Password</a>
+                            <a href="#" id="logoutButton" class="block p-2 text-sm text-red-400 hover:bg-[#2b2f3a] rounded-lg transition-colors">Logout</a>
+                        </div>
+                    </div>
+                </div>
+
+                 <!-- Countdown and Upsell Section -->
+            <section class="mb-10 p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
+                <div class="flex items-center justify-between flex-wrap">
+                    <div class="w-full md:w-auto flex-1 mb-4 md:mb-0">
+                        <h2 class="text-white font-semibold text-lg mb-2">Package Countdown</h2>
+                        <div class="progress-bar-container">
+                            <div id="countdown-bar" class="progress-bar" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%;"></div>
+                        </div>
+                        <p id="countdown-text" class="text-sm text-white/60 mt-2">⏳ 30 days remaining in your package.</p>
+                    </div>
+                    <div class="w-full md:w-auto">
+                        <button id="upgrade-button" class="w-full md:w-auto bg-blue-600 text-white font-semibold py-3 px-4 rounded-xl hover:bg-blue-700 transition-colors">
+                            Upgrade Now
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Key Performance Indicators -->
+            <section class="mb-10">
+                <div class="mb-6">
+                    <h2 class="text-xl font-semibold text-white mb-2">Key Performance Indicators</h2>
+                    <p class="text-white/80 text-sm italic">quick glimpse into your business</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
+                        <div class="flex items-center space-x-4 mb-4">
+                            <div class="p-2 rounded-lg bg-purple-500/20">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 7l-6 6-6-6"></path></svg>
+                            </div>
+                            <h3 class="font-medium text-white/80">Sales Today</h3>
+                        </div>
+                        <p id="salesToday" class="text-3xl font-bold mb-1">Ksh 0</p>
+                        <p class="text-green-400 text-sm flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l7 7-7 7M12 5l-7 7 7 7"></path></svg>
+                            +25%
+                        </p>
+                    </div>
+                    <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
+                        <div class="flex items-center space-x-4 mb-4">
+                            <div class="p-2 rounded-lg bg-orange-500/20">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-orange-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 14h-2a2 2 0 01-2-2V8a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2z"></path><path d="M9 18v-2M15 18v-2"></path><circle cx="12" cy="18" r="4"></circle></svg>
+                            </div>
+                            <h3 class="font-medium text-white/80">Conversion Rate</h3>
+                        </div>
+                        <p id="conversionRate" class="text-3xl font-bold mb-1">0%</p>
+                        <p class="text-green-400 text-sm flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l7 7-7 7M12 5l-7 7 7 7"></path></svg>
+                            +0.3%
+                        </p>
+                    </div>
+                    <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
+                        <div class="flex items-center space-x-4 mb-4">
+                            <div class="p-2 rounded-lg bg-blue-500/20">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zM12 6v6l4 2"></path></svg>
+                            </div>
+                            <h3 class="font-medium text-white/80">AI Credits Used</h3>
+                        </div>
+                        <div class="flex justify-between items-end">
+                            <p class="text-5xl font-bold">243</p>
+                            <p class="text-sm text-white/60">/1000</p>
+                        </div>
+                    </div>
+                    <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
+                        <div class="flex items-center space-x-4 mb-4">
+                            <div class="p-2 rounded-lg bg-green-500/20">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><path d="M20 21v-2a4 4 0 00-3-3.87M23 11v-2a4 4 0 00-3-3.87"></path></svg>
+                            </div>
+                            <h3 class="font-medium text-white/80">Leads Today</h3>
+                        </div>
+                        <p class="text-3xl font-bold mb-1">0</p>
+                        <p class="text-green-400 text-sm flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l7 7-7 7M12 5l-7 7 7 7"></path></svg>
+                            +15%
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Your Business Copilot -->
+            <section class="mb-10">
+                <div class="mb-6">
+                    <h2 class="text-xl font-semibold text-white mb-2">Your Business Copilot</h2>
+                </div>
+                <div class="w-full p-8 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <blockquote class="text-lg text-white/80 italic mb-4">"Empower your business with AI-driven insights and automation to accelerate growth and efficiency."</blockquote>
+                            <a href="aiassistant.html" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-xl hover:bg-blue-700 transition-colors inline-block">Ask Your Copilot</a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Your Active Services -->
+            <section class="mb-10">
+                <div class="mb-6">
+                    <h2 class="text-xl font-semibold text-white mb-2">Your Active Services</h2>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
+                        <div class="flex items-center space-x-4 mb-4">
+                            <div class="p-2 rounded-lg bg-blue-500/20">
+                                <i class="fa-solid fa-rectangle-ad w-6 h-6 text-blue-400"></i>
+                            </div>
+                            <h3 class="font-medium text-white/80">Ads Management</h3>
+                        </div>
+                        <a href="ads_management_dashboard.html" class="w-full bg-green-600 text-white font-semibold py-2 px-4 rounded-xl hover:bg-green-700 transition-colors inline-block text-center">View Details</a>
+                    </div>
+                    <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
+                        <div class="flex items-center space-x-4 mb-4">
+                            <div class="p-2 rounded-lg bg-purple-500/20">
+                                <i class="fa-solid fa-robot w-6 h-6 text-purple-400"></i>
+                            </div>
+                            <h3 class="font-medium text-white/80">AI Sales Agent</h3>
+                        </div>
+                        <a href="salesassistant.html" class="w-full bg-green-600 text-white font-semibold py-2 px-4 rounded-xl hover:bg-green-700 transition-colors inline-block text-center">View Details</a>
+                    </div>
+                    <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
+                        <div class="flex items-center space-x-4 mb-4">
+                            <div class="p-2 rounded-lg bg-orange-500/20">
+                                <i class="fa-solid fa-pen-nib w-6 h-6 text-orange-400"></i>
+                            </div>
+                            <h3 class="font-medium text-white/80">Content Creation</h3>
+                        </div>
+                        <button class="w-full bg-green-600 text-white font-semibold py-2 px-4 rounded-xl hover:bg-green-700 transition-colors">View Details</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Learning Resources -->
+            <section class="mb-10">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-white mb-2">Unlock Your Marketing Potential</h2>
+                    <p class="text-white/80 text-sm italic">Dive deep into digital marketing strategies that drive results</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
+                        <div class="flex items-center space-x-4 mb-4">
+                            <div class="p-2 rounded-lg bg-red-500/20">
+                                <i class="fa-solid fa-share-nodes w-6 h-6 text-red-400"></i>
+                            </div>
+                            <h3 class="font-medium text-white/80">Mastering Social Media Marketing</h3>
+                        </div>
+                        <p class="text-white/60 text-sm mb-4">Learn how to build engaging social media campaigns that convert followers into customers.</p>
+                        <button class="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-xl hover:bg-blue-700 transition-colors">Read More</button>
+                    </div>
+                    <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
+                        <div class="flex items-center space-x-4 mb-4">
+                            <div class="p-2 rounded-lg bg-yellow-500/20">
+                                <i class="fa-solid fa-search w-6 h-6 text-yellow-400"></i>
+                            </div>
+                            <h3 class="font-medium text-white/80">SEO Strategies for Small Businesses</h3>
+                        </div>
+                        <p class="text-white/60 text-sm mb-4">Optimize your website to rank higher on search engines and attract more organic traffic.</p>
+                        <button class="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-xl hover:bg-blue-700 transition-colors">Read More</button>
+                    </div>
+                    <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
+                        <div class="flex items-center space-x-4 mb-4">
+                            <div class="p-2 rounded-lg bg-teal-500/20">
+                                <i class="fa-solid fa-envelope w-6 h-6 text-teal-400"></i>
+                            </div>
+                            <h3 class="font-medium text-white/80">Email Marketing Best Practices</h3>
+                        </div>
+                        <p class="text-white/60 text-sm mb-4">Build effective email campaigns that nurture leads and boost customer loyalty.</p>
+                        <button class="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-xl hover:bg-blue-700 transition-colors">Read More</button>
+                    </div>
+                </div>
+            </section>
+            </main>
+        </div>
+    </div>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"></script>
+<script type="module" src="dashboard.js"></script>
+</body>
+</html>
