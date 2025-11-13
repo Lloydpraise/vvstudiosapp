@@ -148,6 +148,7 @@
         .logout-button:hover {
             background-color: #dc2626;
         }
+        
     </style>
 </head>
 <body class="bg-[#0f1115] text-white" data-page="main">
@@ -490,6 +491,26 @@
             </main>
         </div>
     </div>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+    const menuBtn = document.getElementById("mobile-menu-button");
+    const sidebar = document.getElementById("sidebar");
+    const backdrop = document.getElementById("mobile-menu-backdrop");
+
+    if (!menuBtn || !sidebar) return;
+
+    menuBtn.addEventListener("click", () => {
+        sidebar.classList.toggle("-translate-x-full");     // slide in/out
+        backdrop.classList.toggle("hidden");               // background blur
+    });
+
+    backdrop.addEventListener("click", () => {
+        sidebar.classList.add("-translate-x-full");
+        backdrop.classList.add("hidden");
+    });
+});
+</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.4.0/axios.min.js" integrity="sha512-+3j77K6ZpMWuY1V4uG3f8O5gI2+XbY0c2i0J3Q1F5+8F
     <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"></script>
 <script type="module" src="dashboard.js"></script>
 </body>
