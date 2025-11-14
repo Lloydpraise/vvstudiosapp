@@ -110,6 +110,30 @@
             #sidebar * { z-index: 75 !important; }
         }
 
+        /* Mobile header adjustments: move alerts & profile beneath business name to avoid overlap */
+        @media (max-width: 768px) {
+            #top-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+            /* Make the business name take full width so alerts/profile stack below it */
+            #top-header > .flex-1 {
+                width: 100%;
+                order: 1;
+            }
+            /* Place alerts/profile row after the business name */
+            #top-header > .relative.flex {
+                width: 100%;
+                order: 2;
+                margin-top: 0.25rem;
+                justify-content: flex-start;
+                gap: 0.5rem;
+            }
+            /* Ensure hamburger stays on its own line and aligns with content */
+            #hamburger-btn { order: 0; margin-bottom: 0.25rem; }
+        }
+
         /* --- Contacts List Styles (Table View) --- */
         .contact-row {
             /* Grid layout for Contact List (5 columns total) */
