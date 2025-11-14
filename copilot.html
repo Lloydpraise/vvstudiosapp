@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dynamic AI Business Assistant</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <style>
+    /* For a better scrolling experience */
+    #chat-messages {
+      scroll-behavior: smooth;
+      flex-grow: 1; /* Ensure it takes up available space */
+      overflow-y: auto; /* Enable scrolling */
+    }
+    
+    /* Keyframes for the rising bubble animation */
+    @keyframes riseUp {
+      from {
+        opacity: 0;
+        transform: translateY(40px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Class to apply the animation */
+    .animate-rise {
+      /* Set initial state for the animation */
+      opacity: 0; 
+      /* Apply the animation */
+      animation: riseUp 0.6s ease-out forwards;
+    }
+
+    /* Custom Scrollbar for dark theme */
+    #chat-messages::-webkit-scrollbar {
+        width: 6px;
+    }
+    #chat-messages::-webkit-scrollbar-thumb {
+        background-color: #4b5563; /* Gray-600 */
+        border-radius: 3px;
+    }
+    #chat-messages::-webkit-scrollbar-track {
+        background-color: #1f2937; /* Gray-800 */
+    }
+
+    /* Sidebar transition for mobile menu */
+    #sidebar {
+      transition: transform 0.3s ease-in-out;
+      z-index: 50;
+    }
+    #sidebar.menu-closed {
+      transform: translateX(-100%);
+    }
+    @media (min-width: 1024px) {
+      #sidebar {
+        transform: translateX(0) !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-[#0f1115] text-white flex min-h-screen">
+
+  <!-- Sidebar (Menu) -->
+  <aside id="sidebar" class="w-64 bg-[#14161a] p-6 flex-shrink-0 fixed lg:static flex flex-col h-full menu-closed">
+    
+    <div class="flex-grow overflow-y-auto pb-4">
+      <h1 class="text-xl font-bold mb-8 text-purple-400">AI Assistant</h1>
+      
+      <p class="text-xs text-gray-500 mb-4 uppercase tracking-wider">Sections</p>
+      
+      <div id="section-buttons" class="space-y-2">
+        <!-- Section Buttons -->
+        <button data-section="ads" class="section-btn w-full text-left p-3 rounded-xl hover:bg-gray-800 transition duration-150 flex items-center bg-gray-800 text-purple-400">
+          <i class="fas fa-chart-line mr-3"></i>
+          Ads Intelligence
+        </button>
+        <button data-section="obs" class="section-btn w-full text-left p-3 rounded-xl hover:bg-gray-800 transition duration-150 flex items-center">
+          <i class="fas fa-search mr-3"></i>
+          Observations
+        </button>
+        <button data-section="copy" class="section-btn w-full text-left p-3 rounded-xl hover:bg-gray-800 transition duration-150 flex items-center">
+          <i class="fas fa-pen-nib mr-3"></i>
+          Copywriting
+        </button>
+        <button data-section="scripts" class="section-btn w-full text-left p-3 rounded-xl hover:bg-gray-800 transition duration-150 flex items-center">
+          <i class="fas fa-comment-dots mr-3"></i>
+          Customer Scripts
+        </button>
+        <button data-section="forms" class="section-btn w-full text-left p-3 rounded-xl hover:bg-gray-800 transition duration-150 flex items-center">
+          <i class="fas fa-clipboard-list mr-3"></i>
+          Form Messages
+        </button>
+      </div>
+
+      <!-- NEW: Chat History Section -->
+      <p class="text-xs text-gray-500 my-4 uppercase tracking-wider">History</p>
+      <button id="chat-history-btn" class="w-full text-left p-3 rounded-xl hover:bg-gray-800 transition duration-150 flex items-center text-white">
+          <i class="fas fa-history mr-3"></i>
+          Chat History
+      </button>
+      
+      <button id="close-menu-btn" class="absolute top-4 right-4 text-gray-400 hover:text-white lg:hidden">
+        <i class="fas fa-times text-xl"></i>
+      </button>
+
+    </div>
+
+    <!-- NEW: Back to Dashboard Button -->
+    <div class="pt-4 border-t border-gray-700 flex-shrink-0">
+        <a href="dashboardlanding.html" class="w-full text-center block p-3 rounded-xl bg-purple-600 hover:bg-purple-700 transition duration-150 font-semibold shadow-lg">
+            <i class="fas fa-arrow-left mr-2"></i>
+            Back to Dashboard
+        </a>
+    </div>
+  </aside>
+
+  <!-- Main Chat Area -->
+  <main class="flex-grow flex flex-col p-4 lg:p-8 relative">
+    
+    <!-- Mobile Menu Button -->
+    <button id="open-menu-btn" class="absolute top-4 left-4 p-2 bg-gray-800 rounded-lg text-white lg:hidden z-10">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Section Header -->
+    <header class="bg-[#14161a] p-4 lg:p-6 rounded-2xl mb-6 shadow-xl border border-gray-800">
+      <h2 id="section-title" class="text-2xl font-semibold">Ads Intelligence</h2>
+      <p id="section-desc" class="text-sm text-gray-400">Deep-dive analysis on campaign performance and optimization.</p>
+    </header>
+
+    <!-- Observation Bubbles (Copilot Sections) -->
+    <div id="observation-bubbles" class="flex flex-wrap gap-3 mb-6 transition-all duration-300 hidden">
+      <!-- Dynamic bubbles will load here -->
+      <div class="text-center w-full text-gray-500" id="loading-bubbles-message">Loading AI insights...</div>
+    </div>
+
+    <!-- Chat Messages Area -->
+    <section id="chat-messages" class="flex flex-col space-y-3 p-4 bg-[#14161a] rounded-2xl flex-grow overflow-y-auto min-h-[300px]">
+      <div class="flex-grow flex items-center justify-center">
+        <p class="text-gray-500 text-center">Connecting to Supabase...</p>
+      </div>
+    </section>
+
+    <!-- Input Form -->
+    <footer class="mt-4">
+      <div class="flex items-center space-x-3">
+        <input type="text" id="chat-input" placeholder="Type your message or ask AI..."
+               class="flex-grow p-4 rounded-xl bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition duration-150 text-white placeholder-gray-500 shadow-lg">
+        <button id="send-btn"
+                class="bg-purple-600 hover:bg-purple-700 text-white p-4 rounded-xl shadow-lg transition duration-150 disabled:bg-gray-600">
+          <i class="fas fa-paper-plane"></i>
+        </button>
+      </div>
+      <p id="system-message" class="text-xs text-gray-500 mt-2 hidden">
+        Generating response...
+      </p>
+    </footer>
+
+  </main>
+
+  <!-- Overlay for mobile menu -->
+  <div id="menu-overlay" class="fixed inset-0 bg-black bg-opacity-50 hidden lg:hidden z-40"></div>
+
+  <script type="module">
+    // --- SUPABASE IMPORTS ---
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+    
+    // --- CONFIGURATION (UPDATE THESE WITH YOUR ACTUAL VALUES) ---
+    
+    // Supabase Credentials (MUST BE REPLACED)
+    const SUPABASE_URL = "https://xgtnbxdxbbywvzrttixf.supabase.co"; 
+    const SUPABASE_ANON_KEY = "hbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ"; 
+    
+    // Supabase Edge Function URLs (MUST BE REPLACED)
+    const MESSAGES_FUNCTION_URL = "https://xgtnbxdxbbywvzrttixf.supabase.co/functions/v1/ask-copilot"; 
+    const INSIGHTS_FUNCTION_URL = "https://xgtnbxdxbbywvzrttixf.supabase.co/functions/v1/get-learnings"; 
+    
+    // Context IDs
+    // CRITICAL: Get BUSINESS_ID from localStorage or use 'fortunebooks12' as fallback
+    const BUSINESS_ID = localStorage.getItem('BUSINESS_ID') || 'fortunebooks12'; 
+    
+    // Core Supabase instance and state
+    let supabase = null; 
+    let userId = null; 
+    let activeSection = "ads";
+    let messageSubscription = null; // To hold the Realtime subscription object
+    let renderedMessageIds = new Set(); // To prevent duplicate messages on re-render
+
+    // --- SECTION CONFIGS ---
+    const sections = {
+      ads: { title: "Ads Intelligence", desc: "Deep-dive analysis on campaign performance and optimization.", color: "bg-purple-600" },
+      obs: { title: "Observations", desc: "Real-time insights from business data and anomaly detection.", color: "bg-sky-600" },
+      copy: { title: "Copywriting", desc: "Generate high-converting ad copies and social media content.", color: "bg-emerald-600" },
+      scripts: { title: "Customer Scripts", desc: "Automate and refine customer service and sales conversations.", color: "bg-red-600" },
+      forms: { title: "Form Messages", desc: "Design effective lead capture forms and follow-up sequences.", color: "bg-yellow-600" },
+    };
+
+    // --- ELEMENTS ---
+    const sidebar = document.getElementById("sidebar");
+    const menuOverlay = document.getElementById("menu-overlay");
+    const openMenuBtn = document.getElementById("open-menu-btn");
+    const closeMenuBtn = document.getElementById("close-menu-btn");
+    const sectionTitle = document.getElementById("section-title");
+    const sectionDesc = document.getElementById("section-desc");
+    const chatMessages = document.getElementById("chat-messages");
+    const chatInput = document.getElementById("chat-input");
+    const sendBtn = document.getElementById("send-btn");
+    const systemMessage = document.getElementById("system-message");
+    const observationBubblesContainer = document.getElementById("observation-bubbles");
+    const loadingBubblesMessage = document.getElementById("loading-bubbles-message");
+    const sectionBtns = document.querySelectorAll(".section-btn");
+
+
+    // --- UTILITIES ---
+
+    function showLoading(show) {
+        sendBtn.disabled = show;
+        chatInput.disabled = show;
+        systemMessage.classList.toggle('hidden', !show);
+        if (show) {
+            systemMessage.textContent = "Generating response...";
+        }
+    }
+    
+    /**
+     * Renders a single message bubble into the chat UI.
+     * @param {object} message - The message object from the database.
+     */
+    function addMessageToUI(message) {
+      // Use message ID to prevent double-rendering
+      if (renderedMessageIds.has(message.id)) return;
+      renderedMessageIds.add(message.id);
+
+      const sender = message.role === 'user' ? 'user' : 'assistant';
+      
+      const bubble = document.createElement("div");
+      bubble.id = `msg-${message.id}`;
+      bubble.className = `p-3 rounded-xl max-w-lg mb-2 text-sm ${
+        sender === "user" 
+          ? "bg-gray-700 self-end rounded-br-none" 
+          : "bg-purple-600 self-start rounded-tl-none"
+      } animate-rise`;
+      
+      // Assuming 'content' field is text, or extract the correct part from JSONB content
+      bubble.textContent = message.content; 
+      
+      chatMessages.appendChild(bubble);
+      
+      // Scroll to the bottom to show the newest message
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    function displayInitialPrompt(message) {
+      chatMessages.innerHTML = `<div class="flex-grow flex items-center justify-center">
+        <p class="text-gray-500 text-center">${message}</p>
+      </div>`;
+    }
+
+    /**
+     * Generic helper to call a Supabase Edge Function securely.
+     */
+    async function callEdgeFunction(functionUrl, payload) {
+        if (!functionUrl || !supabase) {
+            console.error("Edge Function URL or Supabase client is not configured.");
+            return { data: null, error: "Configuration missing." };
+        }
+        
+        // Retrieve the current session token for authentication
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData.session?.access_token;
+        
+        try {
+            const response = await fetch(functionUrl, {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json",
+                    // Use the token for Row Level Security (RLS) within the function
+                    "Authorization": `Bearer ${accessToken || SUPABASE_ANON_KEY}` 
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Edge Function failed with status ${response.status}: ${errorText}`);
+            }
+            
+            const data = await response.json();
+            return { data: data, error: null };
+            
+        } catch (error) {
+            console.error("Error calling Edge Function:", error);
+            return { data: null, error: error.message };
+        }
+    }
+
+    // --- SUPABASE INITIALIZATION & AUTH ---
+
+    async function initializeSupabase() {
+        if (SUPABASE_URL.includes("YOUR_SUPABASE")) {
+             displayInitialPrompt("⚠️ WARNING: Please replace the placeholder SUPABASE_URL and SUPABASE_ANON_KEY in the script. Current BUSINESS_ID: " + BUSINESS_ID);
+             return;
+        }
+
+        try {
+            // Initialize the client
+            supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+            // Get current session or sign in anonymously (using anonymous for RLS simplicity on first pass)
+            const { data: { user } } = await supabase.auth.signInAnonymously();
+            
+            userId = user.id; 
+            
+            console.log(`Supabase Connected. User ID: ${userId}, Business ID: ${BUSINESS_ID}`);
+            
+            // Once authenticated, load the initial section
+            handleSectionSwitch(activeSection);
+            
+        } catch (error) {
+            console.error("Supabase Initialization/Auth Error:", error);
+            displayInitialPrompt("Failed to connect to Supabase. Check console for details.");
+        }
+    }
+
+
+    // --- DATA FETCHING AND REALTIME (VIA EDGE FUNCTIONS AND REALTIME) ---
+
+    /**
+     * Subscribes to Realtime changes and fetches initial history.
+     */
+    async function setupMessageSubscription() {
+        if (!supabase || !userId) return;
+
+        // Clear existing subscription if any
+        if (messageSubscription) {
+            supabase.removeChannel(messageSubscription);
+            messageSubscription = null;
+        }
+
+        // 1. Initial Data Fetch
+        displayInitialPrompt("Loading chat history...");
+        
+        try {
+             // Fetch all messages for the current user, business, and section, sorted by created_at
+             const { data: initialMessages, error } = await supabase
+                .from('messages')
+                .select('id, role, content')
+                .eq('user_id', userId)
+                .eq('business_id', BUSINESS_ID)
+                .eq('section', activeSection)
+                .order('created_at', { ascending: true });
+
+            if (error) throw error;
+
+            chatMessages.innerHTML = "";
+            renderedMessageIds.clear();
+
+            initialMessages.forEach(msg => {
+                // Assuming 'content' is a simple string for UI rendering. Adjust if it's JSONB.
+                addMessageToUI(msg);
+            });
+            
+            if (initialMessages.length === 0) {
+                 displayInitialPrompt(`Start a conversation about ${sections[activeSection].title}.`);
+            }
+
+        } catch (error) {
+            console.error("Error fetching initial messages:", error);
+            displayInitialPrompt("Could not load chat history.");
+        }
+        
+        // 2. Set up Realtime Listener
+        // Listen only for INSERTS on messages table, filtered by business_id
+        messageSubscription = supabase
+            .channel(`messages_channel_${activeSection}_${BUSINESS_ID}`)
+            .on(
+                'postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'messages', filter: `business_id=eq.${BUSINESS_ID}` },
+                (payload) => {
+                    // Check if the new message belongs to the current user and section
+                    const newMessage = payload.new;
+                    if (newMessage.user_id === userId && newMessage.section === activeSection) {
+                        console.log("Realtime Message Received:", newMessage);
+                        addMessageToUI(newMessage);
+                    }
+                }
+            )
+            .subscribe();
+
+        console.log("Realtime subscription established for business:", BUSINESS_ID);
+    }
+
+
+    /**
+     * Calls the Insights Edge Function to fetch learning observations (ai_learning_logs).
+     */
+    async function fetchLearnings() {
+        if (!userId) return;
+        
+        loadingBubblesMessage.textContent = "Loading AI insights...";
+        loadingBubblesMessage.classList.remove('hidden');
+        observationBubblesContainer.innerHTML = ''; 
+
+        // Payload for the Edge Function
+        const payload = {
+            user_id: userId,
+            business_id: BUSINESS_ID, // CRITICAL: Includes business ID
+            section: activeSection,
+            action: 'get_learnings'
+        };
+
+        try {
+            const { data, error } = await callEdgeFunction(INSIGHTS_FUNCTION_URL, payload);
+
+            if (error) throw new Error(error);
+
+            // Assuming the function returns an array of learnings: [{ heading, subheading, prompt_starter }]
+            const learnings = data.learnings || [];
+            
+            renderLearnings(learnings);
+            loadingBubblesMessage.classList.add('hidden');
+
+        } catch (error) {
+            console.error("Error fetching learnings via Edge Function:", error);
+            loadingBubblesMessage.textContent = "Failed to load insights. Check the Insights Edge Function URL.";
+        }
+    }
+    
+    // --- RENDERING & MESSAGING LOGIC ---
+
+    function renderLearnings(learnings) {
+        observationBubblesContainer.innerHTML = ''; 
+        
+        if (learnings.length === 0) {
+            observationBubblesContainer.innerHTML = `<p class="text-sm text-gray-500 w-full">No current AI insights for this section.</p>`;
+            return;
+        }
+
+        learnings.forEach((learning, index) => {
+            const bubble = document.createElement("button");
+            bubble.style.animationDelay = `${index * 0.1}s`; 
+            
+            bubble.className = "observation-btn bg-gray-800 hover:bg-gray-700 text-white p-3 rounded-full text-sm font-medium transition duration-150 shadow-md flex items-center animate-rise text-left";
+            bubble.dataset.starter = learning.prompt_starter;
+
+            bubble.innerHTML = `
+                <i class="fas fa-lightbulb text-purple-400 text-lg mr-2 flex-shrink-0"></i>
+                <span class="flex flex-col items-start min-w-0">
+                    <strong class="font-semibold truncate">${learning.heading}</strong>
+                    <span class="text-xs text-gray-400 truncate">${learning.subheading}</span>
+                </span>
+            `;
+
+            bubble.addEventListener('click', () => {
+                startConversation(learning.prompt_starter);
+            });
+            
+            observationBubblesContainer.appendChild(bubble);
+        });
+    }
+
+    /**
+     * Calls the Messages Edge Function to handle the full chat cycle.
+     */
+    async function askAI(userMessage) {
+      if (!MESSAGES_FUNCTION_URL || !supabase) {
+        console.warn("Messages Edge Function URL is not defined.");
+        await new Promise(r => setTimeout(r, 1500));
+        return `Connection established! Message: "${userMessage}". Please configure your **MESSAGES_FUNCTION_URL** to enable AI processing.`;
+      }
+      
+      const payload = {
+          user_id: userId,
+          business_id: BUSINESS_ID, // CRITICAL: Includes business ID
+          section: activeSection,
+          action: 'ask_ai', // Signal to Edge Function to process and save
+          message: userMessage,
+      };
+
+      try {
+        // The Edge Function will process the message, save the user message, 
+        // get the AI reply, and save the AI reply. 
+        // The Realtime listener will handle rendering both.
+        const { data, error } = await callEdgeFunction(MESSAGES_FUNCTION_URL, payload);
+        
+        if (error) throw new Error(error);
+        
+        // Return a confirmation or the message ID if needed
+        return data.status || "Edge Function processing complete.";
+        
+      } catch (error) {
+        console.error("⚠️ askAI error:", error);
+        throw new Error(error.message); // Propagate error for UI loading state
+      }
+    }
+    
+    /**
+     * Handles sending the user's message.
+     */
+    async function handleSendMessage() {
+      const msg = chatInput.value.trim();
+      if (!msg || !userId) return;
+
+      chatInput.value = ""; 
+      
+      // We rely on the Realtime listener to render ALL messages (user and AI)
+      // which is triggered when the Edge Function inserts them.
+      showLoading(true);
+
+      try {
+        // Call Edge Function which handles saving, AI processing, and saving the reply
+        await askAI(msg);
+        
+      } catch (error) {
+        // Since we are not adding the message immediately, display the error in the console 
+        // and briefly update the system message.
+        console.error("Message send failed:", error);
+        systemMessage.textContent = "Error: Failed to send message. Check console.";
+        await new Promise(r => setTimeout(r, 3000));
+        
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    /**
+     * Starts a conversation by filling the input and triggering send.
+     */
+    function startConversation(starterPrompt) {
+        chatInput.value = starterPrompt;
+        handleSendMessage();
+    }
+
+
+    /**
+     * Handles switching between the different AI sections.
+     */
+    function handleSectionSwitch(sec) {
+        if (!userId) {
+            console.warn("User not authenticated yet.");
+            return;
+        }
+
+        if (!sections[sec]) {
+             console.log(`Section ${sec} is not configured.`);
+             return; 
+        }
+
+        activeSection = sec;
+        const data = sections[sec];
+
+        // 1. Update Header UI
+        sectionTitle.textContent = data.title;
+        sectionDesc.textContent = data.desc;
+
+        // 2. Update button styles
+        sectionBtns.forEach(btn => {
+            btn.classList.remove('bg-gray-800', 'text-purple-400');
+            btn.classList.add('bg-transparent', 'text-white');
+            if (btn.dataset.section === sec) {
+                btn.classList.remove('bg-transparent', 'text-white');
+                btn.classList.add('bg-gray-800', 'text-purple-400');
+            }
+        });
+
+        // 3. Handle UI visibility for Observation Bubbles
+        const showBubbles = sec === 'obs';
+        observationBubblesContainer.classList.toggle('hidden', !showBubbles);
+        loadingBubblesMessage.classList.toggle('hidden', true);
+
+        if (showBubbles) {
+             // 4. Fetch learnings/observations using Edge Function
+             fetchLearnings();
+             displayInitialPrompt("Select an observation above or type a message...");
+        } else {
+             observationBubblesContainer.innerHTML = '';
+             // 5. Setup Realtime subscription and load history for the new section
+             setupMessageSubscription();
+        }
+        
+        if (window.innerWidth < 1024) closeMenu();
+    }
+
+    // --- Initial Setup & Event Listeners ---
+    
+    initializeSupabase();
+
+    // Menu handlers (simplified for brevity)
+    function openMenu() { sidebar.classList.remove('menu-closed'); menuOverlay.classList.remove('hidden'); }
+    function closeMenu() { sidebar.classList.add('menu-closed'); menuOverlay.classList.add('hidden'); }
+    openMenuBtn.addEventListener('click', openMenu);
+    closeMenuBtn.addEventListener('click', closeMenu);
+    menuOverlay.addEventListener('click', closeMenu);
+
+    sendBtn.addEventListener('click', handleSendMessage);
+    chatInput.addEventListener('keydown', (e) => e.key === 'Enter' && handleSendMessage());
+
+    sectionBtns.forEach(btn => btn.addEventListener('click', () => handleSectionSwitch(btn.dataset.section)));
+    
+  </script>
+</body>
+</html>

@@ -171,6 +171,27 @@
         }
         
     </style>
+    <script>
+        // Prevent login flash: if user is already logged in (vvUser in localStorage),
+        // hide the login container and show the dashboard container before the DOM paints.
+        (function(){
+            try {
+                var isLogged = false;
+                if (typeof localStorage !== 'undefined') {
+                    var v = localStorage.getItem('vvUser');
+                    if (v && v !== 'null') isLogged = true;
+                }
+                if (isLogged) {
+                    var css = document.createElement('style');
+                    css.innerHTML = '#login-container{display:none !important;} #dashboard-container{display:block !important;}';
+                    document.head.appendChild(css);
+                    document.documentElement.setAttribute('data-logged-in','1');
+                }
+            } catch (e) {
+                // fail silently - this is only an optimization to avoid a brief login flash
+            }
+        })();
+    </script>
 </head>
 <body class="bg-[#0f1115] text-white" data-page="main">
 
@@ -537,6 +558,8 @@
 </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.4.0/axios.min.js" integrity="sha512-+3j77K6ZpMWuY1V4uG3f8O5gI2+XbY0c2i0J3Q1F5+8F
     <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"></script>
-<script type="module" src="dashboard.js"></script>
+    <script src="auth.js"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"></script>
+    <script type="module" src="dashboard.js"></script>
 </body>
 </html>
