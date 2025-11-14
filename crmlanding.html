@@ -109,6 +109,15 @@
             /* also ensure the sidebar content area (inner) is above the mobile nav */
             #sidebar * { z-index: 75 !important; }
         }
+            /* Hide hover tooltips on mobile (no hover) - keep desktop hover behaviour */
+            @media (max-width: 1024px) {
+                .sidebar-link .tooltip { display: none !important; }
+            }
+
+            /* Locked-toast text styles (used by JS-created toasts) */
+            .locked-toast { color: #9CA3AF; }
+            .locked-toast .pro { color: #FFD700; font-weight: 700; }
+            .locked-toast .growth { color: #10B981; font-weight: 700; }
 
         /* Header controls: place alerts & profile at top-right and reserve space to avoid overlap */
         #top-header { position: relative; }
@@ -965,14 +974,14 @@
                         </a>
                 </li>
 
-                <!-- Content Creation -->
-        <li class="mb-4">
-            <a href="#"
-                                class="flex items-center space-x-3 text-white/60 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
-                                <i class="fa-solid fa-pen-nib w-5 h-5"></i>
-                                <span>Content Creation</span>
-                        </a>
-                </li>
+        <!-- Content Creation (always available) -->
+    <li class="mb-4">
+        <a href="#"
+                class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                <i class="fa-solid fa-pen-nib w-5 h-5"></i>
+                <span>Content Creation</span>
+            </a>
+        </li>
 
         <!-- Live Chat (locked) -->
     <li class="mb-4">

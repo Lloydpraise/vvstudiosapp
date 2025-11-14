@@ -67,6 +67,17 @@
         .sidebar-link.faint-gold {
             color: #FFD700;
         }
+        /* Hide hover tooltips on mobile (no hover) - keep desktop hover behaviour */
+        @media (max-width: 1024px) {
+            .sidebar-link .tooltip { display: none !important; }
+        }
+
+        /* Locked-toast text styles (used by JS-created toasts) */
+        .locked-toast { color: #9CA3AF; }
+        .locked-toast .pro { color: #FFD700; font-weight: 700; }
+        .locked-toast .growth { color: #10B981; font-weight: 700; }
+    /* Center wrapper helper: ensure padding on small screens so content never overflows */
+    .center-wrap { box-sizing: border-box; padding-left: 1rem; padding-right: 1rem; }
         #day-selector::-webkit-scrollbar {
             height: 2px;
         }
@@ -204,10 +215,10 @@
             </a>
         </li>
 
-        <!-- Content Creation -->
+        <!-- Content Creation (always available) -->
         <li class="mb-4">
             <a href="#"
-                class="flex items-center space-x-3 text-white/60 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
                 <i class="fa-solid fa-pen-nib w-5 h-5"></i>
                 <span>Content Creation</span>
             </a>
@@ -229,7 +240,7 @@
 
             <main class="flex-1 overflow-y-auto p-8 lg:p-12">
                 <!-- Centering wrapper: constrain max width and center horizontally like CRM -->
-                <div class="w-full max-w-6xl mx-auto">
+                <div class="w-full max-w-6xl mx-auto center-wrap">
                 <!-- Hamburger Menu Button for Mobile - Fixed at Top-Left -->
                 <button id="menu-toggle" class="fixed top-4 left-4 z-50 md:hidden p-2 bg-[#1a1d23] rounded-xl hover:bg-[#2b2f3a] transition-colors">
                     <i class="fas fa-bars text-white"></i>

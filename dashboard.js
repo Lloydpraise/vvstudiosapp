@@ -312,8 +312,18 @@ export function activateServices(services) {
 
         const existingLock = link.querySelector('.fa-lock');
 
-        if (idx < 4) {
-            // first 4 items: accessible
+        // determine the visible title for special-case rules (e.g., Content Creation)
+        let title = '';
+        try {
+            const spans = Array.from(link.querySelectorAll('span'));
+            const titleSpan = spans.find(s => !s.classList.contains('tooltip')) || spans[0];
+            title = titleSpan ? titleSpan.textContent.trim() : (link.textContent || '').trim();
+        } catch (e) {
+            title = (link.textContent || '').trim();
+        }
+
+        // Content Creation should always be accessible regardless of position
+        if (idx < 4 || title === 'Content Creation') {
             link.classList.add('text-white');
             if (existingLock) existingLock.remove();
             // keep existing href as-is for accessible items
@@ -390,6 +400,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
     }
+
+    // Toast behaviour moved to auth.js so it's available across pages (ads, crm, index).
     
     // --- LOGOUT LOGIC ---
     if (logoutButton) {
