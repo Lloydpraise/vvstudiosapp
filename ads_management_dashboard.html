@@ -89,6 +89,8 @@
             align-items: center;
             z-index: 1000;
         }
+    /* Prevent flex children from forcing horizontal overflow when the sidebar is present */
+    main.flex-1 { min-width: 0; }
         .metric-popup-content {
             background-color: #1a1d23;
             border: 1px solid #2b2f3a;
@@ -168,14 +170,15 @@
             </a>
         </li>
 
-        <!-- AI Sales Assistant -->
+        <!-- AI Sales Assistant (locked) -->
         <li class="mb-4">
-            <!-- Sales assistant page not present locally; using placeholder -->
+            <!-- Sales assistant not available: show as locked -->
             <a href="#"
-                class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                class="flex items-center space-x-3 text-white/30 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
                 <i class="fa-solid fa-robot w-5 h-5"></i>
                 <span>AI Sales Assistant</span>
                 <span class="tooltip">Unlock our smartest AI to blow up your sales!</span>
+                <i class="fa-solid fa-lock w-3 h-3 text-white/30 ml-auto"></i>
             </a>
         </li>
 
@@ -210,14 +213,14 @@
             </a>
         </li>
 
-        <!-- Live Chat -->
+        <!-- Live Chat (locked) -->
         <li class="mb-4">
-            <!-- Live chat page not present; using placeholder until implemented -->
             <a href="#"
-                class="flex items-center space-x-3 text-white/60 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                class="flex items-center space-x-3 text-white/30 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
                 <i class="fa-solid fa-comments w-5 h-5"></i>
                 <span>Live Chat</span>
                 <span class="tooltip">Engage with customers in real-time!</span>
+                <i class="fa-solid fa-lock w-3 h-3 text-white/30 ml-auto"></i>
             </a>
         </li>
     </ul>
@@ -225,6 +228,8 @@
 </aside>
 
             <main class="flex-1 overflow-y-auto p-8 lg:p-12">
+                <!-- Centering wrapper: constrain max width and center horizontally like CRM -->
+                <div class="w-full max-w-6xl mx-auto">
                 <!-- Hamburger Menu Button for Mobile - Fixed at Top-Left -->
                 <button id="menu-toggle" class="fixed top-4 left-4 z-50 md:hidden p-2 bg-[#1a1d23] rounded-xl hover:bg-[#2b2f3a] transition-colors">
                     <i class="fas fa-bars text-white"></i>
@@ -526,6 +531,7 @@
                     </form>
                 </section>
 
+                </div> <!-- /.max-w-6xl-wrapper -->
                 <footer class="mt-12 text-center text-white/40 text-sm">
                     <p>Ads Powered by VV Studios, Copyright 2025.</p>
                     <p>Data last updated: <span id="last-updated" class="font-bold text-white/60"></span></p>

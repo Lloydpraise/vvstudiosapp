@@ -298,59 +298,37 @@ export function updateSubscriptionStatus(userData) {
 }
 
 export function activateServices(services) {
-    const normalizedServices = services.map(s => s.toLowerCase());
+    // Enforce a strict sidebar policy: only the first four sidebar items are accessible for everyone.
+    // This ignores the services list from the DB and ensures a consistent UI for all users.
     const sidebarLis = document.querySelectorAll('#sidebar nav ul li');
+    if (!sidebarLis || sidebarLis.length === 0) return;
 
-    const updateLinkStatus = (index, serviceName) => {
-        const li = sidebarLis[index];
-        const link = li ? li.querySelector('a') : null;
+    sidebarLis.forEach((li, idx) => {
+        const link = li.querySelector('a');
         if (!link) return;
-        
-        let isActive = normalizedServices.some(s => s.includes(serviceName.toLowerCase()));
 
-        // 🔥 LIVECHAT FIX: If AI Assistant is active, Live Chat is also active.
-        if (serviceName === 'Live Chat') {
-            const isAIAssistantActive = normalizedServices.some(s => s.includes('ai assistant'));
-            isActive = isActive || isAIAssistantActive;
-        }
-        
+        // normalize classes
         link.classList.remove('text-white', 'text-white/30');
-        
-        const lock = link.querySelector('.fa-lock');
-        
-        // Content Creation is always active regardless of subscription
-        if (isActive || serviceName === 'Content Creation') {
+
+        const existingLock = link.querySelector('.fa-lock');
+
+        if (idx < 4) {
+            // first 4 items: accessible
             link.classList.add('text-white');
-            if (lock) lock.remove();
+            if (existingLock) existingLock.remove();
+            // keep existing href as-is for accessible items
         } else {
+            // rest: locked UI
             link.classList.add('text-white/30');
-            if (!lock) {
+            if (!existingLock) {
                 const lockIcon = document.createElement('i');
                 lockIcon.className = 'fa-solid fa-lock w-3 h-3 text-white/30 ml-auto';
                 link.appendChild(lockIcon);
             }
+            // disable navigation
+            link.setAttribute('href', '#');
         }
-    };
-    
-    updateLinkStatus(1, 'Ads Management');
-    updateLinkStatus(2, 'AI Assistant');
-    updateLinkStatus(3, 'Automations');
-    updateLinkStatus(4, 'Marketing Systems');
-    updateLinkStatus(5, 'Content Creation');
-    updateLinkStatus(6, 'Live Chat'); // Now linked to AI Assistant's status
-    
-    const activeServicesGrid = document.querySelector('.grid.grid-cols-1.md\\:grid-cols-2.lg\\:grid-cols-3.gap-6');
-    if (activeServicesGrid) {
-        const cards = activeServicesGrid.querySelectorAll(':scope > div');
-        const isLiveChatActive = normalizedServices.some(s => s.includes('livechat')) || normalizedServices.some(s => s.includes('ai assistant'));
-
-        const adsCard = cards[0];
-        if (adsCard) adsCard.style.display = normalizedServices.includes('ads management') ? 'block' : 'none';
-
-        const aiCard = cards[1];
-        // Display AI Assistant card if either AI Assistant or Live Chat (due to coupling) is active.
-        if (aiCard) aiCard.style.display = isLiveChatActive ? 'block' : 'none';
-    }
+    });
 }
 
 // --- DOM READY LISTENER ---
