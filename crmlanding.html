@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Lock initial zoom to 80% for consistent mobile/desktop rendering and to reduce "zoomed-in" feel -->
+    <meta name="viewport" content="width=device-width, initial-scale=0.8, minimum-scale=0.8, maximum-scale=0.8, user-scalable=no">
     <title>VV Studios</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" xintegrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -846,7 +847,7 @@
         <div class="flex min-h-screen">
                         <aside id="sidebar" class="w-64 bg-[#14161a] p-6 flex-shrink-0 fixed inset-y-0 left-0 transform -translate-x-full transition-transform duration-300 z-50 lg:relative lg:translate-x-0">
                 <div class="flex flex-col items-center space-y-2 mb-8">
-                    <img src="../assets/logo.png" alt="VV Studios Logo" class="w-16 h-16">
+                    <img src="assets/logo.png" alt="VV Studios Logo" class="w-16 h-16">
                     <span class="text-xl font-bold">VV Studios</span>
                     <span class="text-sm text-white/60">Client Portal</span>
                 </div>
