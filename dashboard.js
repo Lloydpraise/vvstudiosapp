@@ -714,131 +714,40 @@ function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount) {
             popup.querySelectorAll('.payment-method').forEach(b => b.classList.remove('ring-2', 'ring-offset-2', 'ring-blue-500'));
             btn.classList.add('ring-2', 'ring-offset-2', 'ring-blue-500');
 
-            // If MPESA selected, reveal step 2 for MPESA
+            // If MPESA selected, show a simple Till-number style payment (same as Ads flow)
             if (method === 'MPESA') {
-                // 1) Call prepare-payment endpoint to authenticate & ensure IPN/notification registration
-                    try {
-                    const prepResp = await fetch(`${PROJECT_FN_BASE}/prepare-payment`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        // Send a top-level test amount (10 KES) so backend has payment details in test mode.
-                        body: JSON.stringify({ userId, amount: 10, paymentMethod: 'MPESA', test: { amount: 10 } })
-                    });
-                    const prepData = await prepResp.json();
-                    if (!prepData || !prepData.ok) {
-                        throw new Error(prepData && (prepData.error || prepData.message) ? (prepData.error || prepData.message) : 'prepare-payment failed');
-                    }
+                // Use the totalAmount passed into showRenewalPopup as the payment amount
+                const paymentAmount = typeof totalAmount !== 'undefined' ? totalAmount : 'Amount';
 
-                    // store notification id to send later with the actual order
-                    cachedNotificationId = prepData.notification_id || prepData.notificationId || null;
-                    try {
-                        if (cachedNotificationId) {
-                            localStorage.setItem('vv_cached_notification_id', cachedNotificationId);
-                        }
-                    } catch (e) {
-                        console.warn('Could not persist cached notification id', e);
-                    }
-
-                } catch (err) {
-                    console.error('prepare-payment failed', err);
-                    alert('Could not prepare payment: ' + (err.message || err));
-                    return; // don't show step 2 if prepare failed
-                }
-
-                const step2 = popup.querySelector('#payment-step-2');
-                step2.style.display = 'block';
-                step2.innerHTML = `
-                    <h4 class="text-white font-semibold mb-2">Please input the MPESA number you are paying with.</h4>
-                    <input id="mpesa-phone" placeholder="07XX XXX XXX" class="w-full mb-3 px-3 py-2 rounded-xl bg-[#0f1316] border border-[#2b2f3a] text-white" />
-                    <div class="flex">
-                        <button id="mpesa-confirm" class="flex-1 bg-green-600 text-white py-2 px-4 rounded-xl hover:bg-green-700 transition-colors">Confirm</button>
+                // Replace popup with a simple till-number instruction and a Paid button
+                popup.innerHTML = `
+                    <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4">
+                        <h3 class="text-xl font-bold text-white mb-4 text-center">Payment Details</h3>
+                        <p class="text-white/80 mb-4 text-center">PAY VIA MPESA, Buy Goods and Services Till Number 3790912 Amount KES ${paymentAmount}. Once Paid Click Paid Below.</p>
+                        <div class="flex justify-center">
+                            <button id="paid-button" class="w-full bg-purple-600 text-white py-2 px-4 rounded-xl hover:bg-purple-700 transition-colors">Paid</button>
+                        </div>
                     </div>
                 `;
 
-                // Scroll step2 into view smoothly
-                setTimeout(() => {
-                    const el = popup.querySelector('#payment-step-2');
-                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }, 80);
+                // Handle Paid click: show confirmation and optional CTA
+                popup.querySelector('#paid-button').addEventListener('click', () => {
+                    popup.innerHTML = `
+                        <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4">
+                            <h3 class="text-xl font-bold text-white mb-4 text-center">Payment Confirmation</h3>
+                            <p class="text-white/80 mb-6 text-center">Payment will be Confirmed in a few minutes. Would you like to chat with your Assistant while you wait?</p>
+                            <div class="flex justify-center">
+                                <button id="go-to-ai" class="w-full bg-blue-600 text-white py-2 px-4 rounded-xl hover:bg-blue-700 transition-colors">Go to AI Assistant</button>
+                            </div>
+                        </div>
+                    `;
 
-                // Attach confirm handler
-                const confirmBtn = popup.querySelector('#mpesa-confirm');
-                confirmBtn.addEventListener('click', async () => {
-                    const rawPhone = (popup.querySelector('#mpesa-phone') || {}).value || '';
-                    const normalized = normalizePhoneNumber(rawPhone);
-
-                    // Build payload
-                    const payload = {
-                        userId: userId,
-                        // The top-level `amount` has been removed for testing. Use `test.amount` only.
-                        test: { amount: 10 },
-                        phone: normalized,
-                        paymentMethod: 'MPESA',
-                        notification_id: cachedNotificationId
-                    };
-
-                    // Show a small loading state
-                        confirmBtn.disabled = true;
-                        confirmBtn.textContent = 'Processing...';
-
-                        // Show a short instruction so the user knows to complete the M-Pesa prompt on their phone
-                        let mpesaInstr = popup.querySelector('#mpesa-instruction');
-                        if (!mpesaInstr) {
-                            mpesaInstr = document.createElement('p');
-                            mpesaInstr.id = 'mpesa-instruction';
-                            mpesaInstr.className = 'text-white/80 mt-2';
-                            // Insert the instruction right after the confirm button container
-                            confirmBtn.parentNode.parentNode.insertAdjacentElement('afterend', mpesaInstr);
-                        }
-                        mpesaInstr.textContent = 'An M-Pesa payment prompt will appear on your phone. Please enter your M-Pesa PIN to authorize the payment.';
-
-                    try {
-                        // Call serverless function to initiate payment (STK Push / Pesapal flow)
-                        const resp = await fetch(`${PROJECT_FN_BASE}/initiate-payment`, {
-                            method: 'POST',
-                            headers: { 'content-type': 'application/json' },
-                            body: JSON.stringify(payload)
+                    const goBtn = popup.querySelector('#go-to-ai');
+                    if (goBtn) {
+                        goBtn.addEventListener('click', () => {
+                            try { localStorage.setItem('paymentInitiated', 'true'); } catch (e) {}
+                            window.location.href = 'aiassistant.html';
                         });
-
-                        const data = await resp.json();
-                        console.log('Pesapal response:', data);
-                        if (data && data.ok) {
-                            // ✅ Log and test the redirect_url (raw)
-                            if (data.redirect_url) {
-                                try {
-                                    console.log('Redirect URL:', data.redirect_url);
-                                    try { showPaymentDebugPanel(data.redirect_url); } catch (e) {}
-                                    createHiddenPaymentIframe(data.redirect_url, 60000);
-                                    console.log('[DEBUG] Loaded payment redirect in hidden iframe');
-                                } catch (e) {
-                                    console.warn('Could not load payment redirect in iframe', e);
-                                }
-                            }
-
-                            // Show pending modal: STK will come to phone
-                            popup.innerHTML = `
-                                <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4">
-                                    <h3 class="text-xl font-bold text-white mb-4">Payment Pending</h3>
-                                    <p class="text-white/80 mb-4">An M-Pesa prompt (STK Push) has been sent to <span class="font-medium">${rawPhone}</span>. Please complete the payment on your phone.</p>
-                                    <p class="text-white/80 mb-4">We will update your subscription once we receive confirmation.</p>
-                                    <div class="flex gap-2">
-                                        <button id="close-pending" class="flex-1 bg-white text-black py-2 px-4 rounded-xl">Close</button>
-                                    </div>
-                                </div>
-                            `;
-
-                            popup.querySelector('#close-pending').addEventListener('click', () => popup.remove());
-
-                        } else {
-                            alert((data && data.message) || 'Payment failed to start');
-                            confirmBtn.disabled = false;
-                            confirmBtn.textContent = 'Confirm';
-                        }
-                    } catch (err) {
-                        console.error('Payment start error', err);
-                        alert('Payment failed to start');
-                        confirmBtn.disabled = false;
-                        confirmBtn.textContent = 'Confirm';
                     }
                 });
             }

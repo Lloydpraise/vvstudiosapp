@@ -48,13 +48,13 @@ function getBusinessId() {
 
 function checkLoginAndRedirect() {
     if (!getLoggedInUser()) {
-        window.location.href = 'dashboardlanding.html';
+        window.location.href = 'index.html';
     }
 }
 
 function logout() {
     localStorage.removeItem('vvUser');
-    window.location.href = 'dashboardlanding.html';
+    window.location.href = 'index.html';
 }
 
 window.authUtils = {

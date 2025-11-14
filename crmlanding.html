@@ -110,28 +110,41 @@
             #sidebar * { z-index: 75 !important; }
         }
 
-        /* Mobile header adjustments: move alerts & profile beneath business name to avoid overlap */
+        /* Header controls: place alerts & profile at top-right and reserve space to avoid overlap */
+        #top-header { position: relative; }
+        #header-controls { position: absolute; right: 1rem; top: 0.75rem; z-index: 50; display: flex; gap: 0.5rem; }
+
+        /* Reserve right padding so the business name doesn't overlap with the controls on small screens */
         @media (max-width: 768px) {
-            #top-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 0.5rem;
+            #top-header { padding-right: 6.5rem; }
+            #header-controls { top: 0.5rem; right: 0.75rem; }
+            #hamburger-btn { margin-bottom: 0.25rem; }
+        }
+
+        /* Make the mobile hamburger button stick on the viewport even when scrolling
+           so users can open the sidebar quickly from anywhere on the page. */
+        @media (max-width: 1024px) {
+            #hamburger-btn {
+                position: fixed;
+                top: 0.75rem;
+                left: 0.75rem;
+                z-index: 120;
+                background: transparent;
+                padding: 0.4rem 0.6rem;
+                border-radius: 0.5rem;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                /* ensure the button is visible against header/backdrop */
+                backdrop-filter: blur(4px);
             }
-            /* Make the business name take full width so alerts/profile stack below it */
-            #top-header > .flex-1 {
-                width: 100%;
-                order: 1;
-            }
-            /* Place alerts/profile row after the business name */
-            #top-header > .relative.flex {
-                width: 100%;
-                order: 2;
-                margin-top: 0.25rem;
-                justify-content: flex-start;
-                gap: 0.5rem;
-            }
-            /* Ensure hamburger stays on its own line and aligns with content */
-            #hamburger-btn { order: 0; margin-bottom: 0.25rem; }
+
+            /* Keep header content from being hidden under the fixed hamburger */
+            main { padding-left: 3.25rem; }
+            /* Also nudge the top header content (business name) to the right so it doesn't
+               sit under the fixed hamburger button. */
+            #top-header { padding-left: 3.25rem; }
+            #businessName { margin-left: 0.25rem; }
         }
 
         /* --- Contacts List Styles (Table View) --- */
@@ -1006,7 +1019,7 @@
             <h1 id="businessName" class="text-3xl lg:text-4xl font-bold">Business Name</h1>
             <p class="text-white/60 text-sm hidden sm:block">Good to see you <span id="welcomeName" class="font-bold"></span>.</p>
         </div>
-        <div class="relative flex items-center space-x-4 mt-4 lg:mt-0">
+    <div id="header-controls" class="absolute right-4 top-4 z-50 flex items-center space-x-4">
             <!-- Alerts button (left of profile) -->
             <div id="alerts-wrapper" class="relative">
                 <button id="alerts-button" aria-expanded="false" title="Alerts" class="flex items-center justify-center p-2 bg-bg-card rounded-xl cursor-pointer mr-2 hover:bg-bg-dark transition-colors">

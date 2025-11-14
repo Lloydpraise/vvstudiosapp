@@ -62,8 +62,10 @@ function showDashboard(userData, rawPhone) {
     businessId = userData['business id'] || userData.business_id || normalizePhoneNumber(rawPhone);
     console.log(`[DEBUG] Dashboard Business ID set: ${businessId}`);
     
-    document.getElementById("login-container").style.display = "none";
-    document.getElementById("dashboard-container").style.display = "flex";
+  const loginContainerEl = document.getElementById("login-container");
+  const dashboardEl = document.getElementById("dashboard-container");
+  if (loginContainerEl) loginContainerEl.style.display = "none";
+  if (dashboardEl) dashboardEl.style.display = "flex";
     console.log("[DEBUG] UI containers switched (Login hidden, Dashboard shown).");
     
     // NAME FIX: Use 'admin_name' for the user name and 'business_name' for the business.
