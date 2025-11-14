@@ -745,3 +745,4 @@ function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount) {
         });
     });
 }
+

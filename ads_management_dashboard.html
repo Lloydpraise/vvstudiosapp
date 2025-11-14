@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <!-- Match CRM default zoom: set initial scale to 80% then increase to ~85% for a slightly tighter mobile fit -->
-    <meta name="viewport" content="width=device-width, initial-scale=0.85, minimum-scale=0.85, maximum-scale=0.85, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>VV Studios Ads Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
@@ -220,6 +220,99 @@
   0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5); }
   70% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); }
   100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+}
+/* MOBILE FIX: remove sidebar width so it stops shifting content */
+@media (max-width: 1024px) {
+
+  #sidebar {
+    position: absolute !important;
+    transform: translateX(-100%);
+    width: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden;
+  }
+
+  #sidebar.open {
+    transform: translateX(0);
+    width: 16rem !important;
+    padding: 1.5rem !important;
+  }
+
+  /* Make sure main content stretches full width */
+  main.flex-1 {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+    min-width: 0 !important;
+  }
+}
+/* ===== GLOBAL RESPONSIVE FIXES ===== */
+html, body {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden; /* ensure no horizontal scroll */
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+}
+
+*, *::before, *::after { box-sizing: inherit; }
+
+/* Ensure main content and card children can shrink to container */
+main, .center-wrap, .grid, .card-animate {
+  min-width: 0; /* allows flex/grid children to shrink instead of overflowing */
+}
+
+/* Make media cards more flexible on small screens (avoid forced widths) */
+.grid {
+  gap: 0.75rem;
+  width: 100%;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); /* smaller min so cards fit */
+}
+
+/* Make wrapper controlled by viewport; avoids over-wide max-width issues */
+.center-wrap {
+  width: 100%;
+  max-width: 100%;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+}
+
+/* Ensure images/canvases never force viewport width */
+img, canvas, video, iframe { max-width: 100%; height: auto; display: block; }
+
+/* Sidebar mobile safety: remove any footprint when hidden */
+@media (max-width: 1024px) {
+  #sidebar {
+    position: absolute !important;
+    left: 0;
+    top: 0;
+    width: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden;
+    transform: translateX(-100%);
+  }
+  #sidebar.open {
+    width: 16rem !important;
+    padding: 1.5rem !important;
+    transform: translateX(0);
+  }
+
+  /* main should not have extra page padding that causes overflow */
+  main.flex-1 {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+    min-width: 0 !important;
+  }
+
+  /* Reduce some heavy paddings to avoid overflow on very small screens */
+  .p-6 { padding: 0.6rem !important; }
+  .card-animate .text-3xl { font-size: 1.25rem !important; }
 }
 
     </style>
@@ -676,5 +769,30 @@
             }
         })();
     </script>
+   <script>
+const menuBtn = document.getElementById("menu-toggle");
+const sidebar = document.getElementById("sidebar");
+
+// Toggle sidebar when hamburger is clicked
+menuBtn.addEventListener("click", (e) => {
+    e.stopPropagation();   // stop the click from triggering the document click
+    sidebar.classList.toggle("open");
+});
+
+// Close sidebar when clicking outside
+document.addEventListener("click", (e) => {
+    if (!sidebar.contains(e.target) && e.target !== menuBtn) {
+        sidebar.classList.remove("open");
+    }
+});
+
+// Close sidebar when clicking any link inside it
+sidebar.querySelectorAll("a").forEach(link => {
+    link.addEventListener("click", () => {
+        sidebar.classList.remove("open");
+    });
+});
+</script>
+
 </body>
 </html>
