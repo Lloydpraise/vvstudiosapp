@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- Match CRM default zoom: set initial scale to 80% for a tighter mobile fit -->
-    <meta name="viewport" content="width=device-width, initial-scale=0.8, minimum-scale=0.8, maximum-scale=0.8, user-scalable=no, viewport-fit=cover">
+    <!-- Match CRM default zoom: set initial scale to 80% then increase to ~85% for a slightly tighter mobile fit -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>VV Studios Ads Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
@@ -15,7 +15,7 @@
     <style>
         /* Global layout and responsive fixes */
         html, body { max-width: 100%; overflow-x: hidden; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
-        body { font-family: 'Inter', sans-serif; }
+    body { font-family: 'Inter', sans-serif; margin: 0; }
 
           /* Enforce 100% rendering by not applying any programmatic zoom/scale.
               The viewport meta above disables user scaling (pinch-to-zoom). */
@@ -67,6 +67,116 @@
         .sidebar-link.faint-gold {
             color: #FFD700;
         }
+        /* Hide hover tooltips on mobile (no hover) - keep desktop hover behaviour
+           Also: on narrower screens, center the main content without forcing
+           100vw (which causes overflow and extra side padding). We keep the
+           page's existing zoom/scale and card sizing intact by using width:100%
+           and max-width calculations so things don't get squeezed. */
+        @media (max-width: 1024px) {
+            .sidebar-link .tooltip { display: none !important; }
+
+            /* Make the content flow side-to-side on mobile: full width wrapper with small gutters
+               so cards can expand to the viewport edges similar to the dashboard landing page. */
+            .center-wrap {
+                /* keep a comfortable centered feel on mobile while allowing content
+                   to take most of the viewport. Use a slightly larger gutter (~16px)
+                   for a balanced look on phones. */
+                margin-left: auto !important;
+                margin-right: auto !important;
+                width: 100% !important;
+                max-width: none !important;
+                box-sizing: border-box;
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+
+            /* Ensure the main region doesn't force a fixed viewport width or add extra padding */
+            main.flex-1 {
+                /* remove left/right page padding on mobile so the centered wrapper's
+                   own gutter controls both sides evenly (prevents extra right space) */
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+                width: auto !important;
+                min-width: 0 !important;
+                box-sizing: border-box;
+            }
+
+            /* Sidebar overlays on mobile; keep the existing transform-based toggle behavior */
+            #sidebar {
+                position: absolute !important;
+                left: 0;
+                top: 0;
+                width: 16rem; /* matches the desktop width used in the layout */
+                height: 100vh;
+                z-index: 999;
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+            #sidebar.open { transform: translateX(0); }
+
+            /* Prevent the top-level flex wrapper from reserving space for the sidebar */
+            #dashboard-container > .flex { padding-left: 0 !important; }
+
+            /* Let grid cards keep their intrinsic sizing and allow them to wrap naturally.
+               Avoid forcing widths on card children which previously caused the squeeze. */
+                /* Responsive grid: let cards flow horizontally and wrap naturally.
+                   auto-fit/minmax makes cards responsive like the dashboard landing cards. */
+                .grid {
+                    gap: 0.75rem;
+                    width: 100%;
+                    /* allow cards to be responsive; detailed-grid will override to 2 columns */
+                    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                }
+                /* give cards a little vertical space so they feel stretched-down on mobile */
+                .grid > div { box-sizing: border-box; padding: 0.6rem !important; min-height: 86px !important; }
+
+                /* Override common card padding utilities (many cards use `p-6`) */
+                .p-6 { padding: 0.6rem !important; }
+
+                /* Reduce large text / heading sizes inside animated cards so they appear smaller
+                    without scaling the whole layout (keeps icons and controls usable). */
+                /* bump metric big-number size slightly on mobile so metrics read easily */
+                .card-animate .text-3xl { font-size: 1.3rem !important; line-height: 1.2 !important; }
+                .card-animate .text-xl { font-size: 0.95rem !important; }
+                .card-animate h2 { font-size: 1rem !important; }
+                .card-animate h3 { font-size: 1rem !important; }
+                .card-animate p, .card-animate .text-sm { font-size: 0.9rem !important; }
+
+                /* Reduce control sizes where sensible (buttons, selectors) so they match scaled cards */
+                .card-animate button, .card-animate .day-option { padding: 0.35rem 0.6rem !important; font-size: 0.85rem !important; }
+
+                /* Ensure common full-width utilities behave as expected inside the centered wrapper */
+                .w-full, input, button, select, textarea { max-width: 100%; }
+    /* Make canvas charts responsive so they always fill the card width and
+       increase their vertical size on mobile so charts are easier to read. */
+    .card-animate canvas { width: 100% !important; display: block; }
+    /* Chart height override for mobile only (keeps desktop chart sizing unchanged) */
+    .card-animate canvas { height: 260px !important; }
+
+        /* Detailed metrics: force 2 columns on mobile to reduce scrolling */
+        .detailed-grid { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+
+        /* Locked-toast text styles (used by JS-created toasts) */
+        .locked-toast { color: #9CA3AF; }
+        .locked-toast .pro { color: #FFD700; font-weight: 700; }
+        .locked-toast .growth { color: #10B981; font-weight: 700; }
+    
+        /* Desktop tweak: remove extra left/right padding from the main content holder
+           so the `center-wrap` controls horizontal gutters and the content sits
+           balanced from side to side on large screens. */
+        @media (min-width: 1025px) {
+            main.flex-1 {
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+            }
+            /* keep a small center-wrap gutter on desktop for breathing room */
+            /* make desktop left/right gutters symmetric and slightly tighter so
+               the right side no longer appears larger than the left */
+            .center-wrap { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+        }
+    /* Center wrapper helper: ensure padding on small screens so content never overflows */
+    .center-wrap { box-sizing: border-box; padding-left: 1rem; padding-right: 1rem; }
         #day-selector::-webkit-scrollbar {
             height: 2px;
         }
@@ -89,6 +199,10 @@
             align-items: center;
             z-index: 1000;
         }
+     /* Prevent flex children from forcing horizontal overflow when the sidebar is present
+         and ensure main has symmetric horizontal padding behavior so left/right gutters
+         are controlled by `.center-wrap` and remain equal on all devices. */
+     main.flex-1 { min-width: 0; padding-left: 0 !important; padding-right: 0 !important; }
         .metric-popup-content {
             background-color: #1a1d23;
             border: 1px solid #2b2f3a;
@@ -106,6 +220,99 @@
   0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5); }
   70% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); }
   100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+}
+/* MOBILE FIX: remove sidebar width so it stops shifting content */
+@media (max-width: 1024px) {
+
+  #sidebar {
+    position: absolute !important;
+    transform: translateX(-100%);
+    width: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden;
+  }
+
+  #sidebar.open {
+    transform: translateX(0);
+    width: 16rem !important;
+    padding: 1.5rem !important;
+  }
+
+  /* Make sure main content stretches full width */
+  main.flex-1 {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+    min-width: 0 !important;
+  }
+}
+/* ===== GLOBAL RESPONSIVE FIXES ===== */
+html, body {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden; /* ensure no horizontal scroll */
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+}
+
+*, *::before, *::after { box-sizing: inherit; }
+
+/* Ensure main content and card children can shrink to container */
+main, .center-wrap, .grid, .card-animate {
+  min-width: 0; /* allows flex/grid children to shrink instead of overflowing */
+}
+
+/* Make media cards more flexible on small screens (avoid forced widths) */
+.grid {
+  gap: 0.75rem;
+  width: 100%;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); /* smaller min so cards fit */
+}
+
+/* Make wrapper controlled by viewport; avoids over-wide max-width issues */
+.center-wrap {
+  width: 100%;
+  max-width: 100%;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+}
+
+/* Ensure images/canvases never force viewport width */
+img, canvas, video, iframe { max-width: 100%; height: auto; display: block; }
+
+/* Sidebar mobile safety: remove any footprint when hidden */
+@media (max-width: 1024px) {
+  #sidebar {
+    position: absolute !important;
+    left: 0;
+    top: 0;
+    width: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden;
+    transform: translateX(-100%);
+  }
+  #sidebar.open {
+    width: 16rem !important;
+    padding: 1.5rem !important;
+    transform: translateX(0);
+  }
+
+  /* main should not have extra page padding that causes overflow */
+  main.flex-1 {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+    min-width: 0 !important;
+  }
+
+  /* Reduce some heavy paddings to avoid overflow on very small screens */
+  .p-6 { padding: 0.6rem !important; }
+  .card-animate .text-3xl { font-size: 1.25rem !important; }
 }
 
     </style>
@@ -168,14 +375,15 @@
             </a>
         </li>
 
-        <!-- AI Sales Assistant -->
+        <!-- AI Sales Assistant (locked) -->
         <li class="mb-4">
-            <!-- Sales assistant page not present locally; using placeholder -->
+            <!-- Sales assistant not available: show as locked -->
             <a href="#"
-                class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                class="flex items-center space-x-3 text-white/30 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
                 <i class="fa-solid fa-robot w-5 h-5"></i>
                 <span>AI Sales Assistant</span>
                 <span class="tooltip">Unlock our smartest AI to blow up your sales!</span>
+                <i class="fa-solid fa-lock w-3 h-3 text-white/30 ml-auto"></i>
             </a>
         </li>
 
@@ -201,30 +409,32 @@
             </a>
         </li>
 
-        <!-- Content Creation -->
+        <!-- Content Creation (always available) -->
         <li class="mb-4">
             <a href="#"
-                class="flex items-center space-x-3 text-white/60 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
                 <i class="fa-solid fa-pen-nib w-5 h-5"></i>
                 <span>Content Creation</span>
             </a>
         </li>
 
-        <!-- Live Chat -->
+        <!-- Live Chat (locked) -->
         <li class="mb-4">
-            <!-- Live chat page not present; using placeholder until implemented -->
             <a href="#"
-                class="flex items-center space-x-3 text-white/60 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                class="flex items-center space-x-3 text-white/30 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
                 <i class="fa-solid fa-comments w-5 h-5"></i>
                 <span>Live Chat</span>
                 <span class="tooltip">Engage with customers in real-time!</span>
+                <i class="fa-solid fa-lock w-3 h-3 text-white/30 ml-auto"></i>
             </a>
         </li>
     </ul>
 </nav>
 </aside>
 
-            <main class="flex-1 overflow-y-auto p-8 lg:p-12">
+            <main class="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 mt-0">
+                <!-- Centering wrapper: constrain max width and center horizontally like CRM -->
+                <div class="w-full max-w-6xl mx-auto center-wrap">
                 <!-- Hamburger Menu Button for Mobile - Fixed at Top-Left -->
                 <button id="menu-toggle" class="fixed top-4 left-4 z-50 md:hidden p-2 bg-[#1a1d23] rounded-xl hover:bg-[#2b2f3a] transition-colors">
                     <i class="fas fa-bars text-white"></i>
@@ -368,7 +578,7 @@
                         <h2 class="text-xl font-semibold text-white mb-2">Detailed Ad Metrics</h2>
                         <p class="text-white/80 text-sm">A deeper look at how your ads are performing</p>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 detailed-grid">
                         <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
                             <div class="flex items-center space-x-4 mb-4">
                                 <div class="p-2 rounded-lg bg-teal-500/20">
@@ -526,6 +736,7 @@
                     </form>
                 </section>
 
+                </div> <!-- /.max-w-6xl-wrapper -->
                 <footer class="mt-12 text-center text-white/40 text-sm">
                     <p>Ads Powered by VV Studios, Copyright 2025.</p>
                     <p>Data last updated: <span id="last-updated" class="font-bold text-white/60"></span></p>
@@ -558,5 +769,30 @@
             }
         })();
     </script>
+   <script>
+const menuBtn = document.getElementById("menu-toggle");
+const sidebar = document.getElementById("sidebar");
+
+// Toggle sidebar when hamburger is clicked
+menuBtn.addEventListener("click", (e) => {
+    e.stopPropagation();   // stop the click from triggering the document click
+    sidebar.classList.toggle("open");
+});
+
+// Close sidebar when clicking outside
+document.addEventListener("click", (e) => {
+    if (!sidebar.contains(e.target) && e.target !== menuBtn) {
+        sidebar.classList.remove("open");
+    }
+});
+
+// Close sidebar when clicking any link inside it
+sidebar.querySelectorAll("a").forEach(link => {
+    link.addEventListener("click", () => {
+        sidebar.classList.remove("open");
+    });
+});
+</script>
+
 </body>
 </html>
