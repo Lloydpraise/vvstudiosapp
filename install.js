@@ -29,8 +29,8 @@ installButton.addEventListener("click", async () => {
     const choiceResult = await deferredPrompt.userChoice;
 
     if (choiceResult.outcome === "accepted") {
-        // Installed → go to app
-        window.location.replace("index.html");
+        // FIX: Use absolute path for robust redirection
+        window.location.replace("/index.html");
     } else {
         // User dismissed → force install
         dismissMessage.style.display = "block";
@@ -41,5 +41,6 @@ installButton.addEventListener("click", async () => {
 
 // Detect if installed AFTER prompt or from browser menu
 window.addEventListener("appinstalled", () => {
-    window.location.replace("index.html");
+    // FIX: Use absolute path for robust redirection
+    window.location.replace("/index.html");
 });
