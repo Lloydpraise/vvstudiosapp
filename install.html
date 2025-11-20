@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Install VV Studios Portal</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <meta name="theme-color" content="#6a1b9a">
+    <link rel="manifest" href="manifest.json" />
+       <meta name="theme-color" content="#ffffff" />
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .install-button {
+            background-image: linear-gradient(to right, #6a1b9a, #4a148c);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .install-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(106, 27, 154, 0.4), 
+                        0 2px 4px -2px rgba(106, 27, 154, 0.2);
+        }
+        .main-card {
+            background-color: #1a1d23;
+            border: 1px solid #2b2f3a;
+        }
+    </style>
+</head>
+
+<body class="bg-[#0f1115] text-white flex items-center justify-center min-h-screen p-4">
+
+    <div id="install-ui" class="main-card p-8 md:p-12 rounded-2xl max-w-sm w-full text-center shadow-2xl">
+
+        <div class="flex justify-center mb-6">
+            <!-- Use your real high-res app icon -->
+            <img src="\icons\icon-512.png" alt="VV Studios Icon" class="w-20 h-20 rounded-2xl shadow-lg">
+        </div>
+
+        <h1 class="text-2xl md:text-3xl font-bold mb-3">Welcome to VV Studios</h1>
+
+        <p id="message" class="text-white/70 mb-8 text-lg">
+            To unlock the full experience and access your Client Portal, please install the app.
+        </p>
+
+        <button id="install-button" class="install-button w-full text-white font-semibold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transition">
+            Install VV Studios Portal
+        </button>
+        
+        <p id="install-instruction" class="text-sm text-white/50 mt-4 hidden">
+            Look for the install prompt or the three-dot menu in your browser.
+        </p>
+
+        <p id="dismiss-message" class="text-sm text-red-400 mt-4 hidden">
+            You must install the app to proceed. Please try again.
+        </p>
+    </div>
+
+    <script src="install.js"></script>
+
+    <script>
+        // If already installed → skip landing page
+        if (
+            window.matchMedia('(display-mode: standalone)').matches ||
+            window.navigator.standalone === true ||
+            document.referrer.includes('android-app://')
+        ) {
+            window.location.replace("index.html");
+        }
+    </script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('service-worker.js')
+    .catch(err => console.log("SW error:", err));
+}
+</script>
+<script src="install.js"></script>
+
+</body>
+</html>
