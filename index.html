@@ -578,15 +578,12 @@
     <script src="auth.js"></script>
     <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"></script>
     <script type="module" src="dashboard.js"></script>
-    <script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      // NOTE: Use the name of your GitHub repository as the path
-navigator.serviceWorker.register("/vvstudiosapp/service-worker.js")
-    .then(reg => console.log('SW registered!', reg.scope))
-    .catch(err => console.error('SW error:', err));
-    });
-  }
+    // At the end of index.html before </body>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/vvstudiosapp/service-worker.js', {scope: '/vvstudiosapp/'})
+    .catch(err => console.error("SW registration failed:", err));
+}
 </script>
 </body>
 </html>
