@@ -11,6 +11,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#6a1b9a">
+
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -561,5 +564,14 @@
     <script src="auth.js"></script>
     <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"></script>
     <script type="module" src="dashboard.js"></script>
+    <script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/service-worker.js")
+        .then(reg => console.log("Service Worker registered:", reg.scope))
+        .catch(err => console.log("Service Worker failed:", err));
+    });
+  }
+</script>
 </body>
 </html>
