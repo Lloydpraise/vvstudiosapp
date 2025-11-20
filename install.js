@@ -13,8 +13,7 @@ window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();  
     deferredPrompt = e;
 
-    // Enable install button
-    installButton.disabled = false;
+    // The button will be available to click
 });
 
 // Install button click

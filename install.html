@@ -66,15 +66,15 @@
     </div>
 
     <script>
-        // If already installed → skip landing page
-        if (
-            window.matchMedia('(display-mode: standalone)').matches ||
-            window.navigator.standalone === true ||
-            document.referrer.includes('android-app://')
-        ) {
-            window.location.replace("index.html");
-        }
-    </script>
+  // If already installed → skip landing page
+  if (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true ||
+    (document.referrer && document.referrer.includes('android-app://'))
+  ) {
+    window.location.replace("/index.html"); // use absolute path
+  }
+</script>
 <script>
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('service-worker.js')
