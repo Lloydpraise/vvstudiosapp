@@ -1,20 +1,29 @@
 const CACHE_NAME = "vvstudios-cache-v1";
 
 const ASSETS_TO_CACHE = [
-    "/",               // root
+    "/",
     "/index.html",
+    "/install.html", // Added the install page
     "/offline.html",
     "/manifest.json",
 
-    // Icons
-    "/icon-48.png",
-    "/icon-72.png",
-    "/icon-96.png",
-    "/icon-144.png",
-    "/icon-192.png",
-    "/icon-256.png",
-    "/icon-384.png",
-    "/icon-512.png"
+    // Local JS files
+    "/install.js",
+    "/auth.js",
+    "/dashboard.js",
+    
+    // Assets
+    "/assets/logo.png", // Added the logo
+    
+    // Icons (Paths corrected to include 'icons/' folder)
+    "/icons/icon-48.png",
+    "/icons/icon-72.png",
+    "/icons/icon-96.png",
+    "/icons/icon-144.png",
+    "/icons/icon-192.png",
+    "/icons/icon-256.png",
+    "/icons/icon-384.png",
+    "/icons/icon-512.png"
 ];
 
 // INSTALL
