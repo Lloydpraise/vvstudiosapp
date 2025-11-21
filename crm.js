@@ -6508,14 +6508,6 @@ async function openWhatsAppWithFallback(contactPhone, message) {
     console.warn('Deep link failed', e);
   }
 
-  // --- 2) wa.me fallback ---
-  try {
-    window.open(`https://wa.me/${phone}?text=${encoded}`, '_blank');
-    await new Promise(r => setTimeout(r, 1200));
-  } catch (e) {
-    console.warn('wa.me fallback failed', e);
-  }
-
   // --- 3) Final fallback — copy text ---
   try {
     await navigator.clipboard.writeText(message);
