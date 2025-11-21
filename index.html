@@ -233,6 +233,77 @@
                 </div>
             </form>
             <p id="error-message" class="text-red-400 text-sm font-medium hidden"></p>
+            <div class="mt-6 text-sm text-white/70">
+                <p>Don't have an account with us yet? Sign up below.</p>
+                <button id="open-signup-btn" class="mt-3 inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold py-2 px-4 rounded-md">
+                    Sign Up
+                </button>
+            </div>
+
+            <!-- Sign Up Modal -->
+            <div id="signup-modal" class="fixed inset-0 z-60 flex items-center justify-center bg-black bg-opacity-60 hidden">
+                <div class="bg-[#1a1d23] p-6 md:p-8 rounded-2xl border border-[#2b2f3a] max-w-2xl w-full text-center">
+                    <img src="assets/logo.png" alt="VV Studios" class="mx-auto w-20 h-20 mb-4">
+                    <h2 class="text-2xl font-bold mb-2">Create an Account</h2>
+                    <p class="text-white/60 mb-6">Fill in your details to get started.</p>
+                    <form id="signup-form" class="space-y-4 text-left">
+                        <div class="flex gap-4">
+                            <input type="text" id="signup-firstname" placeholder="First Name" class="flex-1 bg-[#1a1d23] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white placeholder-white/50 focus:outline-none">
+                            <input type="text" id="signup-lastname" placeholder="Last Name" class="flex-1 bg-[#1a1d23] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white placeholder-white/50 focus:outline-none">
+                        </div>
+                        <div>
+                            <input type="tel" id="signup-phone" placeholder="Phone Number (e.g. 07xxxxxxxx)" class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white placeholder-white/50 focus:outline-none">
+                        </div>
+                        <div>
+                            <input type="text" id="signup-business" placeholder="Business Name" class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white placeholder-white/50 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="text-sm text-white/70 mb-1 block">Industry</label>
+                            <select id="signup-industry" class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded-xl py-3 px-3 text-white">
+                                <option value="retail">Retail</option>
+                                <option value="services">Services</option>
+                                <option value="food_beverage">Food &amp; Beverage</option>
+                                <option value="technology">Technology</option>
+                                <option value="education">Education</option>
+                                <option value="finance">Finance</option>
+                                <option value="health">Health</option>
+                                <option value="other">Other</option>
+                            </select>
+                            <input type="text" id="signup-industry-other" placeholder="Input your industry" class="mt-2 w-full bg-[#1a1d23] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white placeholder-white/50 focus:outline-none hidden">
+                        </div>
+                        <div>
+                            <label class="text-sm text-white/70 mb-1 block">Role in Business</label>
+                            <select id="signup-role" class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded-xl py-3 px-3 text-white">
+                                <option value="business_owner">Business Owner</option>
+                                <option value="employee">Employee</option>
+                                <option value="sales_rep">Sales Rep</option>
+                                <option value="sales_manager">Sales Manager</option>
+                                <option value="marketer">Marketer</option>
+                                <option value="social_media_manager">Social Media Manager</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div id="signup-employees-row" class="hidden">
+                            <label class="text-sm text-white/70 mb-1 block">Number of Employees</label>
+                            <input type="number" id="signup-employees" placeholder="e.g. 10" min="1" class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white placeholder-white/50 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="text-sm text-white/70 mb-1 block">Package of Interest</label>
+                            <select id="signup-package" class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded-xl py-3 px-3 text-white">
+                                <option value="growth">Growth</option>
+                                <option value="pro">Pro</option>
+                                <option value="premium">Premium</option>
+                                <option value="not_yet">Not yet decided</option>
+                            </select>
+                        </div>
+                        <div id="signup-error" class="text-red-400 text-sm hidden"></div>
+                        <div class="flex items-center justify-between gap-3">
+                            <button type="button" id="signup-cancel" class="w-1/2 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg">Cancel</button>
+                            <button type="submit" id="signup-submit" class="w-1/2 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg">Sign Up</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -477,11 +548,11 @@
             </section>
 
             <!-- Your Active Services -->
-            <section class="mb-10">
+            <section id="active-services-section" class="mb-10">
                 <div class="mb-6">
-                    <h2 class="text-xl font-semibold text-white mb-2">Your Active Services</h2>
+                    <h2 id="active-services-title" class="text-xl font-semibold text-white mb-2">Your Active Services</h2>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div id="active-services-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
                         <div class="flex items-center space-x-4 mb-4">
                             <div class="p-2 rounded-lg bg-blue-500/20">
@@ -578,12 +649,157 @@
     <script src="auth.js"></script>
     <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"></script>
     <script type="module" src="dashboard.js"></script>
-    // At the end of index.html before </body>
-<script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/vvstudiosapp/service-worker.js', {scope: '/vvstudiosapp/'})
-    .catch(err => console.error("SW registration failed:", err));
-}
-</script>
+    <script>
+    // Sign-up modal behavior: open/close, field toggles and submit validation
+    (function(){
+        const openBtn = document.getElementById('open-signup-btn');
+        const modal = document.getElementById('signup-modal');
+        const cancelBtn = document.getElementById('signup-cancel');
+        const form = document.getElementById('signup-form');
+        const industry = document.getElementById('signup-industry');
+        const industryOther = document.getElementById('signup-industry-other');
+        const role = document.getElementById('signup-role');
+        const employeesRow = document.getElementById('signup-employees-row');
+        const errorBox = document.getElementById('signup-error');
+
+        function openModal(){
+            modal.classList.remove('hidden');
+            // focus first field
+            setTimeout(()=>document.getElementById('signup-firstname')?.focus(),100);
+        }
+        function closeModal(){
+            modal.classList.add('hidden');
+            errorBox.classList.add('hidden');
+            form.reset();
+            industryOther.classList.add('hidden');
+            employeesRow.classList.add('hidden');
+        }
+
+        if (openBtn) openBtn.addEventListener('click', openModal);
+        if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+        // close when clicking overlay (but not when clicking inner dialog)
+        if (modal) modal.addEventListener('click', (ev)=>{
+            if (ev.target === modal) closeModal();
+        });
+
+        function updateConditionalFields(){
+            if (!industry || !role) return;
+            if (industry.value === 'other') {
+                industryOther.classList.remove('hidden');
+            } else {
+                industryOther.classList.add('hidden');
+            }
+
+            // show number-of-employees only if either industry or role is 'other'
+            if (industry.value === 'other' || role.value === 'other') {
+                employeesRow.classList.remove('hidden');
+            } else {
+                employeesRow.classList.add('hidden');
+            }
+        }
+
+        if (industry) industry.addEventListener('change', updateConditionalFields);
+        if (role) role.addEventListener('change', updateConditionalFields);
+
+        function showError(msg){
+            errorBox.textContent = msg;
+            errorBox.classList.remove('hidden');
+        }
+
+        function validatePhone(phone){
+            if (!phone) return false;
+            const digits = phone.replace(/\D/g,'');
+            if (phone.startsWith('07')) {
+                return /^07\d{8}$/.test(digits) && digits.length===10;
+            }
+            // fallback: allow 9-15 digits for other formats
+            return /^\d{9,15}$/.test(digits);
+        }
+
+        if (form) form.addEventListener('submit', function(e){
+            e.preventDefault();
+            errorBox.classList.add('hidden');
+            const first = document.getElementById('signup-firstname')?.value?.trim();
+            const last = document.getElementById('signup-lastname')?.value?.trim();
+            const phone = document.getElementById('signup-phone')?.value?.trim();
+            const business = document.getElementById('signup-business')?.value?.trim();
+            const pkg = document.getElementById('signup-package')?.value;
+            const ind = (industry.value === 'other') ? (industryOther.value || 'other') : industry.value;
+            const rl = role.value;
+            const employees = document.getElementById('signup-employees')?.value;
+
+            if (!first) return showError('First name is required');
+            if (!phone) return showError('Phone number is required');
+            if (!validatePhone(phone)) return showError('Please enter a valid phone number (e.g. 07xxxxxxxx)');
+            if (!business) return showError('Business name is required');
+
+            // Prepare a payload; user will tell where to write it later
+            const payload = {
+                first_name: first,
+                last_name: last,
+                phone: phone,
+                business_name: business,
+                industry: ind,
+                role: rl,
+                employees: employees || null,
+                package_interest: pkg
+            };
+
+            // Temporary: log payload and close modal. The user will specify where to send data.
+            console.log('Sign-up payload (not yet persisted):', payload);
+            // show a small success feedback briefly
+            errorBox.classList.remove('hidden');
+            errorBox.style.color = '#9ae6b4';
+            errorBox.textContent = 'Sign up data captured. Tell me where to write it to persist.';
+            setTimeout(()=>{
+                errorBox.classList.add('hidden');
+                errorBox.style.color = '';
+                closeModal();
+            },1500);
+        });
+
+        // Profile dropdown toggle and logout wiring
+        const profileBtn = document.getElementById('profile-menu-button');
+        const profileDropdown = document.getElementById('profile-dropdown');
+        const logoutBtn = document.getElementById('logoutButton');
+
+        if (profileBtn && profileDropdown) {
+            profileBtn.addEventListener('click', function(ev){
+                profileDropdown.classList.toggle('hidden');
+                ev.stopPropagation();
+            });
+
+            document.addEventListener('click', function(ev){
+                if (!profileBtn.contains(ev.target) && !profileDropdown.contains(ev.target)) {
+                    profileDropdown.classList.add('hidden');
+                }
+            });
+        }
+
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', function(e){
+                e.preventDefault();
+                try {
+                    if (window.authUtils && typeof window.authUtils.logout === 'function') {
+                        window.authUtils.logout();
+                        return;
+                    }
+                } catch (err) {
+                    console.warn('authUtils.logout not available, falling back');
+                }
+                localStorage.removeItem('vvUser');
+                window.location.href = 'index.html';
+            });
+        }
+    })();
+    </script>
+
+    <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/vvstudiosapp/service-worker.js', {scope: '/vvstudiosapp/'})
+        .catch(err => console.error("SW registration failed:", err));
+    }
+    </script>
 </body>
 </html>

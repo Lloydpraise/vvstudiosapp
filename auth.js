@@ -65,6 +65,87 @@ window.authUtils = {
     logout
 };
 
+// --- Package helpers ---
+function normalizePackageName(pkg) {
+    if (!pkg) return 'Free';
+    const p = String(pkg).trim();
+    if (!p) return 'Free';
+    if (/^trial$/i.test(p)) return 'Free';
+    // Accept common names and normalize casing
+    if (/^free$/i.test(p)) return 'Free';
+    if (/^growth$/i.test(p)) return 'Growth';
+    if (/^pro$/i.test(p)) return 'Pro';
+    if (/^premium$/i.test(p)) return 'Premium';
+    return p.charAt(0).toUpperCase() + p.slice(1);
+}
+
+function getPackageDetails(pkg) {
+    const name = normalizePackageName(pkg);
+    // Default package definitions
+    const packages = {
+        'Free': {
+            durationDays: 3,
+            amount: 0,
+            services: ['My Business']
+        },
+        'Growth': {
+            durationDays: 30,
+            amount: 6000,
+            services: ['My Business', 'Ads', 'Business Assistant', 'Sales and Follow Ups']
+        },
+        'Pro': {
+            durationDays: 30,
+            amount: 12000,
+            services: ['My Business', 'Ads', 'Business Assistant', 'Sales and Follow Ups', 'AI Assistant', 'Live Chat']
+        },
+        'Premium': {
+            durationDays: 30,
+            amount: 30000,
+            services: ['My Business', 'Ads', 'Business Assistant', 'Sales and Follow Ups', 'AI Assistant', 'Live Chat', 'Marketing Systems', 'Automations']
+        }
+    };
+    return packages[name] || { durationDays: null, amount: null, services: [] };
+}
+
+function computePackageExpiryDate(joinedDate, pkg) {
+    const details = getPackageDetails(pkg);
+    if (!details || !details.durationDays) return null;
+    const base = joinedDate ? new Date(joinedDate) : new Date();
+    // Ensure we work in UTC and add days
+    const expiry = new Date(base.getTime());
+    expiry.setUTCDate(expiry.getUTCDate() + details.durationDays);
+    return expiry.toISOString();
+}
+
+function applyDefaultPackageSettings(loginRecord) {
+    // Does not persist to DB. Returns a shallow copy with computed fields filled.
+    if (!loginRecord || typeof loginRecord !== 'object') return loginRecord;
+    const out = { ...loginRecord };
+    out.package = normalizePackageName(out.package || out.package_name || out.package_type);
+    // If package_expiry_date not set, compute from joined_date
+    if (!out.package_expiry_date) {
+        const joined = out.joined_date || out.created_at || new Date().toISOString();
+        const computed = computePackageExpiryDate(joined, out.package);
+        if (computed) out.package_expiry_date = computed;
+    }
+    // Attach amount and services for UI convenience
+    const det = getPackageDetails(out.package);
+    if (det.amount != null) out.package_amount = det.amount;
+    out.active_services = Array.isArray(out.active_services) && out.active_services.length ? out.active_services : det.services.slice();
+    // Mark is_active based on expiry (if expiry exists)
+    if (out.package_expiry_date) {
+        const now = new Date();
+        const exp = new Date(out.package_expiry_date);
+        out.is_active = exp > now;
+    }
+    return out;
+}
+
+// Expose package helpers
+window.authUtils.getPackageDetails = getPackageDetails;
+window.authUtils.computePackageExpiryDate = computePackageExpiryDate;
+window.authUtils.applyDefaultPackageSettings = applyDefaultPackageSettings;
+
 /* Locked-item toast: shared across pages. Shows a contextual message when a locked sidebar
    item is clicked. On mobile it appears above the tapped item with a down-arrow; on desktop
    it appears to the right. Uses .pro and .growth classes for token coloring. */
@@ -212,5 +293,62 @@ window.authUtils = {
 
         window.addEventListener('scroll', hideLockedToast, { passive: true });
         window.addEventListener('resize', hideLockedToast);
+    });
+    
+    // Also handle dynamic locking/unlocking of sidebar based on current user's package
+    document.addEventListener('DOMContentLoaded', () => {
+        try {
+            const rawUser = getLoggedInUser();
+            if (!rawUser) return;
+            const user = applyDefaultPackageSettings(rawUser);
+            const active = (user.active_services || []).map(s => String(s).toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, ''));
+
+            const sidebarLinks = document.querySelectorAll('#sidebar nav ul li a');
+            sidebarLinks.forEach(link => {
+                let title = '';
+                try {
+                    const spans = Array.from(link.querySelectorAll('span'));
+                    const titleSpan = spans.find(s => !s.classList.contains('tooltip')) || spans[0];
+                    title = titleSpan ? titleSpan.textContent.trim() : (link.textContent || '').trim();
+                } catch (e) {
+                    title = (link.textContent || '').trim();
+                }
+                const norm = String(title).toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
+
+                // Always allow My Business and Content Creation
+                if (norm === 'mybusiness' || norm === 'contentcreation') {
+                    link.classList.remove('text-white/30');
+                    link.classList.add('text-white');
+                    const existingLock = link.querySelector('.fa-lock'); if (existingLock) existingLock.remove();
+                    return;
+                }
+
+                // Determine if this title is covered by active services
+                const isActive = active.some(a => {
+                    return a && (norm.includes(a) || a.includes(norm) || norm === a);
+                });
+
+                if (isActive) {
+                    link.classList.remove('text-white/30');
+                    link.classList.add('text-white');
+                    const existingLock = link.querySelector('.fa-lock'); if (existingLock) existingLock.remove();
+                    // keep existing href
+                } else {
+                    link.classList.remove('text-white');
+                    link.classList.add('text-white/30');
+                    const existingLock = link.querySelector('.fa-lock');
+                    if (!existingLock) {
+                        const lockIcon = document.createElement('i');
+                        lockIcon.className = 'fa-solid fa-lock w-3 h-3 text-white/30 ml-auto';
+                        link.appendChild(lockIcon);
+                    }
+                    // disable navigation
+                    link.setAttribute('href', '#');
+                }
+            });
+        } catch (e) {
+            // quiet failure
+            console.warn('sidebar lock handling failed', e);
+        }
     });
 })();

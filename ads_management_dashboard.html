@@ -101,27 +101,7 @@
     </style>
 </head>
 <body class="bg-[#0f1115] text-white" data-page="ads">
-    <div id="login-container" class="flex items-center justify-center min-h-screen">
-        <div class="bg-[#1a1d23] p-8 md:p-12 rounded-2xl border border-[#2b2f3a] max-w-lg w-full text-center card-animate">
-            <h1 class="text-2xl md:text-3xl font-bold mb-4">VV Studios Login</h1>
-            <p class="text-white/60 mb-8">Please enter your credentials to access the dashboard.</p>
-            <form id="login-form" class="space-y-6">
-                <div>
-                    <input type="text" id="firstName" placeholder="First Name" class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white placeholder-white/50">
-                </div>
-                <div>
-                    <input type="tel" id="phone" placeholder="Phone Number" class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white placeholder-white/50">
-                </div>
-                <div id="errorMessage" class="mt-4 text-red-500 text-center" style="display: none;"></div>
-                <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg">Sign In</button>
-                <div class="mt-4 text-center">
-                    <input type="checkbox" id="rememberMe" name="rememberMe" class="mr-2">
-                    <label for="rememberMe" class="text-gray-400">Remember me</label>
-                </div>
-            </form>
-        </div>
-    </div>
-
+    <!-- Login removed from Ads section. Uses centralized My Businesses login (index.html). -->
     <div id="dashboard-container" style="display: none;">
         <div class="flex min-h-screen">
             <aside id="sidebar" class="w-64 bg-[#14161a] p-6 fixed inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out z-50 flex-shrink-0">
@@ -542,5 +522,24 @@
             <p id="metric-description"></p>
         </div>
     </div>
+    <script>
+    // Wire logout button to shared auth logout
+    (function(){
+        const dropdownLogout = document.getElementById('dropdown-logout-btn');
+        if (dropdownLogout) {
+            dropdownLogout.addEventListener('click', function(e){
+                e.preventDefault();
+                try {
+                    if (window.authUtils && typeof window.authUtils.logout === 'function') {
+                        window.authUtils.logout();
+                        return;
+                    }
+                } catch (err) {}
+                localStorage.removeItem('vvUser');
+                window.location.href = 'index.html';
+            });
+        }
+    })();
+    </script>
 </body>
 </html>

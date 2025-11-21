@@ -91,8 +91,8 @@ function createHiddenPaymentIframe(url, timeoutMs = 60000) {
 function proceedToDashboard(userData, rawPhone) {
     console.log('[DEBUG] Proceeding to Dashboard after successful login.');
     loggedInUser = userData;
-    const normalizedId = normalizePhoneNumber(rawPhone);
-    businessId = loggedInUser['business id'] || loggedInUser.business_id || normalizedId;
+    // Do NOT fallback to phone-derived business id — require explicit business id
+    businessId = loggedInUser['business id'] || loggedInUser.business_id || null;
 
     const dashboardContainer = document.getElementById('dashboard-container');
     const loginContainer = document.getElementById('login-container');
@@ -130,8 +130,8 @@ function proceedToDashboard(userData, rawPhone) {
     const fullUserData = {
         ...userData,
         business_id: businessId,
-        phone_number: normalizedId,
-        phone: rawPhone // The RAW phone is CRUCIAL for auto-login form filling and lookup
+        phone_number: loggedInUser.phone_number || null,
+        phone: rawPhone // The RAW phone remains for UX, but we no longer derive business id from it
     };
     localStorage.setItem('vvUser', JSON.stringify(fullUserData));
     console.log('[DEBUG] Final complete user data saved to localStorage.');
@@ -143,6 +143,11 @@ function proceedToDashboard(userData, rawPhone) {
 
     const services = loggedInUser.services || [];
     activateServices(services);
+
+    // Render services section differently for Free users
+    try {
+        renderServicesSection(loggedInUser);
+    } catch (e) {}
 
     // Fetch sales data
     setTimeout(() => {
@@ -168,26 +173,23 @@ export async function loadUserData() {
     }
 
     const savedUser = JSON.parse(savedUserString);
-    
-    // Robust key extraction.
-    const phoneToLookup = savedUser.phone || savedUser.phone_number || savedUser.business_id; 
-    const rawPhone = savedUser.phone || phoneToLookup; 
 
-    if (!phoneToLookup) {
-        console.error('[DEBUG] FATAL: Saved user data is missing the phone ID. Clearing storage.');
+    // Require explicit business_id in savedUser for lookup; do not fallback to phone-derived id
+    if (!savedUser.business_id && !savedUser['business id']) {
+        console.error('[DEBUG] Saved user missing explicit business id — clearing storage to force fresh login.');
         localStorage.removeItem('vvUser');
         return;
     }
 
-    businessId = normalizePhoneNumber(phoneToLookup); 
-    console.log('[DEBUG] ID from savedUser:', rawPhone, 'Normalized businessId:', businessId);
+    const bizId = savedUser.business_id || savedUser['business id'];
+    businessId = bizId;
+    console.log('[DEBUG] Using business_id from savedUser for lookup:', businessId);
 
     console.log('[DEBUG] Fetching user data from Supabase...');
-    // SUPABASE CALL: Fetch data using the normalized phone number
     const { data: userDataArray, error } = await supabase
         .from('logins')
         .select('*')
-        .eq('phone_number', businessId) // Query by the normalized phone number
+        .eq('business id', businessId)
         .limit(1);
 
     if (error) {
@@ -218,7 +220,25 @@ export function showDashboard(userData, bId) {
 export function updateSubscriptionStatus(userData) {
     requestAnimationFrame(() => {
         const services = userData.services || [];
+        // Determine package details (use authUtils if available)
         let period = 30, buttonText = "Upgrade", buttonClass = "bg-blue-600 hover:bg-blue-700";
+        let pkg = 'Free';
+        try {
+            const pkgRaw = userData.package || userData.package_name || userData.package_type || '';
+            pkg = window.authUtils && window.authUtils.normalizePackageName ? window.authUtils.normalizePackageName(pkgRaw) : (pkgRaw || 'Free');
+            if (pkg === 'Free') {
+                period = 3;
+                buttonText = 'Upgrade';
+                buttonClass = 'bg-blue-600 hover:bg-blue-700';
+            } else {
+                // Growth, Pro, Premium -> 30 days and Renew in purple
+                period = 30;
+                buttonText = 'Renew';
+                buttonClass = 'bg-purple-600 hover:bg-purple-700';
+            }
+        } catch (e) {
+            period = 30;
+        }
 
         let totalAmount = 0;
         services.forEach(service => {
@@ -265,14 +285,26 @@ export function updateSubscriptionStatus(userData) {
             }
             showRenewalPopup(userData, buttonText, daysRemaining, totalAmount);
         } else if (daysRemaining <= 3) {
-            if (countdownTextEl) countdownTextEl.textContent = `⏳ ${daysRemaining} days remaining in your package.`;
+            if (countdownTextEl) {
+                if (pkg === 'Free') {
+                    countdownTextEl.textContent = `Your Free Trial Ends in ${daysRemaining} day${daysRemaining === 1 ? '' : 's'}`;
+                } else {
+                    countdownTextEl.textContent = `⏳ ${daysRemaining} days remaining in your package.`;
+                }
+            }
             if (btn) {
                 btn.textContent = "Renew Now";
                 btn.className = `w-full bg-red-600 text-white font-semibold py-3 px-4 rounded-xl hover:bg-red-700 transition-colors`;
             }
             showRenewalPopup(userData, "Renew Now", daysRemaining, totalAmount);
         } else {
-            if (countdownTextEl) countdownTextEl.textContent = `⏳ ${daysRemaining} days remaining in your package.`;
+            if (countdownTextEl) {
+                if (pkg === 'Free') {
+                    countdownTextEl.textContent = `Your Free Trial Ends in ${daysRemaining} day${daysRemaining === 1 ? '' : 's'}`;
+                } else {
+                    countdownTextEl.textContent = `⏳ ${daysRemaining} days remaining in your package.`;
+                }
+            }
             if (progressBar) {
                 progressBar.style.display = 'block';
                 const percentageRemaining = (daysRemaining / period) * 100;
@@ -290,7 +322,12 @@ export function updateSubscriptionStatus(userData) {
                 btn.style.display = 'block';
                 btn.textContent = buttonText;
                 btn.className = `w-full ${buttonClass} text-white font-semibold py-3 px-4 rounded-xl hover:bg-opacity-80 transition-colors`;
-                btn.onclick = () => showRenewalPopup(userData, buttonText, daysRemaining, totalAmount);
+                // If the package is Free, the button should open the Upgrade flow; otherwise keep Renew flow
+                if (pkg === 'Free') {
+                    btn.onclick = () => { if (window.openUpgradeFlow) window.openUpgradeFlow(userData); };
+                } else {
+                    btn.onclick = () => showRenewalPopup(userData, buttonText, daysRemaining, totalAmount);
+                }
             }
         }
 
@@ -298,21 +335,16 @@ export function updateSubscriptionStatus(userData) {
 }
 
 export function activateServices(services) {
-    // Enforce a strict sidebar policy: only the first four sidebar items are accessible for everyone.
-    // This ignores the services list from the DB and ensures a consistent UI for all users.
+    // Unlock or lock sidebar links according to provided services list
     const sidebarLis = document.querySelectorAll('#sidebar nav ul li');
     if (!sidebarLis || sidebarLis.length === 0) return;
+    const active = (services || []).map(s => String(s).toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, ''));
 
-    sidebarLis.forEach((li, idx) => {
+    sidebarLis.forEach((li) => {
         const link = li.querySelector('a');
         if (!link) return;
-
-        // normalize classes
         link.classList.remove('text-white', 'text-white/30');
 
-        const existingLock = link.querySelector('.fa-lock');
-
-        // determine the visible title for special-case rules (e.g., Content Creation)
         let title = '';
         try {
             const spans = Array.from(link.querySelectorAll('span'));
@@ -322,23 +354,77 @@ export function activateServices(services) {
             title = (link.textContent || '').trim();
         }
 
-        // Content Creation should always be accessible regardless of position
-        if (idx < 4 || title === 'Content Creation') {
+        const norm = String(title).toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
+
+        // Always allow My Business and Content Creation
+        if (norm === 'mybusiness' || norm === 'contentcreation') {
             link.classList.add('text-white');
-            if (existingLock) existingLock.remove();
-            // keep existing href as-is for accessible items
+            const existingLock = link.querySelector('.fa-lock'); if (existingLock) existingLock.remove();
+            return;
+        }
+
+        const isActive = active.some(a => a && (norm.includes(a) || a.includes(norm) || norm === a));
+        if (isActive) {
+            link.classList.add('text-white');
+            const existingLock = link.querySelector('.fa-lock'); if (existingLock) existingLock.remove();
         } else {
-            // rest: locked UI
             link.classList.add('text-white/30');
+            const existingLock = link.querySelector('.fa-lock');
             if (!existingLock) {
                 const lockIcon = document.createElement('i');
                 lockIcon.className = 'fa-solid fa-lock w-3 h-3 text-white/30 ml-auto';
                 link.appendChild(lockIcon);
             }
-            // disable navigation
             link.setAttribute('href', '#');
         }
     });
+}
+
+function renderServicesSection(userData) {
+    try {
+        const activeGrid = document.getElementById('active-services-grid');
+        const activeTitle = document.getElementById('active-services-title');
+        if (!activeGrid || !activeTitle) return;
+
+        const user = window.authUtils && window.authUtils.applyDefaultPackageSettings ? window.authUtils.applyDefaultPackageSettings(userData) : userData;
+        const pkg = user && user.package ? user.package : 'Free';
+
+        if (pkg === 'Free') {
+            // Replace with Learn More cards for up to 6 services
+            activeTitle.textContent = 'Learn More About the Service';
+            const servicesList = [
+                { title: 'Ads Management', desc: 'Improve your ad ROI and reach more customers.', href: 'blog/ads-management.html' },
+                { title: 'AI Sales Agent', desc: 'Automate follow-ups and convert leads faster.', href: 'blog/ai-sales-agent.html' },
+                { title: 'Content Creation', desc: 'High-quality content that drives engagement.', href: 'blog/content-creation.html' },
+                { title: 'Live Chat', desc: 'Engage customers in real-time for higher conversion.', href: 'blog/live-chat.html' },
+                { title: 'Marketing Systems', desc: 'Automate your marketing across channels.', href: 'blog/marketing-systems.html' },
+                { title: 'Automations', desc: 'Save time with repeatable workflows.', href: 'blog/automations.html' }
+            ];
+
+            const html = servicesList.slice(0,6).map(s => `
+                <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
+                    <div class="flex items-center space-x-4 mb-4">
+                        <div class="p-2 rounded-lg bg-blue-500/20">
+                            <i class="fa-solid fa-circle-info w-6 h-6 text-blue-400"></i>
+                        </div>
+                        <h3 class="font-medium text-white/80">${s.title}</h3>
+                    </div>
+                    <p class="text-white/60 text-sm mb-4">${s.desc}</p>
+                    <a href="${s.href}" target="_blank" class="w-full bg-transparent border border-blue-500 text-blue-400 font-semibold py-2 px-4 rounded-xl hover:bg-blue-600/10 transition-colors inline-block text-center">Learn more</a>
+                </div>
+            `).join('');
+
+            activeGrid.innerHTML = html;
+        } else {
+            // Restore original active services layout if we stored it
+            activeTitle.textContent = 'Your Active Services';
+            if (window.__originalActiveServicesHTML) {
+                activeGrid.innerHTML = window.__originalActiveServicesHTML;
+            }
+        }
+    } catch (e) {
+        console.warn('renderServicesSection error', e);
+    }
 }
 
 // --- DOM READY LISTENER ---
@@ -353,6 +439,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const savedUser = localStorage.getItem('vvUser');
     console.log('[DEBUG] savedUser from localStorage:', savedUser);
+    // Capture the original Active Services HTML so we can restore it later
+    try {
+        const activeGrid = document.getElementById('active-services-grid');
+        if (activeGrid) window.__originalActiveServicesHTML = activeGrid.innerHTML;
+    } catch (e) {}
     
     // --- LOGIN FORM SUBMISSION LOGIC ---
     if (loginForm) {
@@ -634,6 +725,7 @@ function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount) {
     // New 3-step payment flow - Step 1 (method selection) + container for Step 2
     popup.innerHTML = `
         <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4 relative">
+            <button id="modal-upgrade-btn-left" class="absolute top-4 left-4 text-blue-400 hover:text-blue-500 text-sm font-medium">Upgrade</button>
             ${isWarning ? '<button id="close-popup" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">&times;</button>' : ''}
             <h3 class="text-xl font-bold text-white mb-2">To Continue Please Select Payment Method</h3>
             <p class="text-white/80 mb-4">Your subscription is ${daysRemaining === 0 ? 'expired' : 'expiring soon'}. Total: <span class="text-orange-400 font-bold">KES ${totalAmount}</span></p>
@@ -693,8 +785,23 @@ function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount) {
         popup.querySelector('#close-popup').addEventListener('click', () => popup.remove());
     }
 
-    // Helper: get a stable user id for backend
-    const userId = userData['business id'] || userData.business_id || userData['business_id'] || userData.businessId || userData.phone_number || businessId || null;
+    // Helper: get a stable user id for backend (do not fallback to phone)
+    const userId = userData['business id'] || userData.business_id || null;
+
+    // Upgrade button behaviour (top-right small text)
+    // top-right upgrade button removed; keep top-left only
+    // Also wire top-left Upgrade button
+    const upgradeBtnLeft = popup.querySelector('#modal-upgrade-btn-left');
+    if (upgradeBtnLeft) {
+        upgradeBtnLeft.addEventListener('click', () => {
+            try { if (popup && popup.parentElement) popup.parentElement.removeChild(popup); } catch (e) {}
+            if (window.openUpgradeFlow) {
+                try { window.openUpgradeFlow(userData); } catch (e) { console.warn('openUpgradeFlow error', e); }
+            } else {
+                console.log('Upgrade clicked — openUpgradeFlow not implemented yet.');
+            }
+        });
+    }
 
     // Delegate clicks on payment method buttons
     popup.querySelectorAll('.payment-method').forEach(btn => {

@@ -38,9 +38,10 @@ function getLoggedInUser() {
     const saved = localStorage.getItem("vvUser");
     const user = saved ? JSON.parse(saved) : null;
     if (user) {
-        loggedInUser = user;
-        businessId = user.business_id || normalizePhoneNumber(user.phone);
-        console.log(`[DEBUG] Found stored user. Business ID set to: ${businessId}`);
+      loggedInUser = user;
+      // Do NOT fallback to phone-derived business id during tests
+      businessId = user.business_id || user['business id'] || null;
+      console.log(`[DEBUG] Found stored user. Business ID set to: ${businessId}`);
     } else {
         console.log("[DEBUG] No stored user found.");
     }
@@ -58,8 +59,8 @@ function showDashboard(userData, rawPhone) {
     console.log("[DEBUG] Entering showDashboard function.");
     
     loggedInUser = userData;
-    // Set business ID from fetched data or derived from phone
-    businessId = userData['business id'] || userData.business_id || normalizePhoneNumber(rawPhone);
+    // Set business ID from fetched data (no fallback to phone)
+    businessId = userData['business id'] || userData.business_id || null;
     console.log(`[DEBUG] Dashboard Business ID set: ${businessId}`);
     
   const loginContainerEl = document.getElementById("login-container");
@@ -158,15 +159,33 @@ function updateSubscriptionStatus(userData) {
     requestAnimationFrame(() => {
         const services = userData.services || [];
         
+        // Determine subscription period from package where possible.
+        // Default to monthly (30) unless package is Free (3 days) or special mini package.
         let period = 30; // Default to Monthly
-        let buttonText = "Renew Subscription"; 
-        let buttonClass = "bg-purple-600 hover:bg-purple-700"; // Monthly button is purple
+        let buttonText = "Renew Subscription";
+        let buttonClass = "bg-purple-600 hover:bg-purple-700";
+        let pkg = 'Free';
+        try {
+          const pkgRaw = userData.package || userData.package_name || userData.package_type || '';
+          pkg = window.authUtils && window.authUtils.normalizePackageName ? window.authUtils.normalizePackageName(pkgRaw) : (String(pkgRaw).trim() || 'Free');
+          if (!pkg || pkg === 'Free') {
+            period = 3;
+            buttonText = 'Upgrade';
+            buttonClass = 'bg-blue-600 hover:bg-blue-700';
+          } else {
+            period = 30;
+            buttonText = 'Renew';
+            buttonClass = 'bg-purple-600 hover:bg-purple-700';
+          }
+        } catch (e) {
+          period = 30;
+        }
         
         // Logic for package duration based on service name
         if (services.some(s => s.toLowerCase().includes("ads management mini"))) {
-            period = 10; // Mini Package
-            buttonText = "Go Monthly!"; // Mini button prompts upgrade
-            buttonClass = "bg-blue-600 hover:bg-blue-700"; // Mini button is blue
+          period = 10; // Mini Package
+          buttonText = "Go Monthly!"; // Mini button prompts upgrade
+          buttonClass = "bg-blue-600 hover:bg-blue-700"; // Mini button is blue
         }
 
         let totalAmount = 0;
@@ -201,7 +220,7 @@ function updateSubscriptionStatus(userData) {
         const finalButtonClass = buttonClass;
 
         if (daysRemaining === 0) {
-            if (countdownTextEl) countdownTextEl.textContent = 'Your Subscription Period has ended! To Continue enjoying our Services Please Proceed to Renew.';
+          if (countdownTextEl) countdownTextEl.textContent = 'Your Subscription Period has ended! To Continue enjoying our Services Please Proceed to Renew.';
             if (progressBar) progressBar.style.display = 'none';
             if (btn) {
                 btn.style.display = 'block';
@@ -211,7 +230,13 @@ function updateSubscriptionStatus(userData) {
             }
             showRenewalPopup(userData, finalButtonText, daysRemaining, totalAmount, period);
         } else if (daysRemaining <= 3) {
-            if (countdownTextEl) countdownTextEl.textContent = `⏳ ${daysRemaining} days remaining in your package.`;
+          if (countdownTextEl) {
+            if (pkg === 'Free') {
+              countdownTextEl.textContent = `Your Free Trial Ends in ${daysRemaining} day${daysRemaining === 1 ? '' : 's'}`;
+            } else {
+              countdownTextEl.textContent = `⏳ ${daysRemaining} days remaining in your package.`;
+            }
+          }
             if (btn) {
                 btn.style.display = 'block';
                 btn.textContent = finalButtonText;
@@ -222,7 +247,13 @@ function updateSubscriptionStatus(userData) {
             }
             showRenewalPopup(userData, finalButtonText, daysRemaining, totalAmount, period);
         } else {
-            if (countdownTextEl) countdownTextEl.textContent = `⏳ ${daysRemaining} days remaining in your package.`;
+          if (countdownTextEl) {
+            if (pkg === 'Free') {
+              countdownTextEl.textContent = `Your Free Trial Ends in ${daysRemaining} day${daysRemaining === 1 ? '' : 's'}`;
+            } else {
+              countdownTextEl.textContent = `⏳ ${daysRemaining} days remaining in your package.`;
+            }
+          }
             if (progressBar) {
                 progressBar.style.display = 'block';
                 const percentageRemaining = (daysRemaining / period) * 100;
@@ -240,7 +271,12 @@ function updateSubscriptionStatus(userData) {
                 btn.style.display = 'block';
                 btn.textContent = finalButtonText;
                 btn.className = `w-full ${finalButtonClass} text-white font-semibold py-3 px-4 rounded-xl hover:bg-opacity-80 transition-colors`;
-                btn.onclick = () => showRenewalPopup(userData, finalButtonText, daysRemaining, totalAmount, period);
+            // If Free package, open upgrade flow when clicked; otherwise keep renewal behavior
+            if (pkg === 'Free') {
+              btn.onclick = () => { if (window.openUpgradeFlow) window.openUpgradeFlow(userData); };
+            } else {
+              btn.onclick = () => showRenewalPopup(userData, finalButtonText, daysRemaining, totalAmount, period);
+            }
             }
         }
     });
@@ -297,19 +333,20 @@ function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount, peri
     
     // Use text-center class on the card container for alignment
     popup.innerHTML = `
-        <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4 relative">
-            ${isWarning ? '<button id="close-popup" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">&times;</button>' : ''}
+      <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4 relative">
+        <button id="modal-upgrade-btn-left" class="absolute top-4 left-4 text-blue-400 hover:text-blue-500 text-sm font-medium">Upgrade</button>
+        ${isWarning ? '<button id="close-popup" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">&times;</button>' : ''}
             
-            <h3 class="text-xl font-bold text-white mb-4 text-center">${popupTitle}</h3>
+        <h3 class="text-xl font-bold text-white mb-4 text-center">${popupTitle}</h3>
             
-            ${popupBodyHTML}
+        ${popupBodyHTML}
             
-            <p class="text-orange-400 text-lg font-bold mb-6 text-center">Total Amount: ${popupAmount}</p>
+        <p class="text-orange-400 text-lg font-bold mb-6 text-center">Total Amount: ${popupAmount}</p>
             
-            <div class="flex justify-center">
-                <button id="confirm-renewal" class="w-full ${upgradeButtonClass} text-white py-2 px-4 rounded-xl hover:bg-opacity-80 transition-colors">${upgradeButtonText}</button>
-            </div>
+        <div class="flex justify-center">
+          <button id="confirm-renewal" class="w-full ${upgradeButtonClass} text-white py-2 px-4 rounded-xl hover:bg-opacity-80 transition-colors">${upgradeButtonText}</button>
         </div>
+      </div>
     `;
     document.body.appendChild(popup);
 
@@ -317,6 +354,19 @@ function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount, peri
         document.getElementById('close-popup').addEventListener('click', () => {
             popup.remove();
         });
+    }
+
+    // top-right upgrade button removed; keep top-left only
+    const upgradeBtnLeft = popup.querySelector('#modal-upgrade-btn-left');
+    if (upgradeBtnLeft) {
+      upgradeBtnLeft.addEventListener('click', () => {
+        try { if (popup && popup.parentElement) popup.parentElement.removeChild(popup); } catch (e) {}
+        if (window.openUpgradeFlow) {
+          try { window.openUpgradeFlow(userData); } catch (e) { console.warn('openUpgradeFlow error', e); }
+        } else {
+          console.log('Upgrade clicked — openUpgradeFlow not implemented yet.');
+        }
+      });
     }
 
     document.getElementById('confirm-renewal').addEventListener('click', () => {
@@ -1095,15 +1145,23 @@ document.addEventListener("DOMContentLoaded", function() {
     const savedUser = getLoggedInUser();
     
     if (savedUser) {
-        console.log("[DEBUG] Stored user found. Attempting to show dashboard directly.");
-        // Use stored data for immediate dashboard display
-        showDashboard(savedUser, savedUser.phone); 
+      console.log("[DEBUG] Stored user found. Attempting to show dashboard directly.");
+      // Use stored data for immediate dashboard display
+      showDashboard(savedUser, savedUser.phone);
     } else {
-        console.log("[DEBUG] No stored user. Showing login container.");
-        document.getElementById("login-container").style.display = "flex";
-        document.getElementById("dashboard-container").style.display = "none";
+      console.log("[DEBUG] No stored user. Redirecting to My Businesses login if no local login present.");
+      // If this ads page still contains its own login container, allow it to show.
+      // Otherwise redirect to the centralized My Businesses login at `index.html`.
+      const loginEl = document.getElementById("login-container");
+      if (loginEl) {
+        loginEl.style.display = "flex";
+        const dashboardEl = document.getElementById("dashboard-container");
+        if (dashboardEl) dashboardEl.style.display = "none";
         const loginForm = document.getElementById("login-form");
         if (loginForm) loginForm.addEventListener("submit", handleLogin);
+      } else {
+        window.location.href = 'index.html';
+      }
     }
     
     // Logout
