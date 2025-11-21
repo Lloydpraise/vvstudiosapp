@@ -6477,7 +6477,56 @@ document.getElementById('log-call-btn')?.addEventListener('click', async () => {
   }
 });
 
-// Final WhatsApp send button: save feedback (message), mark follow-up complete, open wa.me
+// ===== Helper: normalize Kenyan numbers =====
+function normalizeKenyanPhone(raw) {
+  if (!raw) return null;
+  let n = raw.replace(/[^0-9+]/g, '');
+
+  if (n.startsWith('+254')) return '254' + n.slice(4);
+  if (n.startsWith('254')) return n;
+  if (n.startsWith('0')) return '254' + n.slice(1);
+  if (n.startsWith('7') || n.startsWith('1')) return '254' + n;
+
+  return null;
+}
+
+// ===== Helper: fast WhatsApp open system =====
+async function openWhatsAppWithFallback(contactPhone, message) {
+  const phone = normalizeKenyanPhone(contactPhone);
+  if (!phone) {
+    showInAppAlert('Invalid phone number.');
+    return;
+  }
+
+  const encoded = encodeURIComponent(message);
+
+  // --- 1) Fast deep link ---
+  try {
+    window.location.href = `whatsapp://send?phone=${phone}&text=${encoded}`;
+    await new Promise(r => setTimeout(r, 900));
+  } catch (e) {
+    console.warn('Deep link failed', e);
+  }
+
+  // --- 2) wa.me fallback ---
+  try {
+    window.open(`https://wa.me/${phone}?text=${encoded}`, '_blank');
+    await new Promise(r => setTimeout(r, 1200));
+  } catch (e) {
+    console.warn('wa.me fallback failed', e);
+  }
+
+  // --- 3) Final fallback — copy text ---
+  try {
+    await navigator.clipboard.writeText(message);
+    showInAppAlert('Could not open WhatsApp, message copied.');
+  } catch {
+    showInAppAlert('WhatsApp failed and clipboard copy failed.');
+  }
+}
+
+// button handlers //
+
 document.getElementById('send-whatsapp-btn')?.addEventListener('click', async () => {
   try {
     const to = document.getElementById('whatsapp-to')?.value || '';
@@ -6487,9 +6536,12 @@ document.getElementById('send-whatsapp-btn')?.addEventListener('click', async ()
     const followUpId = selectedFollowUp?.id || null;
     const dealId = selectedFollowUp?.deal_id || selectedFollowUp?.dealId || null;
 
-    if (!message) { showInAppAlert('Please enter a message'); return; }
+    if (!message) { 
+      showInAppAlert('Please enter a message'); 
+      return; 
+    }
 
-    // 1) Persist feedback record
+    // 1) Save feedback to DB
     try {
       const fbPayload = {
         business_id: BUSINESS_ID,
@@ -6500,50 +6552,51 @@ document.getElementById('send-whatsapp-btn')?.addEventListener('click', async ()
         feedback_notes: message,
         created_at: new Date().toISOString()
       };
-  console.debug('[DEBUG] inserting followup_feedback (whatsapp) payload', fbPayload);
-  const { data, error } = await client.from('followup_feedback').insert([fbPayload]).select().single();
-  if (error) throw error;
-  console.log('[DEBUG] followup_feedback (whatsapp) inserted', data);
+
+      console.debug('[DEBUG] inserting followup_feedback (whatsapp) payload', fbPayload);
+      const { data, error } = await client
+        .from('followup_feedback')
+        .insert([fbPayload])
+        .select()
+        .single();
+
+      if (error) throw error;
+      console.log('[DEBUG] followup_feedback (whatsapp) inserted', data);
+
     } catch (e) {
       console.error('❌ followup_feedback insert (whatsapp) failed', e);
       showInAppAlert('Failed to save WhatsApp feedback — check console.');
     }
 
-    // 2) Mark follow-up complete (existing behaviour)
+    // 2) Mark follow-up complete
     if (selectedFollowUp && selectedFollowUp.id) {
       await completeFollowUp(selectedFollowUp.id);
     }
 
-    // 3) Open WhatsApp (wa.me) so user sends the message
-    if (contactPhone) {
-      const phoneNormalized = contactPhone.replace(/[^0-9+]/g, '');
-      const encoded = encodeURIComponent(message);
-      const wa = `https://wa.me/${phoneNormalized}?text=${encoded}`;
-      window.open(wa, '_blank');
-    } else {
-      // fallback: copy to clipboard
-      await navigator.clipboard.writeText(message);
-      showInAppAlert('Message copied to clipboard. Paste in WhatsApp or SMS.');
-    }
+    // 3) Open WhatsApp using fast → fallback → copy
+    await openWhatsAppWithFallback(contactPhone, message);
 
-    // Close modal and notify
+    // 4) Close modal and clear draft
     closeModal('whatsapp-modal');
     clearWhatsAppDraft && clearWhatsAppDraft();
     showInAppAlert('WhatsApp message prepared and feedback saved.');
+
   } catch (err) {
     console.error('❌ send-whatsapp-btn error', err);
     showInAppAlert('Failed to send WhatsApp message — see console.');
   }
 });
 
-  // Ensure cancelling the WhatsApp modal also clears the ephemeral draft
-  const cancelWaBtn = document.getElementById('cancel-whatsapp-modal');
-  if (cancelWaBtn) {
-    cancelWaBtn.removeEventListener('click', () => {});
-    cancelWaBtn.addEventListener('click', () => {
-      clearWhatsAppDraft();
-    });
-  }
+
+// Clear draft when modal is canceled
+const cancelWaBtn = document.getElementById('cancel-whatsapp-modal');
+if (cancelWaBtn) {
+  cancelWaBtn.removeEventListener('click', () => {});
+  cancelWaBtn.addEventListener('click', () => {
+    clearWhatsAppDraft();
+  });
+}
+
 
   // NEW: call / whatsapp actions in MEETING reminder modal
   document.getElementById('reminder-call-btn')?.addEventListener('click', handleReminderCallClick);
