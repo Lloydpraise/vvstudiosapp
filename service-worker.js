@@ -1,43 +1,40 @@
 const CACHE_NAME = "vvstudios-cache-v3";
 
 const ASSETS_TO_CACHE = [
-    "/",
-    "/index.html",
-    "/install.html",
-    "/offline.html",
+    "index.html",
+    "install.html",
+    "offline.html",
 
     // HTML pages
-    "/ads_management_dashboard.html",
-    "/ads-dashboard.html",
-    "/copilot.html",
-    "/crm.html",
-    "/crmlanding.html",
+    "ads_management_dashboard.html",
+    "copilot.html",
+    "crmlanding.html",
 
     // JS files
-    "/install.js",
-    "/auth.js",
-    "/dashboard.js",
-    "/ads_dashboard.js",
-    "/ads-dashboard.js",
-    "/aisassistant.js",
-    "/livechat-logic.js",
-    "/sales-logic.js",
+    "install.js",
+    "auth.js",
+    "dashboard.js",
+    "ads-dashboard.js",
+    "aiassistant.js",
+    "livechat-logic.js",
+    "sales-logic.js",
+    "router.js",
 
     // Assets
-    "/assets/logo.png",
+    "assets/logo.png",
 
     // Icons
-    "/icons/icon-48.png",
-    "/icons/icon-72.png",
-    "/icons/icon-96.png",
-    "/icons/icon-144.png",
-    "/icons/icon-192.png",
-    "/icons/icon-256.png",
-    "/icons/icon-384.png",
-    "/icons/icon-512.png",
+    "icons/icon-48.png",
+    "icons/icon-72.png",
+    "icons/icon-96.png",
+    "icons/icon-144.png",
+    "icons/icon-192.png",
+    "icons/icon-256.png",
+    "icons/icon-384.png",
+    "icons/icon-512.png",
 
     // Manifest
-    "/manifest.json"
+    "manifest.json"
 ];
 
 // INSTALL — Precache all assets
@@ -72,7 +69,7 @@ self.addEventListener("fetch", event => {
                 .then(cached => {
                     if (cached) return cached;
                     return fetch(event.request)
-                        .catch(() => caches.match("/offline.html"));
+                        .catch(() => caches.match("offline.html"));
                 })
         );
         return;

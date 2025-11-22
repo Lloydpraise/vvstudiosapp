@@ -43,7 +43,7 @@ if (installButton) {
             const choiceResult = await deferredPrompt.userChoice;
 
             if (choiceResult && choiceResult.outcome === "accepted") {
-                    window.location.replace("/index.html");
+                 window.location.replace("index.html");
             } else {
                     // User dismissed → show message
                     if (dismissMessage) dismissMessage.style.display = "block";
@@ -59,5 +59,5 @@ if (installButton) {
 
 // Detect if installed AFTER prompt or from browser menu
 window.addEventListener("appinstalled", () => {
-        window.location.replace("/index.html");
+    window.location.replace("index.html");
 });

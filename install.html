@@ -66,13 +66,13 @@
 
     <script>
   // If already installed → skip landing page
-  if (
-    window.matchMedia('(display-mode: standalone)').matches ||
-    window.navigator.standalone === true ||
-    (document.referrer && document.referrer.includes('android-app://'))
-  ) {
-    window.location.replace("/index.html"); // use absolute path
-  }
+    if (
+        window.matchMedia('(display-mode: standalone)').matches ||
+        window.navigator.standalone === true ||
+        (document.referrer && document.referrer.includes('android-app://'))
+    ) {
+        window.location.replace("index.html");
+    }
 </script>
 <script>
 // Register service worker from same directory (works locally and when deployed)
