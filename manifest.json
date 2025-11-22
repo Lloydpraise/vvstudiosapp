@@ -2,17 +2,33 @@
   "name": "VV Studios",
   "short_name": "Client Portal",
   "description": "Show More, Sell More Scale Faster",
-  "start_url": "/index.html",
+  "start_url": "./index.html?utm_source=homescreen",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0f1115",
   "theme_color": "#0f1115",
   "icons": [
-    { "src": "icons/icon-48.png", "sizes": "48x48", "type": "image/png" },
-    { "src": "icons/icon-72.png", "sizes": "72x72", "type": "image/png" },
-    { "src": "icons/icon-96.png", "sizes": "96x96", "type": "image/png" },
-    { "src": "icons/icon-144.png", "sizes": "144x144", "type": "image/png" },
+    {
+      "src": "icons/icon-48.png",
+      "sizes": "48x48",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-72.png",
+      "sizes": "72x72",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png"
+    },
     {
       "src": "icons/icon-192.png",
       "sizes": "192x192",
