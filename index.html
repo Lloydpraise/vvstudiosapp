@@ -187,14 +187,6 @@
             background-color: #dc2626;
         }
         
-        /* Package badge shown on the countdown card */
-        .pkg-badge { position: absolute; top: 0.75rem; left: 0.75rem; z-index: 20; background: rgba(255,255,255,0.02); padding: 6px 10px; border-radius: 9999px; }
-        .pkg-badge .pkg-name { font-weight: 700; font-size: 0.825rem; }
-        .pkg-name.pkg-free { color: #ffffff; }
-        .pkg-name.pkg-growth { color: #10B981; }
-        .pkg-name.pkg-pro { color: #FFD700; }
-        .pkg-name.pkg-premium { color: #7C3AED; }
-
     </style>
     <script>
         // Prevent login flash: if user is already logged in (vvUser in localStorage),
@@ -452,7 +444,7 @@
                         
                         <div id="profile-menu-button" class="flex items-center space-x-2 p-2 bg-[#1a1d23] rounded-xl cursor-pointer">
                             <div id="profile-avatar" class="rounded-full w-8 h-8 bg-blue-500 flex items-center justify-center text-white font-bold text-sm">L</div>
-                            <p id="profileName" class="font-medium text-sm hidden sm:block">Lloyd</p>
+                            <p id="profileName" class="font-medium text-sm hidden sm:block"><span id="welcomeName" class="font-bold"></p>
                         </div>
                         
                         <div id="profile-dropdown" class="absolute top-14 right-0 z-50 w-48 bg-[#1a1d23] rounded-xl border border-[#2b2f3a] p-2 shadow-lg hidden transition-opacity duration-200">
@@ -463,10 +455,8 @@
                 </div>
 
                  <!-- Countdown and Upsell Section -->
-            <section class="mb-10 p-8 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate relative">
-                <!-- Package badge (filled by JS) -->
-                <div id="package-badge" class="pkg-badge" aria-hidden="true"><strong class="pkg-name pkg-free">Free</strong></div>
-                <div class="flex items-center justify-between flex-wrap" style="gap:1rem;">
+            <section class="mb-10 p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
+                <div class="flex items-center justify-between flex-wrap">
                     <div class="w-full md:w-auto flex-1 mb-4 md:mb-0">
                         <h2 class="text-white font-semibold text-lg mb-2">Package Countdown</h2>
                         <div class="progress-bar-container">
@@ -485,81 +475,84 @@
             </section>
 
             <!-- Key Performance Indicators -->
-            <section class="mb-10">
-                <div class="mb-6">
-                    <h2 class="text-xl font-semibold text-white mb-2">Key Performance Indicators</h2>
-                    <p class="text-white/80 text-sm italic">quick glimpse into your business</p>
+<section class="mb-10">
+    <div class="mb-6">
+        <h2 class="text-xl font-semibold text-white mb-2">Key Performance Indicators</h2>
+        <p class="text-white/80 text-sm italic">Monthly Success Indicators - compares with last month</p>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        
+        <!-- Card 1: Sales for Current Month (KES) -->
+        <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
+            <div class="flex items-center space-x-4 mb-4">
+                <div class="p-2 rounded-lg bg-purple-500/20">
+                    <!-- Icon for Currency/Sales (Dollar Sign) -->
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"></path></svg>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
-                        <div class="flex items-center space-x-4 mb-4">
-                            <div class="p-2 rounded-lg bg-purple-500/20">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 7l-6 6-6-6"></path></svg>
-                            </div>
-                            <h3 class="font-medium text-white/80">Sales Today</h3>
-                        </div>
-                        <p id="salesToday" class="text-3xl font-bold mb-1">Ksh 0</p>
-                        <p class="text-green-400 text-sm flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l7 7-7 7M12 5l-7 7 7 7"></path></svg>
-                            +25%
-                        </p>
-                    </div>
-                    <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
-                        <div class="flex items-center space-x-4 mb-4">
-                            <div class="p-2 rounded-lg bg-orange-500/20">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-orange-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 14h-2a2 2 0 01-2-2V8a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2z"></path><path d="M9 18v-2M15 18v-2"></path><circle cx="12" cy="18" r="4"></circle></svg>
-                            </div>
-                            <h3 class="font-medium text-white/80">Conversion Rate</h3>
-                        </div>
-                        <p id="conversionRate" class="text-3xl font-bold mb-1">0%</p>
-                        <p class="text-green-400 text-sm flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l7 7-7 7M12 5l-7 7 7 7"></path></svg>
-                            +0.3%
-                        </p>
-                    </div>
-                    <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
-                        <div class="flex items-center space-x-4 mb-4">
-                            <div class="p-2 rounded-lg bg-blue-500/20">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zM12 6v6l4 2"></path></svg>
-                            </div>
-                            <h3 class="font-medium text-white/80">AI Credits Used</h3>
-                        </div>
-                        <div class="flex justify-between items-end">
-                            <p class="text-5xl font-bold">243</p>
-                            <p class="text-sm text-white/60">/1000</p>
-                        </div>
-                    </div>
-                    <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
-                        <div class="flex items-center space-x-4 mb-4">
-                            <div class="p-2 rounded-lg bg-green-500/20">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><path d="M20 21v-2a4 4 0 00-3-3.87M23 11v-2a4 4 0 00-3-3.87"></path></svg>
-                            </div>
-                            <h3 class="font-medium text-white/80">Leads Today</h3>
-                        </div>
-                        <p class="text-3xl font-bold mb-1">0</p>
-                        <p class="text-green-400 text-sm flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l7 7-7 7M12 5l-7 7 7 7"></path></svg>
-                            +15%
-                        </p>
-                    </div>
-                </div>
-            </section>
+                <!-- Title will be updated by JS to include the current month -->
+                <h3 id="salesTitle" class="font-medium text-white/80">Sales (Monthly)</h3> 
+            </div>
+            <p id="salesMonthly" class="text-3xl font-bold mb-1">Ksh 0</p>
+<p id="salesMonthlyChange" data-change class="text-sm flex items-center">
+    <svg id="salesMonthlyIcon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1"
+        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 5l7 7-7 7M12 5l-7 7 7 7"></path>
+    </svg>
+    +0%
+</p>
 
-            <!-- Your Business Copilot -->
-            <section id="business-copilot-section" class="mb-10">
-                <div class="mb-6">
-                    <h2 class="text-xl font-semibold text-white mb-2">Your Business Copilot</h2>
-                </div>
-                <div class="w-full p-8 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
-                    <div class="flex items-center justify-between">
-                        <div class="flex-1">
-                            <blockquote class="text-lg text-white/80 italic mb-4">"Empower your business with AI-driven insights and automation to accelerate growth and efficiency."</blockquote>
-                            <a id="ask-copilot-btn" href="aiassistant.html" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-xl hover:bg-blue-700 transition-colors inline-block">Ask Your Copilot</a>
-                        </div>
-                    </div>
-                </div>
-            </section>
+        </div>
 
+        <!-- Card 2: Conversion Rate (%) -->
+        <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
+            <div class="flex items-center space-x-4 mb-4">
+                <div class="p-2 rounded-lg bg-orange-500/20">
+                    <!-- Icon for Percentage/Conversion Rate -->
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-orange-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><circle cx="6" cy="6" r="3"></circle><circle cx="18" cy="18" r="3"></circle></svg>
+                </div>
+                <h3 class="font-medium text-white/80">Conversion Rate</h3>
+            </div>
+            <p id="conversionRate" class="text-3xl font-bold mb-1">0%</p>
+            <p id="conversionRateChange" class="text-sm flex items-center">
+                <svg id="conversionRateIcon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l7 7-7 7M12 5l-7 7 7 7"></path></svg>
+                +0%
+            </p>
+        </div>
+
+        <!-- Card 3: Life Time Value (LTV) (KES) -->
+        <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
+            <div class="flex items-center space-x-4 mb-4">
+                <div class="p-2 rounded-lg bg-blue-500/20">
+                    <!-- Icon for Life Time Value (Target/Star) -->
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 5v.01M12 9v.01M12 13v.01M12 17v.01M5 12h.01M9 12h.01M13 12h.01M17 12h.01"></path></svg>
+                </div>
+                <h3 class="font-medium text-white/80">Life Time Value (LTV)</h3>
+            </div>
+            <p id="lifeTimeValue" class="text-3xl font-bold mb-1">Ksh 0</p>
+            <p id="lifeTimeValueChange" class="text-sm flex items-center">
+                <svg id="lifeTimeValueIcon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l7 7-7 7M12 5l-7 7 7 7"></path></svg>
+                +0%
+            </p>
+        </div>
+
+        <!-- Card 4: Cost of Customer Acquisition (CAC) (KES) -->
+        <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
+            <div class="flex items-center space-x-4 mb-4">
+                <div class="p-2 rounded-lg bg-green-500/20">
+                    <!-- Icon for Cost of Customer Acquisition (Price Tag) -->
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 17H7l-3 4-3-4M21 17l-3 4-3-4H2V7h20v10z"></path></svg>
+                </div>
+                <h3 class="font-medium text-white/80">Customer Acquisition Cost (CAC)</h3>
+            </div>
+            <p id="costOfAcquisition" class="text-3xl font-bold mb-1">Ksh 0</p>
+            <p id="costOfAcquisitionChange" class="text-sm flex items-center">
+                <svg id="costOfAcquisitionIcon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l7 7-7 7M12 5l-7 7 7 7"></path></svg>
+                +0%
+            </p>
+        </div>
+    </div>
+</section>
             <!-- Your Active Services -->
             <section id="active-services-section" class="mb-10">
                 <div class="mb-6">
