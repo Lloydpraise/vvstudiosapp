@@ -215,6 +215,38 @@ function updateSubscriptionStatus(userData) {
         const progressBar = document.getElementById('countdown-bar');
         const btn = document.getElementById('upgrade-button');
 
+        // expose package & remaining days globally for other modules
+        try { window.currentPackage = pkg; window.daysRemaining = daysRemaining; } catch (e) {}
+
+        // Hide business copilot section for Free users
+        try {
+          const copilotSection = document.getElementById('business-copilot-section');
+          if (copilotSection) copilotSection.style.display = (pkg === 'Free') ? 'none' : '';
+        } catch (e) {}
+
+        // During Free trial give access to Sales & Follow-Ups; after trial end lock it
+        try {
+          const crmLink = document.querySelector('a[href="crmlanding.html"]');
+          if (crmLink) {
+            if (pkg === 'Free' && daysRemaining > 0) {
+              crmLink.classList.remove('text-white/30');
+              crmLink.classList.add('text-white');
+              crmLink.removeAttribute('href');
+              crmLink.setAttribute('href','crmlanding.html');
+              const lock = crmLink.querySelector('.fa-lock'); if (lock) lock.remove();
+            } else if (pkg === 'Free' && daysRemaining === 0) {
+              crmLink.classList.remove('text-white');
+              crmLink.classList.add('text-white/30');
+              crmLink.setAttribute('href','#');
+              if (!crmLink.querySelector('.fa-lock')) {
+                const lockIcon = document.createElement('i');
+                lockIcon.className = 'fa-solid fa-lock w-3 h-3 text-white/30 ml-auto';
+                crmLink.appendChild(lockIcon);
+              }
+            }
+          }
+        } catch (e) {}
+
         // Logic for UI and Pop-up Trigger
         const finalButtonText = (daysRemaining > 0 && daysRemaining <= 3 && period === 30) ? "Renew Now" : buttonText;
         const finalButtonClass = buttonClass;
@@ -328,76 +360,72 @@ function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount, peri
         popupAmount = `KES ${totalAmount}`; // Displayed amount in popup
     }
 
+    // Build the popup (reuse same UX as dashboard.js for consistency)
+    const isFreeExpired = (userData && (userData.package === 'Free' || userData.package_name === 'Free') && daysRemaining === 0);
+    const showLeft = (typeof buttonText === 'string' && buttonText.toLowerCase().includes('renew'));
+
     const popup = document.createElement('div');
     popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-    
-    // Use text-center class on the card container for alignment
+
+    if (isFreeExpired) {
+      popup.innerHTML = `
+        <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4 relative">
+          <button id="close-popup" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">&times;</button>
+          <h3 class="text-xl font-bold text-white mb-4 text-center">Your Trial Has Ended!</h3>
+          <p class="text-white/80 mb-6 text-center">Upgrade to Continue enjoying our Services.</p>
+          <div class="flex justify-center">
+            <button id="select-plans-btn" class="w-full bg-orange-500 text-white py-2 px-4 rounded-xl hover:bg-orange-600 transition-colors">Select Plans</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(popup);
+      popup.querySelector('#close-popup').addEventListener('click', () => popup.remove());
+      popup.querySelector('#select-plans-btn').addEventListener('click', () => { try { popup.remove(); } catch(e){}; if (window.openUpgradeFlow) window.openUpgradeFlow(userData); });
+      return;
+    }
+
     popup.innerHTML = `
       <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4 relative">
-        <button id="modal-upgrade-btn-left" class="absolute top-4 left-4 text-blue-400 hover:text-blue-500 text-sm font-medium">Upgrade</button>
-        ${isWarning ? '<button id="close-popup" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">&times;</button>' : ''}
-            
-        <h3 class="text-xl font-bold text-white mb-4 text-center">${popupTitle}</h3>
-            
-        ${popupBodyHTML}
-            
-        <p class="text-orange-400 text-lg font-bold mb-6 text-center">Total Amount: ${popupAmount}</p>
-            
-        <div class="flex justify-center">
-          <button id="confirm-renewal" class="w-full ${upgradeButtonClass} text-white py-2 px-4 rounded-xl hover:bg-opacity-80 transition-colors">${upgradeButtonText}</button>
-        </div>
+      ${showLeft ? '<button id="modal-upgrade-btn-left" class="absolute top-4 left-4 text-blue-400 hover:text-blue-500 text-sm font-medium">Upgrade</button>' : ''}
+      <button id="close-popup" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">&times;</button>
+      <h3 class="text-xl font-bold text-white mb-4 text-center">${popupTitle}</h3>
+      ${popupBodyHTML}
+      <p class="text-orange-400 text-lg font-bold mb-6 text-center">Total Amount: ${popupAmount}</p>
+      <div class="flex justify-center">
+        <button id="confirm-renewal" class="w-full ${upgradeButtonClass} text-white py-2 px-4 rounded-xl hover:bg-opacity-80 transition-colors">${upgradeButtonText}</button>
+      </div>
       </div>
     `;
     document.body.appendChild(popup);
 
-    if (isWarning) {
-        document.getElementById('close-popup').addEventListener('click', () => {
-            popup.remove();
-        });
-    }
-
-    // top-right upgrade button removed; keep top-left only
+    popup.querySelector('#close-popup')?.addEventListener('click', () => popup.remove());
     const upgradeBtnLeft = popup.querySelector('#modal-upgrade-btn-left');
-    if (upgradeBtnLeft) {
-      upgradeBtnLeft.addEventListener('click', () => {
-        try { if (popup && popup.parentElement) popup.parentElement.removeChild(popup); } catch (e) {}
-        if (window.openUpgradeFlow) {
-          try { window.openUpgradeFlow(userData); } catch (e) { console.warn('openUpgradeFlow error', e); }
-        } else {
-          console.log('Upgrade clicked — openUpgradeFlow not implemented yet.');
-        }
-      });
-    }
-
-    document.getElementById('confirm-renewal').addEventListener('click', () => {
-        // Show payment details
-        popup.innerHTML = `
-            <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4">
-                <h3 class="text-xl font-bold text-white mb-4 text-center">Payment Details</h3>
-                <p class="text-white/80 mb-4 text-center">PAY VIA MPESA, Buy Goods and Services Till Number 3790912 Amount ${paymentAmount}. Once Paid Click Paid Below.</p>
-                <div class="flex justify-center">
-                    <button id="paid-button" class="w-full bg-purple-600 text-white py-2 px-4 rounded-xl hover:bg-purple-700 transition-colors">Paid</button>
-                </div>
+    if (upgradeBtnLeft) upgradeBtnLeft.addEventListener('click', () => { try { popup.remove(); } catch(e){}; if (window.openUpgradeFlow) window.openUpgradeFlow(userData); });
+    popup.querySelector('#confirm-renewal')?.addEventListener('click', () => {
+      const paymentAmount = typeof paymentAmount !== 'undefined' ? paymentAmount : (typeof totalAmount !== 'undefined' ? totalAmount : 'Amount');
+      popup.innerHTML = `
+        <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4">
+          <h3 class="text-xl font-bold text-white mb-4 text-center">Payment Details</h3>
+          <p class="text-white/80 mb-4 text-center">PAY VIA MPESA, Buy Goods and Services Till Number 3790912 Amount KES ${paymentAmount}. Once Paid Click Paid Below.</p>
+          <div class="flex justify-center">
+            <button id="paid-button" class="w-full bg-purple-600 text-white py-2 px-4 rounded-xl hover:bg-purple-700 transition-colors">Paid</button>
+          </div>
+        </div>
+      `;
+      setTimeout(()=>{
+        const paid = document.getElementById('paid-button'); if (paid) paid.addEventListener('click', ()=>{
+          popup.innerHTML = `
+          <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4">
+            <h3 class="text-xl font-bold text-white mb-4 text-center">Payment Confirmation</h3>
+            <p class="text-white/80 mb-6 text-center">Payment will be Confirmed in A few Minutes' would you like to chat with Your Assistant As you Wait?</p>
+            <div class="flex justify-center">
+              <button id="go-to-ai" class="w-full bg-blue-600 text-white py-2 px-4 rounded-xl hover:bg-blue-700 transition-colors">Go to AI Assistant</button>
             </div>
+          </div>
         `;
-
-        document.getElementById('paid-button').addEventListener('click', () => {
-            // Show confirmation popup
-            popup.innerHTML = `
-                <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4">
-                    <h3 class="text-xl font-bold text-white mb-4 text-center">Payment Confirmation</h3>
-                    <p class="text-white/80 mb-6 text-center">Payment will be Confirmed in A few Minutes' would you like to chat with Your Assistant As you Wait?</p>
-                    <div class="flex justify-center">
-                        <button id="go-to-ai" class="w-full bg-blue-600 text-white py-2 px-4 rounded-xl hover:bg-blue-700 transition-colors">Go to AI Assistant</button>
-                    </div>
-                </div>
-            `;
-
-            document.getElementById('go-to-ai').addEventListener('click', () => {
-                localStorage.setItem('paymentInitiated', 'true');
-                window.location.href = 'aiassistant.html';
-            });
+          const go = document.getElementById('go-to-ai'); if (go) go.addEventListener('click', ()=>{ localStorage.setItem('paymentInitiated','true'); window.location.href='aiassistant.html'; });
         });
+      }, 40);
     });
 }
 
@@ -797,6 +825,24 @@ async function updateAdDataForPeriod(period) {
   const currentAgg = getAggregatedForRange(ranges.start, ranges.end);
   const prevAgg = getAggregatedForRange(ranges.prevStart, ranges.prevEnd);
 
+  // If the current user is Free, hardcode key business metrics to zero
+  try {
+    if (window.currentPackage === 'Free') {
+      currentAgg.impressions = 0;
+      currentAgg.frequency = 0;
+      currentAgg.totalLeads = 0;
+      currentAgg.costPerLead = 0;
+      currentAgg.ctr = 0;
+      currentAgg.linkCtr = 0;
+      currentAgg.cpm = 0;
+      currentAgg.cpc = 0;
+      currentAgg.totalSpend = 0;
+      currentAgg.totalSales = 0;
+      currentAgg.roas = 0;
+      currentAgg.conversionRate = 0;
+    }
+  } catch (e) {}
+
   // 2) populate main metric values (same formatting you used)
   const spendEl = document.getElementById("totalSpend");
   if (spendEl) {
@@ -815,18 +861,25 @@ async function updateAdDataForPeriod(period) {
 
   // For totals that depend on sales table, keep your existing async fetch
   try {
-    const totalSalesValue = await fetchTotalSales(businessId, period);
-    const totalSalesEl = document.getElementById("totalSales");
-    if (totalSalesEl) {
-      totalSalesEl.textContent = `KES ${Number(totalSalesValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (window.currentPackage === 'Free') {
+      const totalSalesEl = document.getElementById("totalSales");
+      if (totalSalesEl) totalSalesEl.textContent = `KES 0.00`;
+      const roasEl = document.getElementById("roas");
+      if (roasEl) roasEl.textContent = `0.00x`;
+      const conversionRateEl = document.getElementById("conversionRate");
+      if (conversionRateEl) conversionRateEl.textContent = `0.0%`;
+    } else {
+      const totalSalesValue = await fetchTotalSales(businessId, period);
+      const totalSalesEl = document.getElementById("totalSales");
+      if (totalSalesEl) {
+        totalSalesEl.textContent = `KES ${Number(totalSalesValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      }
+      const roasValue = currentAgg.totalSpend > 0 ? totalSalesValue / currentAgg.totalSpend : 0;
+      const roasEl = document.getElementById("roas");
+      if (roasEl) roasEl.textContent = `${roasValue.toFixed(2)}x`;
+      const conversionRateEl = document.getElementById("conversionRate");
+      if (conversionRateEl) conversionRateEl.textContent = (currentAgg.conversionRate || 0).toFixed(1) + "%";
     }
-    const roasValue = currentAgg.totalSpend > 0 ? totalSalesValue / currentAgg.totalSpend : 0;
-    const roasEl = document.getElementById("roas");
-    if (roasEl) roasEl.textContent = `${roasValue.toFixed(2)}x`;
-
-    // conversion rate: keep your existing logic if you prefer (we'll just show from aggregated)
-    const conversionRateEl = document.getElementById("conversionRate");
-    if (conversionRateEl) conversionRateEl.textContent = (currentAgg.conversionRate || 0).toFixed(1) + "%";
   } catch (e) {
     console.warn("[DEBUG] error fetching sales/roas in new updateAdDataForPeriod", e);
   }

@@ -43,6 +43,45 @@ export function normalizePhoneNumber(phone) {
     return normalized;
 }
 
+// Global package selector -> opens payment flow after selection
+window.openUpgradeFlow = function(userData) {
+    try {
+        const popup = document.createElement('div');
+        popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        popup.innerHTML = `
+            <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-lg w-full mx-4 relative">
+                <button id="upgrade-cancel" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">&times;</button>
+                <h3 class="text-xl font-bold text-white mb-4 text-center">Select a Plan</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <button class="select-plan bg-[#0f1720] border border-[#2b2f3a] p-4 rounded-xl text-left" data-plan="growth" data-price="2000">
+                        <h4 class="font-semibold">Growth</h4>
+                        <p class="text-white/70 text-sm">KES 2,000 / month</p>
+                    </button>
+                    <button class="select-plan bg-[#0f1720] border border-[#2b2f3a] p-4 rounded-xl text-left" data-plan="pro" data-price="4000">
+                        <h4 class="font-semibold">Pro</h4>
+                        <p class="text-white/70 text-sm">KES 4,000 / month</p>
+                    </button>
+                    <button class="select-plan bg-[#0f1720] border border-[#2b2f3a] p-4 rounded-xl text-left" data-plan="premium" data-price="8000">
+                        <h4 class="font-semibold">Premium</h4>
+                        <p class="text-white/70 text-sm">KES 8,000 / month</p>
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(popup);
+        popup.querySelector('#upgrade-cancel').addEventListener('click', () => popup.remove());
+
+        popup.querySelectorAll('.select-plan').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const price = btn.getAttribute('data-price') || 0;
+                try { popup.remove(); } catch (e) {}
+                // call renewal/payment popup but hide the left-upgrade to avoid nested upgrade
+                showRenewalPopup(userData, 'Proceed to Pay', 0, price, true);
+            });
+        });
+    } catch (e) { console.warn('openUpgradeFlow error', e); }
+}
+
 // Payment iframe helper: load a payment gateway URL in a hidden iframe
 // to trigger STK push / redirect flows without showing gateway UI to users.
 let _paymentIframe = null;
@@ -289,8 +328,45 @@ export function updateSubscriptionStatus(userData) {
         const progressBar = document.getElementById('countdown-bar');
         const btn = document.getElementById('upgrade-button');
 
+        // expose package & remaining days globally for other modules
+        try { window.currentPackage = pkg; window.daysRemaining = daysRemaining; } catch (e) {}
+
+        // Hide business copilot section for Free users
+        try {
+            const copilotSection = document.getElementById('business-copilot-section');
+            if (copilotSection) copilotSection.style.display = (pkg === 'Free') ? 'none' : '';
+        } catch (e) {}
+
+        // During Free trial give access to Sales & Follow-Ups; after trial end lock it
+        try {
+            const crmLink = document.querySelector('a[href="crmlanding.html"]');
+            if (crmLink) {
+                if (pkg === 'Free' && daysRemaining > 0) {
+                    crmLink.classList.remove('text-white/30');
+                    crmLink.classList.add('text-white');
+                    crmLink.removeAttribute('href');
+                    crmLink.setAttribute('href','crmlanding.html');
+                    // remove lock icon if present
+                    const lock = crmLink.querySelector('.fa-lock'); if (lock) lock.remove();
+                } else if (pkg === 'Free' && daysRemaining === 0) {
+                    crmLink.classList.remove('text-white');
+                    crmLink.classList.add('text-white/30');
+                    crmLink.setAttribute('href','#');
+                    if (!crmLink.querySelector('.fa-lock')) {
+                        const lockIcon = document.createElement('i');
+                        lockIcon.className = 'fa-solid fa-lock w-3 h-3 text-white/30 ml-auto';
+                        crmLink.appendChild(lockIcon);
+                    }
+                }
+            }
+        } catch (e) {}
+
         if (daysRemaining === 0) {
-            if (countdownTextEl) countdownTextEl.textContent = 'Your Subscription Period has ended! To Continue enjoying our Services Please Proceed to Renew.';
+            if (pkg === 'Free') {
+                if (countdownTextEl) countdownTextEl.textContent = 'Your Trial Period has Ended. Upgrade to Start Enjoying our Services.';
+            } else {
+                if (countdownTextEl) countdownTextEl.textContent = 'Your Subscription Period has ended! To Continue enjoying our Services Please Proceed to Renew.';
+            }
             if (progressBar) {
                 progressBar.style.display = 'none';
             }
@@ -616,7 +692,15 @@ function updateMetrics(data) {
         salesToday: document.getElementById('salesToday'),
         conversionRate: document.getElementById('conversionRate'),
     };
-    
+    // For Free users show zeros to encourage upgrade
+    try {
+        if (window.currentPackage === 'Free') {
+            if (metrics.salesToday) metrics.salesToday.textContent = `Ksh 0`;
+            if (metrics.conversionRate) metrics.conversionRate.textContent = `0%`;
+            return;
+        }
+    } catch (e) {}
+
     if (metrics.salesToday) metrics.salesToday.textContent = `Ksh ${(data.salesToday || 0).toLocaleString()}`;
     if (metrics.conversionRate) metrics.conversionRate.textContent = `${data.conversionRate || 0}%`;
 }
@@ -729,21 +813,44 @@ function renderSalesChart(data) {
     });
 }
 
-function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount) {
+function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount, hideLeft = false) {
     const services = userData.services || [];
     const activeServices = services.filter(s => !s.toLowerCase().includes('fees')).map(s => s.replace(/\(.*\)/, '').trim()).join(', ');
 
+
     const isWarning = daysRemaining > 0;
-    const warningText = isWarning ? `<p class="text-yellow-400 text-lg font-bold mb-4">You have ${daysRemaining} days remaining to your subscription expiration!</p>` : '';
+    const pkg = (userData && (userData.package || userData.package_name)) ? (userData.package || userData.package_name) : 'Free';
+    const showLeft = !hideLeft && (typeof buttonText === 'string' ? buttonText.toLowerCase().includes('renew') : false);
 
     const popup = document.createElement('div');
     popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
 
-    // New 3-step payment flow - Step 1 (method selection) + container for Step 2
+    // Special modal for Free users when trial ended
+    if (pkg === 'Free' && daysRemaining === 0) {
+        popup.innerHTML = `
+            <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4 relative">
+                <button id="close-popup" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">&times;</button>
+                <h3 class="text-xl font-bold text-white mb-4 text-center">Your Trial Has Ended!</h3>
+                <p class="text-white/80 mb-6 text-center">Upgrade to Continue enjoying our Services.</p>
+                <div class="flex justify-center">
+                    <button id="select-plans-btn" class="w-full bg-orange-500 text-white py-2 px-4 rounded-xl hover:bg-orange-600 transition-colors">Select Plans</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(popup);
+        popup.querySelector('#close-popup').addEventListener('click', () => popup.remove());
+        popup.querySelector('#select-plans-btn').addEventListener('click', () => {
+            try { popup.remove(); } catch(e){}
+            if (window.openUpgradeFlow) window.openUpgradeFlow(userData);
+        });
+        return;
+    }
+
+    // Default payment/renew flow
     popup.innerHTML = `
         <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4 relative">
-            <button id="modal-upgrade-btn-left" class="absolute top-4 left-4 text-blue-400 hover:text-blue-500 text-sm font-medium">Upgrade</button>
-            ${isWarning ? '<button id="close-popup" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">&times;</button>' : ''}
+            ${showLeft ? '<button id="modal-upgrade-btn-left" class="absolute top-4 left-4 text-blue-400 hover:text-blue-500 text-sm font-medium">Upgrade</button>' : ''}
+            ${'<button id="close-popup" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">&times;</button>'}
             <h3 class="text-xl font-bold text-white mb-2">To Continue Please Select Payment Method</h3>
             <p class="text-white/80 mb-4">Your subscription is ${daysRemaining === 0 ? 'expired' : 'expiring soon'}. Total: <span class="text-orange-400 font-bold">KES ${totalAmount}</span></p>
 
@@ -751,7 +858,6 @@ function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount) {
                 <div class="flex gap-3 justify-between">
                     <button class="payment-method flex-1 bg-[#111316] border border-[#2b2f3a] rounded-xl py-3 px-2 text-white hover:bg-[#0f1316]" data-method="CARD">
                         <div class="flex items-center justify-center gap-3">
-                            <!-- Card Icon (larger & brighter) -->
                             <svg width="40" height="40" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="filter: drop-shadow(0 4px 6px rgba(0,0,0,0.6));">
                                 <rect x="2" y="5" width="20" height="14" rx="2" fill="#07101a" stroke="#6b7280" stroke-width="0.9"/>
                                 <rect x="3.6" y="8" width="5.2" height="2.2" rx="0.4" fill="#e5e7eb"/>
@@ -765,13 +871,11 @@ function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount) {
                     </button>
                     <button class="payment-method flex-1 bg-[#111316] border border-[#2b2f3a] rounded-xl py-3 px-2 text-white hover:bg-[#0f1316]" data-method="MPESA" aria-label="M-Pesa">
                         <div class="flex items-center justify-center">
-                            <!-- Use the M-Pesa logo image (words are part of the logo) -->
                             <img src="assets/M-PESA_LOGO-01.svg.png" alt="M-Pesa" style="height:72px; width:auto; object-fit:contain; display:block;" />
                         </div>
                     </button>
                     <button class="payment-method flex-1 bg-[#111316] border border-[#2b2f3a] rounded-xl py-3 px-2 text-white hover:bg-[#0f1316]" data-method="BANK">
                         <div class="flex items-center justify-center gap-3">
-                            <!-- Bank Icon (larger & brighter) -->
                             <svg width="40" height="40" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="filter: drop-shadow(0 4px 6px rgba(0,0,0,0.55));">
                                 <polygon points="2,9 12,3 22,9" fill="#0f1724" stroke="#94a3b8" stroke-width="0.7" />
                                 <rect x="4" y="9.2" width="16" height="2" fill="#0b1220" stroke="#94a3b8" stroke-width="0.5" />
@@ -788,18 +892,73 @@ function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount) {
                 </div>
             </div>
 
-            <!-- Step 2 container (hidden initially) -->
-            <div id="payment-step-2" class="mt-4" style="display:none">
-                <!-- MPESA form will be injected here when selected -->
-            </div>
-
+            <div id="payment-step-2" class="mt-4" style="display:none"></div>
         </div>
     `;
-
     document.body.appendChild(popup);
 
-    if (isWarning) {
-        popup.querySelector('#close-popup').addEventListener('click', () => popup.remove());
+    // close handler
+    popup.querySelector('#close-popup')?.addEventListener('click', () => popup.remove());
+
+    // Top-left Upgrade button (when present) should open package selector
+    const upgradeBtnLeft = popup.querySelector('#modal-upgrade-btn-left');
+    if (upgradeBtnLeft) {
+        upgradeBtnLeft.addEventListener('click', () => {
+            try { popup.remove(); } catch (e) {}
+            if (window.openUpgradeFlow) window.openUpgradeFlow(userData);
+        });
+    }
+
+    // Payment method buttons wiring
+    try {
+        popup.querySelectorAll('.payment-method').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const method = btn.getAttribute('data-method');
+                // visual
+                popup.querySelectorAll('.payment-method').forEach(b => b.classList.remove('ring-2', 'ring-offset-2', 'ring-blue-500'));
+                btn.classList.add('ring-2', 'ring-offset-2', 'ring-blue-500');
+
+                if (method === 'MPESA') {
+                    const paymentAmount = typeof totalAmount !== 'undefined' ? totalAmount : 'Amount';
+                    popup.innerHTML = `
+                        <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4">
+                            <h3 class="text-xl font-bold text-white mb-4 text-center">Payment Details</h3>
+                            <p class="text-white/80 mb-4 text-center">PAY VIA MPESA, Buy Goods and Services Till Number 3790912 Amount KES ${paymentAmount}. Once Paid Click Paid Below.</p>
+                            <div class="flex justify-center">
+                                <button id="paid-button" class="w-full bg-purple-600 text-white py-2 px-4 rounded-xl hover:bg-purple-700 transition-colors">Paid</button>
+                            </div>
+                        </div>
+                    `;
+
+                    // Paid handler
+                    setTimeout(() => {
+                        const paidBtn = popup.querySelector('#paid-button');
+                        if (paidBtn) {
+                            paidBtn.addEventListener('click', () => {
+                                popup.innerHTML = `
+                                    <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4">
+                                        <h3 class="text-xl font-bold text-white mb-4 text-center">Payment Confirmation</h3>
+                                        <p class="text-white/80 mb-6 text-center">Payment will be Confirmed in a few minutes. Would you like to chat with your Assistant while you wait?</p>
+                                        <div class="flex justify-center">
+                                            <button id="go-to-ai" class="w-full bg-blue-600 text-white py-2 px-4 rounded-xl hover:bg-blue-700 transition-colors">Go to AI Assistant</button>
+                                        </div>
+                                    </div>
+                                `;
+                                const goBtn = popup.querySelector('#go-to-ai');
+                                if (goBtn) {
+                                    goBtn.addEventListener('click', () => {
+                                        try { localStorage.setItem('paymentInitiated', 'true'); } catch (e) {}
+                                        window.location.href = 'aiassistant.html';
+                                    });
+                                }
+                            });
+                        }
+                    }, 40);
+                }
+            });
+        });
+    } catch (e) {
+        console.warn('payment wiring failed', e);
     }
 
     // Helper: get a stable user id for backend (do not fallback to phone)

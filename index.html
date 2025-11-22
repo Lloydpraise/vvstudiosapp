@@ -212,6 +212,8 @@
 </head>
 <body class="bg-[#0f1115] text-white" data-page="main">
 
+    <div id="app">
+
     <div id="login-container" class="flex items-center justify-center min-h-screen">
         <div class="bg-[#1a1d23] p-8 md:p-12 rounded-2xl border border-[#2b2f3a] max-w-lg w-full text-center card-animate">
             <h1 class="text-2xl md:text-3xl font-bold mb-4">VV Studios Login</h1>
@@ -242,7 +244,7 @@
 
             <!-- Sign Up Modal -->
             <div id="signup-modal" class="fixed inset-0 z-60 flex items-center justify-center bg-black bg-opacity-60 hidden">
-                <div class="bg-[#1a1d23] p-6 md:p-8 rounded-2xl border border-[#2b2f3a] max-w-2xl w-full text-center">
+                <div class="bg-[#1a1d23] p-6 md:p-8 rounded-2xl border border-[#2b2f3a] max-w-2xl w-full text-center" style="max-height:90vh; overflow-y:auto;">
                     <img src="assets/logo.png" alt="VV Studios" class="mx-auto w-20 h-20 mb-4">
                     <h2 class="text-2xl font-bold mb-2">Create an Account</h2>
                     <p class="text-white/60 mb-6">Fill in your details to get started.</p>
@@ -334,7 +336,7 @@
 
         <!-- Ads -->
         <li class="mb-4">
-            <a href="ads_management_dashboard.html"
+            <a href="#" onclick="go('ads_management_dashboard'); return false;"
                 class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
                 <i class="fa-solid fa-bullhorn w-5 h-5"></i>
                 <span>Ads</span>
@@ -344,7 +346,7 @@
 
         <!-- Sales & Follow-Ups (CRM) -->
         <li class="mb-4">
-            <a href="crmlanding.html"
+            <a href="#" onclick="go('crmlanding'); return false;"
                 class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
                 <i class="fa-solid fa-handshake w-5 h-5"></i>
                 <span>Sales & Follow-Ups</span>
@@ -354,7 +356,7 @@
 
         <!-- Business Assistant (Copilot) -->
         <li class="mb-4">
-            <a href="copilot.html"
+            <a href="#" onclick="go('copilot'); return false;"
                 class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
                 <i class="fa-solid fa-robot w-5 h-5"></i>
                 <span>Business Assistant</span>
@@ -534,7 +536,7 @@
             </section>
 
             <!-- Your Business Copilot -->
-            <section class="mb-10">
+            <section id="business-copilot-section" class="mb-10">
                 <div class="mb-6">
                     <h2 class="text-xl font-semibold text-white mb-2">Your Business Copilot</h2>
                 </div>
@@ -542,7 +544,7 @@
                     <div class="flex items-center justify-between">
                         <div class="flex-1">
                             <blockquote class="text-lg text-white/80 italic mb-4">"Empower your business with AI-driven insights and automation to accelerate growth and efficiency."</blockquote>
-                            <a href="aiassistant.html" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-xl hover:bg-blue-700 transition-colors inline-block">Ask Your Copilot</a>
+                            <a id="ask-copilot-btn" href="#" onclick="go('aiassistant'); return false;" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-xl hover:bg-blue-700 transition-colors inline-block">Ask Your Copilot</a>
                         </div>
                     </div>
                 </div>
@@ -561,7 +563,7 @@
                             </div>
                             <h3 class="font-medium text-white/80">Ads Management</h3>
                         </div>
-                        <a href="ads_management_dashboard.html" class="w-full bg-green-600 text-white font-semibold py-2 px-4 rounded-xl hover:bg-green-700 transition-colors inline-block text-center">View Details</a>
+                        <a href="#" onclick="go('ads_management_dashboard'); return false;" class="w-full bg-green-600 text-white font-semibold py-2 px-4 rounded-xl hover:bg-green-700 transition-colors inline-block text-center">View Details</a>
                     </div>
                     <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
                         <div class="flex items-center space-x-4 mb-4">
@@ -570,7 +572,7 @@
                             </div>
                             <h3 class="font-medium text-white/80">AI Sales Agent</h3>
                         </div>
-                        <a href="salesassistant.html" class="w-full bg-green-600 text-white font-semibold py-2 px-4 rounded-xl hover:bg-green-700 transition-colors inline-block text-center">View Details</a>
+                        <a href="#" onclick="go('salesassistant'); return false;" class="w-full bg-green-600 text-white font-semibold py-2 px-4 rounded-xl hover:bg-green-700 transition-colors inline-block text-center">View Details</a>
                     </div>
                     <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
                         <div class="flex items-center space-x-4 mb-4">
@@ -626,6 +628,8 @@
             </main>
         </div>
     </div>
+
+    </div> <!-- /#app -->
     <script>
         document.addEventListener("DOMContentLoaded", () => {
     const menuBtn = document.getElementById("mobile-menu-button");
@@ -647,6 +651,7 @@
 </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.4.0/axios.min.js" integrity="sha512-+3j77K6ZpMWuY1V4uG3f8O5gI2+XbY0c2i0J3Q1F5+8F
     <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"></script>
+    <script src="router.js"></script>
     <script src="auth.js"></script>
     <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"></script>
     <script type="module" src="dashboard.js"></script>
@@ -665,11 +670,14 @@
 
         function openModal(){
             modal.classList.remove('hidden');
+            // prevent body scroll while modal is open
+            try { document.body.style.overflow = 'hidden'; } catch (e) {}
             // focus first field
             setTimeout(()=>document.getElementById('signup-firstname')?.focus(),100);
         }
         function closeModal(){
             modal.classList.add('hidden');
+            try { document.body.style.overflow = ''; } catch (e) {}
             errorBox.classList.add('hidden');
             form.reset();
             industryOther.classList.add('hidden');
