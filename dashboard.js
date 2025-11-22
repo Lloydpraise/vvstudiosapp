@@ -90,7 +90,17 @@ function createHiddenPaymentIframe(url, timeoutMs = 60000) {
  */
 function proceedToDashboard(userData, rawPhone) {
     console.log('[DEBUG] Proceeding to Dashboard after successful login.');
-    loggedInUser = userData;
+    // Enrich the raw DB record with normalized package info and computed fields
+    try {
+        if (window.authUtils && typeof window.authUtils.applyDefaultPackageSettings === 'function') {
+            loggedInUser = window.authUtils.applyDefaultPackageSettings(userData);
+        } else {
+            loggedInUser = userData;
+        }
+    } catch (e) {
+        console.warn('applyDefaultPackageSettings failed, using raw userData', e);
+        loggedInUser = userData;
+    }
     // Do NOT fallback to phone-derived business id — require explicit business id
     businessId = loggedInUser['business id'] || loggedInUser.business_id || null;
 
@@ -105,6 +115,7 @@ function proceedToDashboard(userData, rawPhone) {
 
     // NAME FIX: Use 'admin_name' for the user name and 'business_name' for the business.
     const adminName = loggedInUser.admin_name || 'Admin';
+    const adminFirstName = (adminName && typeof adminName === 'string') ? adminName.split(' ')[0] : adminName;
     const businessName = loggedInUser.business_name || 'Your Business';
 
     if (welcomeName) welcomeName.textContent = adminName;
@@ -127,12 +138,17 @@ function proceedToDashboard(userData, rawPhone) {
     }
 
     // CRITICAL: Save the final complete user object ONCE, ensuring the 'phone' key is the lookup key.
-    const fullUserData = {
-        ...userData,
+    // Build the final saved user object (keeps DB fields but ensures explicit keys used elsewhere)
+    const fullUserData = Object.assign({}, loggedInUser, {
         business_id: businessId,
-        phone_number: loggedInUser.phone_number || null,
-        phone: rawPhone // The RAW phone remains for UX, but we no longer derive business id from it
-    };
+        // prefer DB phone_number (already normalized), otherwise normalize rawPhone
+        phone_number: loggedInUser.phone_number || normalizePhoneNumber(rawPhone || ''),
+        // keep the original raw input for UX where needed
+        phone: rawPhone || (loggedInUser.phone || ''),
+        admin_first_name: adminFirstName
+    });
+    // Backwards-compatible field expected by some UI pieces
+    fullUserData.firstName = fullUserData.admin_first_name || adminFirstName || '';
     localStorage.setItem('vvUser', JSON.stringify(fullUserData));
     console.log('[DEBUG] Final complete user data saved to localStorage.');
 
@@ -203,6 +219,7 @@ export async function loadUserData() {
 
     if (userData) {
         // Successfully fetched. Proceed to display the dashboard.
+        const rawPhone = savedUser.phone || savedUser.phone_number || '';
         proceedToDashboard(userData, rawPhone);
 
     } else {
@@ -457,10 +474,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const normalizedNumber = normalizePhoneNumber(phone);
 
             try {
-                // SUPABASE CALL: Query to authenticate
+                // SUPABASE CALL: Query to authenticate - fetch full row so we can derive package and expiry
                 const { data: userDataArray, error } = await supabase
                     .from('logins')
-                    .select('admin_name, business_name, services, joined_date, renewed_date, "business id"')
+                    .select('*')
                     .eq('phone_number', normalizedNumber)
                     .limit(1);
 

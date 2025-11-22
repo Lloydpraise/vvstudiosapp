@@ -247,9 +247,9 @@
                     <h2 class="text-2xl font-bold mb-2">Create an Account</h2>
                     <p class="text-white/60 mb-6">Fill in your details to get started.</p>
                     <form id="signup-form" class="space-y-4 text-left">
-                        <div class="flex gap-4">
-                            <input type="text" id="signup-firstname" placeholder="First Name" class="flex-1 bg-[#1a1d23] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white placeholder-white/50 focus:outline-none">
-                            <input type="text" id="signup-lastname" placeholder="Last Name" class="flex-1 bg-[#1a1d23] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white placeholder-white/50 focus:outline-none">
+                        <div class="flex flex-col md:flex-row gap-4">
+                            <input type="text" id="signup-firstname" placeholder="First Name" class="flex-1 min-w-0 bg-[#1a1d23] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white placeholder-white/50 focus:outline-none">
+                            <input type="text" id="signup-lastname" placeholder="Last Name" class="flex-1 min-w-0 bg-[#1a1d23] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white placeholder-white/50 focus:outline-none">
                         </div>
                         <div>
                             <input type="tel" id="signup-phone" placeholder="Phone Number (e.g. 07xxxxxxxx)" class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white placeholder-white/50 focus:outline-none">
@@ -297,6 +297,7 @@
                             </select>
                         </div>
                         <div id="signup-error" class="text-red-400 text-sm hidden"></div>
+                        <p class="text-xs text-white/60 mt-2">By Signing Up you agree to our <a href="terms.html" class="text-blue-400 underline">Terms and Conditions</a>.</p>
                         <div class="flex items-center justify-between gap-3">
                             <button type="button" id="signup-cancel" class="w-1/2 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg">Cancel</button>
                             <button type="submit" id="signup-submit" class="w-1/2 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg">Sign Up</button>
@@ -717,46 +718,149 @@
             return /^\d{9,15}$/.test(digits);
         }
 
-        if (form) form.addEventListener('submit', function(e){
+        if (form) form.addEventListener('submit', async function(e){
             e.preventDefault();
             errorBox.classList.add('hidden');
             const first = document.getElementById('signup-firstname')?.value?.trim();
             const last = document.getElementById('signup-lastname')?.value?.trim();
-            const phone = document.getElementById('signup-phone')?.value?.trim();
+            const phoneInput = document.getElementById('signup-phone')?.value?.trim();
             const business = document.getElementById('signup-business')?.value?.trim();
-            const pkg = document.getElementById('signup-package')?.value;
+            const pkg = document.getElementById('signup-package')?.value || 'Free';
             const ind = (industry.value === 'other') ? (industryOther.value || 'other') : industry.value;
             const rl = role.value;
-            const employees = document.getElementById('signup-employees')?.value;
+            const employees = document.getElementById('signup-employees')?.value || null;
 
             if (!first) return showError('First name is required');
-            if (!phone) return showError('Phone number is required');
-            if (!validatePhone(phone)) return showError('Please enter a valid phone number (e.g. 07xxxxxxxx)');
+            if (!phoneInput) return showError('Phone number is required');
+            if (!validatePhone(phoneInput)) return showError('Please enter a valid phone number (e.g. 07xxxxxxxx)');
             if (!business) return showError('Business name is required');
 
-            // Prepare a payload; user will tell where to write it later
+            // Local phone normalization to 2547xxxxxxx
+            function normalizePhone(p) {
+                if (!p) return '';
+                let s = String(p).trim();
+                s = s.replace(/\s+/g, '');
+                if (s.startsWith('+')) s = s.substring(1);
+                const digits = s.replace(/\D/g, '');
+                if (s.startsWith('0')) {
+                    // 07xxxxxxxx -> 2547xxxxxxxx
+                    return '254' + digits.substring(1);
+                }
+                if (digits.length === 9 && digits.startsWith('7')) {
+                    return '254' + digits;
+                }
+                if (digits.startsWith('254')) return digits;
+                return digits;
+            }
+
+            const normalizedPhone = normalizePhone(phoneInput);
+
+            // Supabase REST endpoint details (same project as dashboard.js)
+            const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
+            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
+
+            // Generate a business id: sanitized business name + two random digits; ensure uniqueness
+            function sanitizeBusinessName(name) {
+                return name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '') || 'business';
+            }
+
+            async function isBusinessIdTaken(bid) {
+                const q = encodeURIComponent('business id') + '=eq.' + encodeURIComponent(bid);
+                const res = await fetch(`${SUPABASE_URL}/rest/v1/logins?${q}&select=id`, {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
+                    }
+                });
+                if (!res.ok) return false;
+                const data = await res.json();
+                return Array.isArray(data) && data.length > 0;
+            }
+
+            const baseId = sanitizeBusinessName(business);
+            let businessId = '';
+            for (let i=0;i<6;i++) {
+                const rand = Math.floor(Math.random()*90) + 10; // 10-99
+                const candidate = `${baseId}${rand}`;
+                try {
+                    const taken = await isBusinessIdTaken(candidate);
+                    if (!taken) { businessId = candidate; break; }
+                } catch (err) {
+                    // network issue; accept candidate
+                    businessId = candidate; break;
+                }
+            }
+            if (!businessId) businessId = baseId + Math.floor(Math.random()*9000+1000);
+
+            // Compute package expiry for Free (use authUtils if available)
+            let expiry = null;
+            try {
+                if (window.authUtils && typeof window.authUtils.computePackageExpiryDate === 'function') {
+                    expiry = window.authUtils.computePackageExpiryDate(new Date().toISOString(), 'Free');
+                }
+            } catch (e) {}
+            if (!expiry) {
+                const d = new Date(); d.setUTCDate(d.getUTCDate() + 3); expiry = d.toISOString();
+            }
+
             const payload = {
-                first_name: first,
-                last_name: last,
-                phone: phone,
+                phone_number: normalizedPhone,
+                admin_name: first,
+                full_name: `${first} ${last}`.trim(),
                 business_name: business,
+                'business id': businessId,
+                package: 'Free',
+                joined_date: new Date().toISOString(),
+                package_expiry_date: expiry,
                 industry: ind,
                 role: rl,
-                employees: employees || null,
-                package_interest: pkg
+                employees: employees
             };
 
-            // Temporary: log payload and close modal. The user will specify where to send data.
-            console.log('Sign-up payload (not yet persisted):', payload);
-            // show a small success feedback briefly
-            errorBox.classList.remove('hidden');
-            errorBox.style.color = '#9ae6b4';
-            errorBox.textContent = 'Sign up data captured. Tell me where to write it to persist.';
-            setTimeout(()=>{
-                errorBox.classList.add('hidden');
-                errorBox.style.color = '';
-                closeModal();
-            },1500);
+            try {
+                errorBox.classList.remove('hidden');
+                errorBox.style.color = '#ffd6a5';
+                errorBox.textContent = 'Creating account...';
+
+                const res = await fetch(`${SUPABASE_URL}/rest/v1/logins`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Prefer': 'return=representation'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const body = await res.json();
+                if (!res.ok) {
+                    console.error('Supabase insert error', body);
+                    return showError((body && body.message) ? body.message : 'Failed to create account');
+                }
+
+                const created = Array.isArray(body) ? body[0] : body;
+                // Build saved user for localStorage (compat with dashboard.js expectations)
+                const savedUser = Object.assign({}, created, {
+                    business_id: created['business id'] || businessId,
+                    phone_number: created.phone_number || normalizedPhone,
+                    phone: phoneInput,
+                    admin_first_name: first,
+                    firstName: first
+                });
+
+                localStorage.setItem('vvUser', JSON.stringify(savedUser));
+                // success feedback then reload to trigger auto-login
+                errorBox.style.color = '#9ae6b4';
+                errorBox.textContent = 'Account created — redirecting...';
+                setTimeout(()=>{
+                    window.location.reload();
+                },900);
+
+            } catch (err) {
+                console.error('Sign-up error', err);
+                showError('Network error while creating account');
+            }
         });
 
         // Profile dropdown toggle and logout wiring

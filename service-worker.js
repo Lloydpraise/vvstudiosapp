@@ -1,21 +1,18 @@
-const CACHE_NAME = "vvstudios-cache-v1";
+const CACHE_NAME = "vvstudios-cache-v2";
 
 const ASSETS_TO_CACHE = [
     "/",
     "/index.html",
-    "/install.html", // Added the install page
+    "/install.html",
     "/offline.html",
     "/manifest.json",
 
-    // Local JS files
     "/install.js",
     "/auth.js",
     "/dashboard.js",
-    
-    // Assets
-    "/assets/logo.png", // Added the logo
-    
-    // Icons (Paths corrected to include 'icons/' folder)
+
+    "/assets/logo.png",
+
     "/icons/icon-48.png",
     "/icons/icon-72.png",
     "/icons/icon-96.png",
@@ -26,15 +23,17 @@ const ASSETS_TO_CACHE = [
     "/icons/icon-512.png"
 ];
 
-// INSTALL
+// INSTALL: pre-cache everything
 self.addEventListener("install", event => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS_TO_CACHE))
+        caches.open(CACHE_NAME).then(cache => {
+            return cache.addAll(ASSETS_TO_CACHE);
+        })
     );
     self.skipWaiting();
 });
 
-// ACTIVATE (clear old caches)
+// ACTIVATE: delete old caches
 self.addEventListener("activate", event => {
     event.waitUntil(
         caches.keys().then(keys =>
@@ -48,18 +47,23 @@ self.addEventListener("activate", event => {
     self.clients.claim();
 });
 
-// FETCH
+// FETCH: cache-first for navigation + static assets
 self.addEventListener("fetch", event => {
 
-    // For navigation requests → fallback to offline.html
+    // NAVIGATION: cache-first fallback to offline.html
     if (event.request.mode === "navigate") {
         event.respondWith(
-            fetch(event.request).catch(() => caches.match("/offline.html"))
+            caches.match(event.request)
+                .then(cached => {
+                    if (cached) return cached;
+                    return fetch(event.request)
+                        .catch(() => caches.match("/offline.html"));
+                })
         );
         return;
     }
 
-    // For other static files → cache-first
+    // STATIC FILES: cache-first
     event.respondWith(
         caches.match(event.request).then(cached => {
             return cached || fetch(event.request);
