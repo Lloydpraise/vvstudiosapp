@@ -224,26 +224,80 @@ function updateSubscriptionStatus(userData) {
           if (copilotSection) copilotSection.style.display = (pkg === 'Free') ? 'none' : '';
         } catch (e) {}
 
-        // During Free trial give access to Sales & Follow-Ups; after trial end lock it
+        // Lock/unlock sidebar links according to package (Free/Growth/Pro/Premium)
         try {
-          const crmLink = document.querySelector('a[href="crmlanding.html"]');
-          if (crmLink) {
-            if (pkg === 'Free' && daysRemaining > 0) {
-              crmLink.classList.remove('text-white/30');
-              crmLink.classList.add('text-white');
-              crmLink.removeAttribute('href');
-              crmLink.setAttribute('href','crmlanding.html');
-              const lock = crmLink.querySelector('.fa-lock'); if (lock) lock.remove();
-            } else if (pkg === 'Free' && daysRemaining === 0) {
-              crmLink.classList.remove('text-white');
-              crmLink.classList.add('text-white/30');
-              crmLink.setAttribute('href','#');
-              if (!crmLink.querySelector('.fa-lock')) {
-                const lockIcon = document.createElement('i');
-                lockIcon.className = 'fa-solid fa-lock w-3 h-3 text-white/30 ml-auto';
-                crmLink.appendChild(lockIcon);
+          const sidebarLinks = Array.from(document.querySelectorAll('#sidebar a'));
+          if (!sidebarLinks || sidebarLinks.length === 0) {
+            // nothing to do
+          } else {
+            // derive package (string)
+            let thePkg = String(pkg || 'Free').toLowerCase();
+            const normKey = (s) => String(s).toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]/g,'');
+            const allowedFor = {
+              free: new Set(['mybusiness']),
+              // normalize 'Sales & Follow-Ups' -> 'salesandfollowups'
+              // include 'contentcreation' so paid tiers keep Content Creation clickable
+              growth: new Set(['mybusiness','ads','salesandfollowups','businessassistant','contentcreation']),
+              pro: new Set(['mybusiness','ads','salesandfollowups','businessassistant','aisalesassistant','livechat','contentcreation']),
+              premium: null
+            };
+                const allowed = allowedFor[thePkg] === undefined ? allowedFor['free'] : allowedFor[thePkg];
+
+            sidebarLinks.forEach(link => {
+              if (!link) return;
+              let title = '';
+              try {
+                const spans = Array.from(link.querySelectorAll('span'));
+                const titleSpan = spans.find(s => !s.classList.contains('tooltip')) || spans[0];
+                title = titleSpan ? titleSpan.textContent.trim() : (link.textContent || '').trim();
+              } catch (e) {
+                title = (link.textContent || '').trim();
               }
-            }
+              const norm = normKey(title);
+
+              if (norm === 'mybusiness') {
+                link.classList.remove('text-white/30');
+                link.classList.add('text-white');
+                const existingLock = link.querySelector('.fa-lock'); if (existingLock) existingLock.remove();
+                if (link.dataset.origHref) { link.setAttribute('href', link.dataset.origHref); delete link.dataset.origHref; }
+                if (link.dataset.origOnclick) { link.setAttribute('onclick', link.dataset.origOnclick); delete link.dataset.origOnclick; }
+                return;
+              }
+
+              if (allowed === null) {
+                link.classList.remove('text-white/30');
+                link.classList.add('text-white');
+                const existingLock = link.querySelector('.fa-lock'); if (existingLock) existingLock.remove();
+                if (link.dataset.origHref) { link.setAttribute('href', link.dataset.origHref); delete link.dataset.origHref; }
+                if (link.dataset.origOnclick) { link.setAttribute('onclick', link.dataset.origOnclick); delete link.dataset.origOnclick; }
+                return;
+              }
+
+              const isAllowed = allowed.has(norm);
+              if (isAllowed) {
+                link.classList.remove('text-white/30');
+                link.classList.add('text-white');
+                const existingLock = link.querySelector('.fa-lock'); if (existingLock) existingLock.remove();
+                if (link.dataset.origHref) { link.setAttribute('href', link.dataset.origHref); delete link.dataset.origHref; }
+                if (link.dataset.origOnclick) { link.setAttribute('onclick', link.dataset.origOnclick); delete link.dataset.origOnclick; }
+              } else {
+                link.classList.remove('text-white');
+                link.classList.add('text-white/30');
+                if (!link.dataset.origHref) {
+                  const h = link.getAttribute('href'); if (h) link.dataset.origHref = h;
+                }
+                if (!link.dataset.origOnclick) {
+                  const oc = link.getAttribute('onclick'); if (oc) link.dataset.origOnclick = oc;
+                }
+                try { link.removeAttribute('onclick'); } catch (e) {}
+                link.setAttribute('href', '#');
+                if (!link.querySelector('.fa-lock')) {
+                  const lockIcon = document.createElement('i');
+                  lockIcon.className = 'fa-solid fa-lock w-3 h-3 text-white/30 ml-auto';
+                  link.appendChild(lockIcon);
+                }
+              }
+            });
           }
         } catch (e) {}
 
@@ -402,11 +456,23 @@ function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount, peri
     const upgradeBtnLeft = popup.querySelector('#modal-upgrade-btn-left');
     if (upgradeBtnLeft) upgradeBtnLeft.addEventListener('click', () => { try { popup.remove(); } catch(e){}; if (window.openUpgradeFlow) window.openUpgradeFlow(userData); });
     popup.querySelector('#confirm-renewal')?.addEventListener('click', () => {
-      const paymentAmount = typeof paymentAmount !== 'undefined' ? paymentAmount : (typeof totalAmount !== 'undefined' ? totalAmount : 'Amount');
+      // Determine payment amount: prefer explicit totalAmount, otherwise derive from package
+      let paymentAmountNum = Number(totalAmount) || 0;
+      if (!paymentAmountNum) {
+        const vv = localStorage.getItem('vvUser');
+        const pkg = (userData && (userData.package || userData.package_name)) || (vv ? (JSON.parse(vv).package || JSON.parse(vv).package_name) : '');
+        const pkgNorm = (pkg || '').toString().toLowerCase();
+        if (pkgNorm === 'growth') paymentAmountNum = 6000;
+        else if (pkgNorm === 'pro') paymentAmountNum = 12000;
+        else if (pkgNorm === 'premium') paymentAmountNum = 30000;
+        else paymentAmountNum = 0;
+      }
+      const paymentAmountDisplay = paymentAmountNum ? paymentAmountNum : 'Amount';
+
       popup.innerHTML = `
         <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4">
           <h3 class="text-xl font-bold text-white mb-4 text-center">Payment Details</h3>
-          <p class="text-white/80 mb-4 text-center">PAY VIA MPESA, Buy Goods and Services Till Number 3790912 Amount KES ${paymentAmount}. Once Paid Click Paid Below.</p>
+          <p class="text-white/80 mb-4 text-center">PAY VIA MPESA, Buy Goods and Services Till Number 3790912 Amount KES ${paymentAmountDisplay}. Once Paid Click Paid Below.</p>
           <div class="flex justify-center">
             <button id="paid-button" class="w-full bg-purple-600 text-white py-2 px-4 rounded-xl hover:bg-purple-700 transition-colors">Paid</button>
           </div>

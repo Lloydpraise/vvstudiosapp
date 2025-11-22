@@ -187,6 +187,14 @@
             background-color: #dc2626;
         }
         
+        /* Package badge shown on the countdown card */
+        .pkg-badge { position: absolute; top: 0.75rem; left: 0.75rem; z-index: 20; background: rgba(255,255,255,0.02); padding: 6px 10px; border-radius: 9999px; }
+        .pkg-badge .pkg-name { font-weight: 700; font-size: 0.825rem; }
+        .pkg-name.pkg-free { color: #ffffff; }
+        .pkg-name.pkg-growth { color: #10B981; }
+        .pkg-name.pkg-pro { color: #FFD700; }
+        .pkg-name.pkg-premium { color: #7C3AED; }
+
     </style>
     <script>
         // Prevent login flash: if user is already logged in (vvUser in localStorage),
@@ -336,7 +344,7 @@
 
         <!-- Ads -->
         <li class="mb-4">
-            <a href="#" onclick="go('ads_management_dashboard'); return false;"
+            <a href="ads_management_dashboard.html"
                 class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
                 <i class="fa-solid fa-bullhorn w-5 h-5"></i>
                 <span>Ads</span>
@@ -346,7 +354,7 @@
 
         <!-- Sales & Follow-Ups (CRM) -->
         <li class="mb-4">
-            <a href="#" onclick="go('crmlanding'); return false;"
+            <a href="crmlanding.html"
                 class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
                 <i class="fa-solid fa-handshake w-5 h-5"></i>
                 <span>Sales & Follow-Ups</span>
@@ -356,7 +364,7 @@
 
         <!-- Business Assistant (Copilot) -->
         <li class="mb-4">
-            <a href="#" onclick="go('copilot'); return false;"
+            <a href="copilot.html"
                 class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
                 <i class="fa-solid fa-robot w-5 h-5"></i>
                 <span>Business Assistant</span>
@@ -399,7 +407,7 @@
 
         <!-- Content Creation (always available) -->
         <li class="mb-4">
-            <a href="#"
+            <a href="blog/content-creation.html"
                 class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
                 <i class="fa-solid fa-pen-nib w-5 h-5"></i>
                 <span>Content Creation</span>
@@ -455,8 +463,10 @@
                 </div>
 
                  <!-- Countdown and Upsell Section -->
-            <section class="mb-10 p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
-                <div class="flex items-center justify-between flex-wrap">
+            <section class="mb-10 p-8 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate relative">
+                <!-- Package badge (filled by JS) -->
+                <div id="package-badge" class="pkg-badge" aria-hidden="true"><strong class="pkg-name pkg-free">Free</strong></div>
+                <div class="flex items-center justify-between flex-wrap" style="gap:1rem;">
                     <div class="w-full md:w-auto flex-1 mb-4 md:mb-0">
                         <h2 class="text-white font-semibold text-lg mb-2">Package Countdown</h2>
                         <div class="progress-bar-container">
@@ -544,7 +554,7 @@
                     <div class="flex items-center justify-between">
                         <div class="flex-1">
                             <blockquote class="text-lg text-white/80 italic mb-4">"Empower your business with AI-driven insights and automation to accelerate growth and efficiency."</blockquote>
-                            <a id="ask-copilot-btn" href="#" onclick="go('aiassistant'); return false;" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-xl hover:bg-blue-700 transition-colors inline-block">Ask Your Copilot</a>
+                            <a id="ask-copilot-btn" href="aiassistant.html" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-xl hover:bg-blue-700 transition-colors inline-block">Ask Your Copilot</a>
                         </div>
                     </div>
                 </div>
@@ -563,17 +573,27 @@
                             </div>
                             <h3 class="font-medium text-white/80">Ads Management</h3>
                         </div>
-                        <a href="#" onclick="go('ads_management_dashboard'); return false;" class="w-full bg-green-600 text-white font-semibold py-2 px-4 rounded-xl hover:bg-green-700 transition-colors inline-block text-center">View Details</a>
+                        <a href="ads_management_dashboard.html" class="w-full bg-green-600 text-white font-semibold py-2 px-4 rounded-xl hover:bg-green-700 transition-colors inline-block text-center">View Details</a>
                     </div>
                     <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
                         <div class="flex items-center space-x-4 mb-4">
                             <div class="p-2 rounded-lg bg-purple-500/20">
                                 <i class="fa-solid fa-robot w-6 h-6 text-purple-400"></i>
                             </div>
-                            <h3 class="font-medium text-white/80">AI Sales Agent</h3>
+                            <h3 class="font-medium text-white/80">Sales & Follow Ups</h3>
                         </div>
-                        <a href="#" onclick="go('salesassistant'); return false;" class="w-full bg-green-600 text-white font-semibold py-2 px-4 rounded-xl hover:bg-green-700 transition-colors inline-block text-center">View Details</a>
+                        <a href="crmlanding.html" class="w-full bg-green-600 text-white font-semibold py-2 px-4 rounded-xl hover:bg-green-700 transition-colors inline-block text-center">View Details</a>
                     </div>
+                    <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
+                        <div class="flex items-center space-x-4 mb-4">
+                            <div class="p-2 rounded-lg bg-teal-500/20">
+                                <i class="fa-solid fa-robot w-6 h-6 text-teal-400"></i>
+                            </div>
+                            <h3 class="font-medium text-white/80">Business Assistant</h3>
+                        </div>
+                        <a href="copilot.html" class="w-full bg-green-600 text-white font-semibold py-2 px-4 rounded-xl hover:bg-green-700 transition-colors inline-block text-center">View Details</a>
+                    </div>
+                
                     <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
                         <div class="flex items-center space-x-4 mb-4">
                             <div class="p-2 rounded-lg bg-orange-500/20">

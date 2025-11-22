@@ -99,6 +99,28 @@
 }
 
     </style>
+
+    <script>
+        // Switch Business Assistant sidebar link to copilot for Growth+ packages
+        document.addEventListener('DOMContentLoaded', function () {
+            try {
+                const user = window.authUtils && window.authUtils.getLoggedInUser ? window.authUtils.getLoggedInUser() : (localStorage.getItem('vvUser') ? JSON.parse(localStorage.getItem('vvUser')) : null);
+                if (!user) return;
+                const u = window.authUtils && window.authUtils.applyDefaultPackageSettings ? window.authUtils.applyDefaultPackageSettings(user) : user;
+                const pkg = (u && u.package) ? String(u.package).toLowerCase() : '';
+                if (!pkg) return;
+                const allowedPkgs = ['growth','pro','premium'];
+                const link = document.querySelector('#sidebar a[data-copilot-target]');
+                if (!link) return;
+                if (allowedPkgs.includes(pkg)) {
+                    link.setAttribute('href', link.getAttribute('data-copilot-target'));
+                    link.classList.remove('text-white/30');
+                    link.classList.add('text-white');
+                    const lock = link.querySelector('.fa-lock'); if (lock) lock.remove();
+                }
+            } catch (e) { /* ignore */ }
+        });
+    </script>
 </head>
 <body class="bg-[#0f1115] text-white" data-page="ads">
     <!-- Login removed from Ads section. Uses centralized My Businesses login (index.html). -->
@@ -142,9 +164,10 @@
             </a>
         </li>
 
-        <!-- Business Assistant (Copilot) -->
+        <!-- Business Assistant (Copilot) - back to dashboard from Ads section -->
         <li class="mb-4">
-            <a href="copilot.html"
+            <!-- default href points back to dashboard; JS may switch this to copilot.html for Growth+ packages -->
+            <a href="index.html" data-copilot-target="copilot.html"
                 class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
                 <i class="fa-solid fa-robot w-5 h-5"></i>
                 <span>Business Assistant</span>
@@ -186,7 +209,7 @@
 
         <!-- Content Creation -->
         <li class="mb-4">
-            <a href="#"
+            <a href="blog/content-creation.html"
                 class="flex items-center space-x-3 text-white/60 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
                 <i class="fa-solid fa-pen-nib w-5 h-5"></i>
                 <span>Content Creation</span>

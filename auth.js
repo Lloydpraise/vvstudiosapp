@@ -217,16 +217,31 @@ window.authUtils.applyDefaultPackageSettings = applyDefaultPackageSettings;
             sectionTitle = (target.textContent || '').trim();
         }
 
-        // Mapping per request: Live Chat & AI Sales Assistant -> Growth; Marketing Systems & Automations -> Pro
-        const growthItems = ['AI Sales Assistant', 'Live Chat'];
-        const proItems = ['Marketing Systems', 'Automations'];
+        // Custom mapping for locked items: define package and color per item
+        const map = {
+            'ai sales assistant': { pkg: 'Pro', color: '#FFD700' },
+            'ai sales automation': { pkg: 'Pro', color: '#FFD700' },
+            'live chat': { pkg: 'Pro', color: '#FFD700' },
+            'automations': { pkg: 'Premium', color: '#7C3AED' },
+            'marketing systems': { pkg: 'Premium', color: '#7C3AED' }
+        };
+
+        const norm = (sectionTitle || '').toLowerCase().trim();
         let messageHtml = '';
-        if (growthItems.includes(sectionTitle)) {
-            messageHtml = `Get <span class="growth">Growth</span> to unlock ${sectionTitle}`;
-        } else if (proItems.includes(sectionTitle)) {
-            messageHtml = `Get <span class="pro">Pro</span> to unlock ${sectionTitle}`;
+        if (map[norm]) {
+            const p = map[norm];
+            messageHtml = `Get <span style="color: ${p.color}; font-weight:700">${p.pkg}</span> to unlock ${sectionTitle}`;
         } else {
-            messageHtml = `Get <span class="pro">Pro</span> to unlock ${sectionTitle}`;
+            // Fallbacks: keep previous behaviour (Growth items -> Growth, others -> Pro)
+            const growthItems = ['ai sales assistant', 'live chat'];
+            const proItems = ['marketing systems', 'automations'];
+            if (growthItems.includes(norm)) {
+                messageHtml = `Get <span style="color:#10B981;font-weight:700">Growth</span> to unlock ${sectionTitle}`;
+            } else if (proItems.includes(norm)) {
+                messageHtml = `Get <span style="color:#FFD700;font-weight:700">Pro</span> to unlock ${sectionTitle}`;
+            } else {
+                messageHtml = `Get <span style="color:#FFD700;font-weight:700">Pro</span> to unlock ${sectionTitle}`;
+            }
         }
         toast.innerHTML = messageHtml;
 

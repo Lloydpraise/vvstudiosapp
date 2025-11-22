@@ -312,6 +312,25 @@ export function updateSubscriptionStatus(userData) {
             }
         });
 
+        // If there are no explicit fee line-items, make the total amount
+        // equal to the package subscription price so 'Renew' shows the
+        // correct amount. Mini package uses 4000; Growth/Pro/Premium map
+        // to 6000/12000/30000 respectively.
+        if (!totalAmount) {
+            const pkgNorm = (pkg || '').toString().toLowerCase();
+            if (period === 10) {
+                totalAmount = 4000; // mini package
+            } else if (pkgNorm === 'growth') {
+                totalAmount = 6000;
+            } else if (pkgNorm === 'pro') {
+                totalAmount = 12000;
+            } else if (pkgNorm === 'premium') {
+                totalAmount = 30000;
+            } else {
+                totalAmount = 0;
+            }
+        }
+
         const joinTimestamp = userData['joined date'] || userData['renewed date'] || userData.joined_date || userData.renewed_date;
         let daysRemaining = period;
         
@@ -343,18 +362,34 @@ export function updateSubscriptionStatus(userData) {
 
         // During Free trial give access to Sales & Follow-Ups; after trial end lock it
         try {
-            const crmLink = document.querySelector('a[href="crmlanding.html"]');
+            // Robustly find the CRM/sidebar link by matching onclick target, href or text
+            const sidebarLinks = Array.from(document.querySelectorAll('#sidebar a'));
+            const crmLink = sidebarLinks.find(a => {
+                const onclick = a.getAttribute('onclick') || '';
+                const href = a.getAttribute('href') || '';
+                const txt = (a.textContent || '').toLowerCase();
+                return onclick.includes('crmlanding') || href.includes('crmlanding') || txt.includes('sales') || txt.includes('follow');
+            });
+
             if (crmLink) {
                 if (pkg === 'Free' && daysRemaining > 0) {
                     crmLink.classList.remove('text-white/30');
                     crmLink.classList.add('text-white');
-                    crmLink.removeAttribute('href');
-                    crmLink.setAttribute('href','crmlanding.html');
-                    // remove lock icon if present
+                    // restore onclick if previously saved
+                    if (crmLink.dataset.origOnclick) {
+                        crmLink.setAttribute('onclick', crmLink.dataset.origOnclick);
+                        delete crmLink.dataset.origOnclick;
+                    }
                     const lock = crmLink.querySelector('.fa-lock'); if (lock) lock.remove();
                 } else if (pkg === 'Free' && daysRemaining === 0) {
                     crmLink.classList.remove('text-white');
                     crmLink.classList.add('text-white/30');
+                    // save and remove onclick to prevent navigation while locked
+                    if (!crmLink.dataset.origOnclick) {
+                        const oc = crmLink.getAttribute('onclick');
+                        if (oc) crmLink.dataset.origOnclick = oc;
+                    }
+                    crmLink.removeAttribute('onclick');
                     crmLink.setAttribute('href','#');
                     if (!crmLink.querySelector('.fa-lock')) {
                         const lockIcon = document.createElement('i');
@@ -432,16 +467,35 @@ export function updateSubscriptionStatus(userData) {
 }
 
 export function activateServices(services) {
-    // Unlock or lock sidebar links according to provided services list
-    const sidebarLis = document.querySelectorAll('#sidebar nav ul li');
-    if (!sidebarLis || sidebarLis.length === 0) return;
-    const active = (services || []).map(s => String(s).toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, ''));
+    // Lock or unlock sidebar links according to package rules (Free/Growth/Pro/Premium)
+    const sidebarLinks = Array.from(document.querySelectorAll('#sidebar a'));
+    if (!sidebarLinks || sidebarLinks.length === 0) return;
 
-    sidebarLis.forEach((li) => {
-        const link = li.querySelector('a');
+    // Determine package name
+    let pkg = 'Free';
+    try {
+        const u = (loggedInUser || {});
+        pkg = (window.currentPackage || u.package || u.package_name || 'Free') || 'Free';
+    } catch (e) { pkg = 'Free'; }
+    pkg = String(pkg).toLowerCase();
+
+    // Allowed link keys per package (normalized: remove non-alphanum and lowercase)
+    const normKey = (s) => String(s).toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]/g,'');
+    const allowedFor = {
+        free: new Set(['mybusiness']),
+        // normalized keys: 'sales & follow-ups' -> 'salesandfollowups'
+        // include 'contentcreation' so paid tiers (Growth/Pro) keep Content Creation clickable
+        growth: new Set(['mybusiness','ads','salesandfollowups','businessassistant','contentcreation']),
+        pro: new Set(['mybusiness','ads','salesandfollowups','businessassistant','aisalesassistant','livechat','contentcreation']),
+        premium: null // null => all allowed
+    };
+
+    const allowed = allowedFor[pkg] === undefined ? allowedFor['free'] : allowedFor[pkg];
+
+    sidebarLinks.forEach(link => {
         if (!link) return;
-        link.classList.remove('text-white', 'text-white/30');
 
+        // derive title/label for matching
         let title = '';
         try {
             const spans = Array.from(link.querySelectorAll('span'));
@@ -450,29 +504,60 @@ export function activateServices(services) {
         } catch (e) {
             title = (link.textContent || '').trim();
         }
+        const norm = normKey(title);
 
-        const norm = String(title).toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
-
-        // Always allow My Business and Content Creation
-        if (norm === 'mybusiness' || norm === 'contentcreation') {
+        // Always allow My Business regardless of package
+        if (norm === 'mybusiness') {
+            link.classList.remove('text-white/30');
             link.classList.add('text-white');
             const existingLock = link.querySelector('.fa-lock'); if (existingLock) existingLock.remove();
+            // restore href/onclick if saved
+            if (link.dataset.origHref) { link.setAttribute('href', link.dataset.origHref); delete link.dataset.origHref; }
+            if (link.dataset.origOnclick) { link.setAttribute('onclick', link.dataset.origOnclick); delete link.dataset.origOnclick; }
             return;
         }
 
-        const isActive = active.some(a => a && (norm.includes(a) || a.includes(norm) || norm === a));
-        if (isActive) {
+        // If premium, allow everything
+        if (allowed === null) {
+            link.classList.remove('text-white/30');
             link.classList.add('text-white');
             const existingLock = link.querySelector('.fa-lock'); if (existingLock) existingLock.remove();
+            if (link.dataset.origHref) { link.setAttribute('href', link.dataset.origHref); delete link.dataset.origHref; }
+            if (link.dataset.origOnclick) { link.setAttribute('onclick', link.dataset.origOnclick); delete link.dataset.origOnclick; }
+            return;
+        }
+
+        // Determine if this link is allowed for the package
+        const isAllowed = allowed.has(norm);
+
+        if (isAllowed) {
+            link.classList.remove('text-white/30');
+            link.classList.add('text-white');
+            const existingLock = link.querySelector('.fa-lock'); if (existingLock) existingLock.remove();
+            // restore original href/onclick if we saved them previously
+            if (link.dataset.origHref) { link.setAttribute('href', link.dataset.origHref); delete link.dataset.origHref; }
+            if (link.dataset.origOnclick) { link.setAttribute('onclick', link.dataset.origOnclick); delete link.dataset.origOnclick; }
         } else {
+            // lock the link: dim, prevent navigation and show lock icon
+            link.classList.remove('text-white');
             link.classList.add('text-white/30');
-            const existingLock = link.querySelector('.fa-lock');
-            if (!existingLock) {
+            // save original href/onclick if not already saved
+            if (!link.dataset.origHref) {
+                const h = link.getAttribute('href');
+                if (h) link.dataset.origHref = h;
+            }
+            if (!link.dataset.origOnclick) {
+                const oc = link.getAttribute('onclick');
+                if (oc) link.dataset.origOnclick = oc;
+            }
+            // remove navigation
+            try { link.removeAttribute('onclick'); } catch (e) {}
+            link.setAttribute('href', '#');
+            if (!link.querySelector('.fa-lock')) {
                 const lockIcon = document.createElement('i');
                 lockIcon.className = 'fa-solid fa-lock w-3 h-3 text-white/30 ml-auto';
                 link.appendChild(lockIcon);
             }
-            link.setAttribute('href', '#');
         }
     });
 }
@@ -513,11 +598,68 @@ function renderServicesSection(userData) {
 
             activeGrid.innerHTML = html;
         } else {
-            // Restore original active services layout if we stored it
+            // For paid packages (Growth/Pro/Premium) render the actual
+            // active services from the user's `services` array so the
+            // My Business section reflects what's enabled for this account.
             activeTitle.textContent = 'Your Active Services';
-            if (window.__originalActiveServicesHTML) {
-                activeGrid.innerHTML = window.__originalActiveServicesHTML;
+            const svcList = (userData && Array.isArray(userData.services)) ? userData.services.slice() : [];
+            // Filter out fee line-items and empty entries
+            const activeSvcs = svcList
+                .map(s => (s || '').toString())
+                .filter(s => s.trim() && !s.toLowerCase().includes('fees'))
+                .map(s => s.replace(/\(.*\)/, '').trim());
+
+            // Ensure Content Creation is available for paid packages
+            const pkgRawLocal = (user && (user.package || user.package_name)) || (userData && (userData.package || userData.package_name)) || '';
+            const pkgNormLocal = (window.authUtils && window.authUtils.normalizePackageName) ? String(window.authUtils.normalizePackageName(pkgRawLocal)).toLowerCase() : String(pkgRawLocal).toLowerCase();
+
+            // If paid package and Content Creation not present, inject it (it's default open)
+            if (pkgNormLocal && pkgNormLocal !== 'free') {
+                const hasContent = activeSvcs.some(s => s.toLowerCase().includes('content'));
+                if (!hasContent) activeSvcs.unshift('Content Creation');
             }
+
+            if (!activeSvcs.length) {
+                // If nothing explicit, fall back to original layout (if available)
+                if (window.__originalActiveServicesHTML) {
+                    activeGrid.innerHTML = window.__originalActiveServicesHTML;
+                } else {
+                    activeGrid.innerHTML = '<div class="text-white/80">No active services found.</div>';
+                }
+                return;
+            }
+
+            // Map known service keywords to pages/icons/colors
+            const mapSvc = (svc) => {
+                const s = svc.toLowerCase();
+                if (s.includes('ads')) return { title: 'Ads Management', href: 'ads_management_dashboard.html', icon: 'fa-rectangle-ad', color: 'blue-400' };
+                if (s.includes('sales') && s.includes('follow')) return { title: 'Sales & Follow-Ups', href: 'crmlanding.html', icon: 'fa-users', color: 'green-400' };
+                if (s.includes('sales') && s.includes('assistant')) return { title: 'AI Sales Agent', href: 'aiassistant.html', icon: 'fa-robot', color: 'purple-400' };
+                if (s.includes('business assistant')) return { title: 'Business Assistant', href: 'copilot.html', icon: 'fa-robot', color: 'purple-400' };
+                if (s.includes('ai') || s.includes('assistant')) return { title: 'AI Assistant', href: 'aiassistant.html', icon: 'fa-robot', color: 'purple-400' };
+                if (s.includes('live chat') || s.includes('livechat')) return { title: 'Live Chat', href: 'livechat.html', icon: 'fa-comments', color: 'amber-400' };
+                if (s.includes('marketing')) return { title: 'Marketing Systems', href: 'blog/marketing-systems.html', icon: 'fa-share-nodes', color: 'red-400' };
+                if (s.includes('automation') || s.includes('automations')) return { title: 'Automations', href: 'blog/automations.html', icon: 'fa-gear', color: 'teal-400' };
+                // default
+                return { title: svc, href: '#', icon: 'fa-circle-info', color: 'blue-400' };
+            };
+
+            const html = activeSvcs.map(svc => {
+                const info = mapSvc(svc);
+                return `
+                    <div class="p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
+                        <div class="flex items-center space-x-4 mb-4">
+                            <div class="p-2 rounded-lg bg-${info.color}/20">
+                                <i class="fa-solid ${info.icon} w-6 h-6 text-${info.color}"></i>
+                            </div>
+                            <h3 class="font-medium text-white/80">${info.title}</h3>
+                        </div>
+                        <a href="${info.href}" class="w-full bg-green-600 text-white font-semibold py-2 px-4 rounded-xl hover:bg-green-700 transition-colors inline-block text-center">View Details</a>
+                    </div>
+                `;
+            }).join('');
+
+            activeGrid.innerHTML = html;
         }
     } catch (e) {
         console.warn('renderServicesSection error', e);
@@ -931,11 +1073,20 @@ function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount, hide
                 btn.classList.add('ring-2', 'ring-offset-2', 'ring-blue-500');
 
                 if (method === 'MPESA') {
-                    const paymentAmount = typeof totalAmount !== 'undefined' ? totalAmount : 'Amount';
+                    // Determine payment amount: prefer explicit totalAmount, otherwise derive from package
+                    let paymentAmount = Number(totalAmount) || 0;
+                    const pkgNorm = String(pkg || '').toLowerCase();
+                    if (!paymentAmount) {
+                        if (pkgNorm === 'growth') paymentAmount = 6000;
+                        else if (pkgNorm === 'pro') paymentAmount = 12000;
+                        else if (pkgNorm === 'premium') paymentAmount = 30000;
+                        else paymentAmount = 0;
+                    }
+                    const paymentAmountDisplay = paymentAmount ? paymentAmount : 'Amount';
                     popup.innerHTML = `
                         <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4">
                             <h3 class="text-xl font-bold text-white mb-4 text-center">Payment Details</h3>
-                            <p class="text-white/80 mb-4 text-center">PAY VIA MPESA, Buy Goods and Services Till Number 3790912 Amount KES ${paymentAmount}. Once Paid Click Paid Below.</p>
+                            <p class="text-white/80 mb-4 text-center">PAY VIA MPESA, Buy Goods and Services Till Number 3790912 Amount KES ${paymentAmountDisplay}. Once Paid Click Paid Below.</p>
                             <div class="flex justify-center">
                                 <button id="paid-button" class="w-full bg-purple-600 text-white py-2 px-4 rounded-xl hover:bg-purple-700 transition-colors">Paid</button>
                             </div>

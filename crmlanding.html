@@ -859,6 +859,31 @@
            columns consistent with the original desktop behavior. */
 
     </style>
+
+    <script>
+        // Switch Business Assistant sidebar link to copilot for Growth+ packages
+        document.addEventListener('DOMContentLoaded', function () {
+            try {
+                const user = window.authUtils && window.authUtils.getLoggedInUser ? window.authUtils.getLoggedInUser() : (localStorage.getItem('vvUser') ? JSON.parse(localStorage.getItem('vvUser')) : null);
+                if (!user) return;
+                const u = window.authUtils && window.authUtils.applyDefaultPackageSettings ? window.authUtils.applyDefaultPackageSettings(user) : user;
+                const pkg = (u && u.package) ? String(u.package).toLowerCase() : '';
+                if (!pkg) return;
+                const allowedPkgs = ['growth','pro','premium'];
+                const link = document.querySelector('#sidebar a[data-copilot-target]');
+                if (!link) return;
+                if (allowedPkgs.includes(pkg)) {
+                    link.setAttribute('href', link.getAttribute('data-copilot-target'));
+                    // ensure it's enabled visually
+                    link.classList.remove('text-white/30');
+                    link.classList.add('text-white');
+                    const lock = link.querySelector('.fa-lock'); if (lock) lock.remove();
+                } else {
+                    // leave as default (index.html) and let global locking handle visuals
+                }
+            } catch (e) { /* ignore */ }
+        });
+    </script>
     <style>
         /* Mobile: ensure the main scrollable area has enough bottom padding so
            the last list items aren't hidden by the fixed bottom nav. We add
@@ -933,13 +958,14 @@
 
                 <!-- Business Assistant (Copilot) -->
         <li class="mb-4">
-            <a href="#"
-                                class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
-                                <i class="fa-solid fa-robot w-5 h-5"></i>
-                                <span>Business Assistant</span>
-                                <span class="tooltip">Your AI Copilot that helps you run the business</span>
-                        </a>
-                </li>
+            <!-- default href points back to dashboard; JS may switch this to copilot.html for Growth+ packages -->
+            <a href="copilot.html" 
+                    class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                    <i class="fa-solid fa-robot w-5 h-5"></i>
+                    <span>Business Assistant</span>
+                    <span class="tooltip">Your AI Copilot that helps you run the business</span>
+                </a>
+            </li>
 
         <!-- AI Sales Assistant (locked) -->
     <li class="mb-4">
@@ -976,7 +1002,7 @@
 
         <!-- Content Creation (always available) -->
     <li class="mb-4">
-        <a href="#"
+        <a href="blog/content-creation.html"
                 class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
                 <i class="fa-solid fa-pen-nib w-5 h-5"></i>
                 <span>Content Creation</span>
