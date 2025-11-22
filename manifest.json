@@ -2,7 +2,7 @@
   "name": "VV Studios",
   "short_name": "Client Portal",
   "description": "Show More, Sell More Scale Faster",
-  "start_url": "?utm_source=homescreen",
+  "start_url": "./index.html?utm_source=homescreen",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

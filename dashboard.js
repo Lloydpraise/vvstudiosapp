@@ -53,31 +53,35 @@ window.openUpgradeFlow = function(userData) {
                 <button id="upgrade-cancel" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">&times;</button>
                 <h3 class="text-xl font-bold text-white mb-4 text-center">Select a Plan</h3>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <button class="select-plan bg-[#0f1720] border border-[#2b2f3a] p-4 rounded-xl text-left" data-plan="growth" data-price="2000">
-                        <h4 class="font-semibold">Growth</h4>
-                        <p class="text-white/70 text-sm">KES 2,000 / month</p>
-                    </button>
-                    <button class="select-plan bg-[#0f1720] border border-[#2b2f3a] p-4 rounded-xl text-left" data-plan="pro" data-price="4000">
-                        <h4 class="font-semibold">Pro</h4>
-                        <p class="text-white/70 text-sm">KES 4,000 / month</p>
-                    </button>
-                    <button class="select-plan bg-[#0f1720] border border-[#2b2f3a] p-4 rounded-xl text-left" data-plan="premium" data-price="8000">
-                        <h4 class="font-semibold">Premium</h4>
-                        <p class="text-white/70 text-sm">KES 8,000 / month</p>
-                    </button>
-                </div>
+                            <button class="select-plan bg-[#0f1720] border border-[#2b2f3a] p-4 rounded-xl text-left" data-plan="Growth" data-price="6000">
+                                <h4 class="font-semibold text-green-400">Growth</h4>
+                                <p class="text-white/60 text-sm">KES <span class="font-bold">6,000</span> / month</p>
+                            </button>
+                            <button class="select-plan bg-[#0f1720] border border-[#2b2f3a] p-4 rounded-xl text-left" data-plan="Pro" data-price="12000">
+                                <h4 class="font-semibold text-amber-400">Pro</h4>
+                                <p class="text-white/60 text-sm">KES <span class="font-bold">12,000</span> / month</p>
+                            </button>
+                            <button class="select-plan bg-[#0f1720] border border-[#2b2f3a] p-4 rounded-xl text-left" data-plan="Premium" data-price="30000">
+                                <h4 class="font-semibold text-purple-400">Premium</h4>
+                                <p class="text-white/60 text-sm">KES <span class="font-bold">30,000</span> / month</p>
+                            </button>
+                        </div>
             </div>
         `;
         document.body.appendChild(popup);
         popup.querySelector('#upgrade-cancel').addEventListener('click', () => popup.remove());
 
-        popup.querySelectorAll('.select-plan').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const price = btn.getAttribute('data-price') || 0;
-                try { popup.remove(); } catch (e) {}
-                // call renewal/payment popup but hide the left-upgrade to avoid nested upgrade
-                showRenewalPopup(userData, 'Proceed to Pay', 0, price, true);
-            });
+        // Use event delegation to reliably catch clicks on dynamically-created plan buttons
+        popup.addEventListener('click', (ev) => {
+            const btn = ev.target.closest && ev.target.closest('.select-plan');
+            if (!btn) return;
+            ev.preventDefault();
+            const price = parseInt(btn.getAttribute('data-price') || '0', 10) || 0;
+            const plan = btn.getAttribute('data-plan') || '';
+            try { popup.remove(); } catch (e) { console.warn('Could not remove plan popup', e); }
+            setTimeout(() => {
+                showRenewalPopup(userData, 'Proceed to Pay', 0, price, true, plan);
+            }, 50);
         });
     } catch (e) { console.warn('openUpgradeFlow error', e); }
 }
@@ -697,6 +701,13 @@ function updateMetrics(data) {
         if (window.currentPackage === 'Free') {
             if (metrics.salesToday) metrics.salesToday.textContent = `Ksh 0`;
             if (metrics.conversionRate) metrics.conversionRate.textContent = `0%`;
+            // also zero other common metric elements if present
+            const avg = document.getElementById('averageOrderValue'); if (avg) avg.textContent = `Ksh 0`;
+            const total = document.getElementById('totalRevenue'); if (total) total.textContent = `Ksh 0`;
+            const conv = document.getElementById('conversionRate'); if (conv) conv.textContent = `0%`;
+            const convCount = document.getElementById('totalConversations'); if (convCount) convCount.textContent = `0`;
+            const activeConv = document.getElementById('activeConversations'); if (activeConv) activeConv.textContent = `0`;
+            const unique = document.getElementById('uniqueUsers'); if (unique) unique.textContent = `0`;
             return;
         }
     } catch (e) {}
@@ -813,7 +824,7 @@ function renderSalesChart(data) {
     });
 }
 
-function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount, hideLeft = false) {
+function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount, hideLeft = false, planName = '') {
     const services = userData.services || [];
     const activeServices = services.filter(s => !s.toLowerCase().includes('fees')).map(s => s.replace(/\(.*\)/, '').trim()).join(', ');
 
@@ -852,6 +863,7 @@ function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount, hide
             ${showLeft ? '<button id="modal-upgrade-btn-left" class="absolute top-4 left-4 text-blue-400 hover:text-blue-500 text-sm font-medium">Upgrade</button>' : ''}
             ${'<button id="close-popup" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">&times;</button>'}
             <h3 class="text-xl font-bold text-white mb-2">To Continue Please Select Payment Method</h3>
+            ${planName ? `<p class="text-white/70 mb-1">Plan: <span class="font-semibold text-white">${planName}</span></p>` : ''}
             <p class="text-white/80 mb-4">Your subscription is ${daysRemaining === 0 ? 'expired' : 'expiring soon'}. Total: <span class="text-orange-400 font-bold">KES ${totalAmount}</span></p>
 
             <div id="payment-step-1" class="mb-4">
@@ -963,21 +975,6 @@ function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount, hide
 
     // Helper: get a stable user id for backend (do not fallback to phone)
     const userId = userData['business id'] || userData.business_id || null;
-
-    // Upgrade button behaviour (top-right small text)
-    // top-right upgrade button removed; keep top-left only
-    // Also wire top-left Upgrade button
-    const upgradeBtnLeft = popup.querySelector('#modal-upgrade-btn-left');
-    if (upgradeBtnLeft) {
-        upgradeBtnLeft.addEventListener('click', () => {
-            try { if (popup && popup.parentElement) popup.parentElement.removeChild(popup); } catch (e) {}
-            if (window.openUpgradeFlow) {
-                try { window.openUpgradeFlow(userData); } catch (e) { console.warn('openUpgradeFlow error', e); }
-            } else {
-                console.log('Upgrade clicked — openUpgradeFlow not implemented yet.');
-            }
-        });
-    }
 
     // Delegate clicks on payment method buttons
     popup.querySelectorAll('.payment-method').forEach(btn => {

@@ -1,16 +1,16 @@
 // Lightweight SPA loader: swaps HTML into #app without full reloads
 async function loadPage(page) {
     try {
-        // Try cache first (works offline if service worker cached pages)
-        const cacheMatch = await caches.match('/' + page + '.html');
-        if (cacheMatch) {
-            const html = await cacheMatch.text();
-            document.getElementById('app').innerHTML = html;
-            return;
-        }
+            // Try cache first (works offline if service worker cached pages)
+            const cacheMatch = await caches.match(page + '.html');
+            if (cacheMatch) {
+                const html = await cacheMatch.text();
+                document.getElementById('app').innerHTML = html;
+                return;
+            }
 
-        // Fallback to network fetch
-        const res = await fetch('/' + page + '.html', { cache: 'no-cache' });
+            // Fallback to network fetch
+            const res = await fetch(page + '.html', { cache: 'no-cache' });
         if (!res.ok) throw new Error('Network response was not ok');
         const html = await res.text();
         document.getElementById('app').innerHTML = html;
@@ -24,8 +24,6 @@ function go(page) {
     loadPage(page);
 }
 
-// Expose for inline handlers and other scripts
+// Expose for inline handlers and other scripts (no ES module export)
 window.loadPage = loadPage;
 window.go = go;
-
-export { loadPage, go };

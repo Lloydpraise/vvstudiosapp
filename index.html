@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#0f1115">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -299,7 +299,7 @@
                             </select>
                         </div>
                         <div id="signup-error" class="text-red-400 text-sm hidden"></div>
-                        <p class="text-xs text-white/60 mt-2">By Signing Up you agree to our <a href="terms.html" class="text-blue-400 underline">Terms and Conditions</a>.</p>
+                        <p class="text-xs text-white/60 mt-2">By Signing Up you agree to our <a href="terms.html" class="text-blue-400 underline">Terms</a>.</p>
                         <div class="flex items-center justify-between gap-3">
                             <button type="button" id="signup-cancel" class="w-1/2 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg">Cancel</button>
                             <button type="submit" id="signup-submit" class="w-1/2 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg">Sign Up</button>
@@ -649,11 +649,12 @@
     });
 });
 </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.4.0/axios.min.js" integrity="sha512-+3j77K6ZpMWuY1V4uG3f8O5gI2+XbY0c2i0J3Q1F5+8F
+    <!-- Axios (no SRI here to avoid CORS issues when CDN doesn't provide cross-origin headers) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.4.0/axios.min.js"></script>
+    <!-- Supabase (ES module) -->
     <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"></script>
     <script src="router.js"></script>
     <script src="auth.js"></script>
-    <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"></script>
     <script type="module" src="dashboard.js"></script>
     <script>
     // Sign-up modal behavior: open/close, field toggles and submit validation
@@ -907,11 +908,12 @@
     })();
     </script>
 
-    <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/vvstudiosapp/service-worker.js', {scope: '/vvstudiosapp/'})
-        .catch(err => console.error("SW registration failed:", err));
-    }
-    </script>
+        <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js')
+                .then(() => console.log('ServiceWorker registered'))
+                .catch(err => console.error("SW registration failed:", err));
+        }
+        </script>
 </body>
 </html>
