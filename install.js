@@ -4,43 +4,61 @@ const installButton = document.getElementById("install-button");
 const dismissMessage = document.getElementById("dismiss-message");
 const instructions = document.getElementById("install-instruction");
 
-// Hide messages at load
-dismissMessage.style.display = "none";
-instructions.style.display = "none";
+// Safe-initialize UI
+if (dismissMessage) dismissMessage.style.display = "none";
+if (instructions) instructions.style.display = "none";
+
+// Hide install button until the browser signals installability
+if (installButton) {
+    installButton.classList.add('hidden');
+    installButton.disabled = true;
+}
 
 // Listen for BEFORE INSTALL PROMPT
 window.addEventListener("beforeinstallprompt", (e) => {
-    e.preventDefault();  
-    deferredPrompt = e;
+        e.preventDefault();
+        deferredPrompt = e;
 
-    // The button will be available to click
+        // Show the install button now that the app is installable
+        if (installButton) {
+                installButton.classList.remove('hidden');
+                installButton.disabled = false;
+        }
+
+        console.log('beforeinstallprompt captured');
 });
 
 // Install button click
-installButton.addEventListener("click", async () => {
-    if (!deferredPrompt) {
-        // No automatic prompt available → show manual help
-        instructions.style.display = "block";
-        return;
-    }
+if (installButton) {
+    installButton.addEventListener("click", async () => {
+        try {
+            if (!deferredPrompt) {
+                // No automatic prompt available → show manual help
+                if (instructions) instructions.style.display = "block";
+                return;
+            }
 
-    deferredPrompt.prompt();
+            installButton.disabled = true;
+            await deferredPrompt.prompt();
 
-    const choiceResult = await deferredPrompt.userChoice;
+            const choiceResult = await deferredPrompt.userChoice;
 
-    if (choiceResult.outcome === "accepted") {
-        // FIX: Use absolute path for robust redirection
-        window.location.replace("/index.html");
-    } else {
-        // User dismissed → force install
-        dismissMessage.style.display = "block";
-    }
-
-    deferredPrompt = null;
-});
+            if (choiceResult && choiceResult.outcome === "accepted") {
+                    window.location.replace("/index.html");
+            } else {
+                    // User dismissed → show message
+                    if (dismissMessage) dismissMessage.style.display = "block";
+            }
+        } catch (err) {
+            console.error('Error showing install prompt:', err);
+            if (instructions) instructions.style.display = "block";
+        } finally {
+            deferredPrompt = null;
+        }
+    });
+}
 
 // Detect if installed AFTER prompt or from browser menu
 window.addEventListener("appinstalled", () => {
-    // FIX: Use absolute path for robust redirection
-    window.location.replace("/index.html");
+        window.location.replace("/index.html");
 });
