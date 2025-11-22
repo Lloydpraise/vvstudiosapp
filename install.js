@@ -8,10 +8,9 @@ const instructions = document.getElementById("install-instruction");
 if (dismissMessage) dismissMessage.style.display = "none";
 if (instructions) instructions.style.display = "none";
 
-// Hide install button until the browser signals installability
+// Ensure install button is enabled and visible so user can trigger install
 if (installButton) {
-    installButton.classList.add('hidden');
-    installButton.disabled = true;
+    installButton.disabled = false;
 }
 
 // Listen for BEFORE INSTALL PROMPT
