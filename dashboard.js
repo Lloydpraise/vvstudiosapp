@@ -366,7 +366,7 @@ export function updateSubscriptionStatus(userData) {
             const mapping = {
                 free: 'text-white',
                 growth: 'text-green-400',
-                pro: 'text-yellow-400',
+                pro: 'text-amber-400',
                 premium: 'text-purple-400'
             };
             const packageNameEl = document.getElementById('packageName');

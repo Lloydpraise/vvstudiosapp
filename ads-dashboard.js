@@ -225,7 +225,7 @@ function updateSubscriptionStatus(userData) {
         // Update package name label & color if present
         try {
           const pkgKey = (pkg || '').toString().toLowerCase();
-          const mapping = { free: 'text-white', growth: 'text-green-400', pro: 'text-yellow-400', premium: 'text-purple-400' };
+          const mapping = { free: 'text-white', growth: 'text-green-400', pro: 'text-amber-400', premium: 'text-purple-400' };
           const packageNameEl = document.getElementById('packageName');
           if (packageNameEl) {
             const display = (pkg || 'Free').toString();
@@ -550,12 +550,16 @@ async function fetchAdResults(businessId) {
     if (error) throw error;
 
     // Make sure adData exists and fix for legacy 'Date' references
+    console.log('[DEBUG] Raw adData response length:', (adData || []).length);
+    console.log('[DEBUG] Sample adData rows:', (adData && adData.length) ? adData.slice(0,3) : adData);
     if (adData) {
       adData.forEach(row => {
-        row.Date = row.date; // keep old code working
+        row.Date = row.date || row.Date; // keep old code working
       });
     }
 
+    // Use the exact schema: business_id (text) and date (date type).
+    // Keep the returned docs as-is but normalize legacy Date field pointer.
     allAdDocs = adData || [];
     console.log(`[DEBUG] Ad results fetched. Total documents: ${allAdDocs.length}`);
 
@@ -630,7 +634,17 @@ function updateKeyMetricsTotalSpend() {
   try { updateKeyMetricsTotalSpend(); } catch(e) { console.warn('[DEBUG] updateKeyMetricsTotalSpend call failed', e); }
 
   // Clear any prior status
-  document.getElementById("status-message").textContent = "";
+  const statusEl = document.getElementById("status-message");
+  if (statusEl) statusEl.textContent = "";
+
+  // If no ad docs were returned, inform the user explicitly and avoid rendering empty charts
+  if (!allAdDocs || allAdDocs.length === 0) {
+    if (statusEl) statusEl.textContent = 'No ad metrics found for this business and selected date range.';
+    console.warn('[DEBUG] No ad documents returned from Supabase for this business/date range.');
+    // Trigger update to render zeros in the metrics UI
+    try { updateAdDataForPeriod('today'); } catch (e) { console.warn('updateAdDataForPeriod on empty docs failed', e); }
+    return; // nothing further to do
+  }
 
   } catch (error) {
     console.error("[DEBUG] Error fetching ad results:", error);
@@ -872,6 +886,21 @@ function getPeriodRanges(period) {
 }
 
 /**
+ * Set the global `dateRangeStart` and `dateRangeEnd` strings (YYYY-MM-DD)
+ * based on a logical period like 'today', 'yesterday', 'thisWeek', etc.
+ */
+function setDateRangeForPeriod(period) {
+  const ranges = getPeriodRanges(period);
+  const pad = (n) => n.toString().padStart(2, '0');
+  const toYMD = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  dateRangeStart = toYMD(ranges.start);
+  // Use the day before 'end' as inclusive end date when presenting YYYY-MM-DD
+  const endInclusive = new Date(ranges.end.getFullYear(), ranges.end.getMonth(), ranges.end.getDate() - 1);
+  dateRangeEnd = toYMD(endInclusive);
+  console.log('[DEBUG] dateRange set:', { dateRangeStart, dateRangeEnd });
+}
+
+/**
  * Given an array of docs (allAdDocs) and a date range (start <= date < end),
  * return aggregated metrics using calculateAggregatedData semantics.
  * The docs use field row.Date (string YYYY-MM-DD) per fetchAdResults.
@@ -1066,22 +1095,43 @@ async function loadCharts(period = 'days') {
   /* -------------------------------------------------------------------------- */
   /*  🟢 1. Fetch Ad Spend & Sales from Supabase                                */
   /* -------------------------------------------------------------------------- */
-  try {
-    // Fetch ad spend
+    try {
+    // Fetch ad spend within selected date range
+    console.log('[DEBUG] loadCharts using dateRange:', { dateRangeStart, dateRangeEnd });
     const { data: adsData, error: adsError } = await supabase
       .from('ads')
       .select('date, total_spend')
-      .eq('business_id', businessId);
+      .eq('business_id', businessId)
+      .gte('date', dateRangeStart)
+      .lte('date', dateRangeEnd);
 
     if (adsError) throw adsError;
 
-    // Fetch sales
+    // Fetch sales within selected date range (use timestamp bounds)
+    const startISO = new Date(dateRangeStart + 'T00:00:00').toISOString();
+    const endISO = new Date(new Date(dateRangeEnd + 'T00:00:00').getTime() + (24*60*60*1000)).toISOString();
+
+    console.log('[DEBUG] loadCharts fetching sales with timestamp bounds:', { startISO, endISO });
+
     const { data: salesData, error: salesError } = await supabase
       .from('sales')
       .select('timestamp, amount')
-      .eq('business_id', businessId);
+      .eq('business_id', businessId)
+      .gte('timestamp', startISO)
+      .lt('timestamp', endISO); // use exclusive end to avoid double-counting
 
     if (salesError) throw salesError;
+
+    // If both ad and sales data are empty, skip chart rendering and notify user
+    if ((!adsData || adsData.length === 0) && (!salesData || salesData.length === 0)) {
+      const statusEl2 = document.getElementById('status-message');
+      if (statusEl2) statusEl2.textContent = 'No ad or sales data available for the selected date range.';
+      console.warn('[DEBUG] No adsData and no salesData for selected dateRange — skipping charts.');
+      // Destroy previous chart instances to ensure UI is clean
+      if (adSalesChartInstance) { try { adSalesChartInstance.destroy(); } catch (e) {} }
+      if (topAdsChartInstance) { try { topAdsChartInstance.destroy(); } catch (e) {} }
+      return;
+    }
 
     // Group data by day or month
     const grouped = {};
@@ -1181,20 +1231,24 @@ async function loadCharts(period = 'days') {
     /* -------------------------------------------------------------------------- */
 /*  🟣 2. Leads vs Converted Leads Chart                                      */
 /* -------------------------------------------------------------------------- */
-try {
-  // 1️⃣ Fetch ad leads/messages
+  try {
+  // 1️⃣ Fetch ad leads/messages within selected date range
   const { data: adsData2, error: adsErr2 } = await supabase
     .from('ads')
     .select('date, leads, messages_started')
-    .eq('business_id', businessId);
+    .eq('business_id', businessId)
+    .gte('date', dateRangeStart)
+    .lte('date', dateRangeEnd);
 
   if (adsErr2) throw adsErr2;
 
-  // 2️⃣ Fetch sales count
+  // 2️⃣ Fetch sales count within selected date range
   const { data: salesData2, error: salesErr2 } = await supabase
     .from('sales')
     .select('timestamp')
-    .eq('business_id', businessId);
+    .eq('business_id', businessId)
+    .gte('timestamp', startISO)
+    .lte('timestamp', endISO);
 
   if (salesErr2) throw salesErr2;
 
@@ -1386,20 +1440,30 @@ document.addEventListener("DOMContentLoaded", function() {
     // Day selector event listeners
     const dayOptions = document.querySelectorAll('.day-option');
     dayOptions.forEach(option => {
-        option.addEventListener('click', function() {
-            console.log(`[DEBUG] Day option clicked: ${this.getAttribute('data-day')}`);
-            // Remove active class from all
-            dayOptions.forEach(opt => {
-                opt.classList.remove('bg-blue-600', 'text-white', 'font-semibold');
-                opt.classList.add('bg-[#2b2f3a]', 'text-white');
-            });
-            // Add active to clicked
-            this.classList.remove('bg-[#2b2f3a]');
-            this.classList.add('bg-blue-600', 'text-white', 'font-semibold');
-            // Update data
-            const period = this.getAttribute('data-day');
-            updateAdDataForPeriod(period);
+      option.addEventListener('click', function() {
+        const period = this.getAttribute('data-day');
+        console.log(`[DEBUG] Day option clicked: ${period}`);
+        // Remove active class from all
+        dayOptions.forEach(opt => {
+          opt.classList.remove('bg-blue-600', 'text-white', 'font-semibold');
+          opt.classList.add('bg-[#2b2f3a]', 'text-white');
         });
+        // Add active to clicked
+        this.classList.remove('bg-[#2b2f3a]');
+        this.classList.add('bg-blue-600', 'text-white', 'font-semibold');
+
+        // 1) compute and set global dateRange strings
+        try { setDateRangeForPeriod(period); } catch (e) { console.warn('setDateRangeForPeriod failed', e); }
+
+        // 2) refetch ad results from Supabase for the new date range
+        try {
+          if (businessId) {
+            fetchAdResults(businessId);
+          } else {
+            console.warn('[DEBUG] No businessId available to fetch ad results for selected period');
+          }
+        } catch (e) { console.warn('fetchAdResults failed', e); }
+      });
     });
 
     // Metric help popup functionality

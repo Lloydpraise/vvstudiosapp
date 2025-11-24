@@ -418,9 +418,13 @@
         #add-main-modal-content {
             max-width: 90%;
             width: 768px;
-            min-height: 500px;
+            min-height: 200px;
+            /* Ensure modal never exceeds viewport height on desktop and stays scrollable internally */
+            max-height: calc(100vh - 120px);
             display: flex;
             flex-direction: column;
+            overflow: hidden;
+            box-sizing: border-box;
         }
 
         /* When opened from mobile submenu, hide the left selector and let the form span full width */
@@ -445,6 +449,25 @@
             }
             /* Ensure modal container doesn't push content off-screen */
             .modal-backdrop > .absolute { padding: 0.5rem; }
+        }
+
+        /* Desktop specific modal adjustments: keep modals inside viewport and make body scrollable */
+        @media (min-width: 769px) {
+            /* Add modal parent: constrain overall modal height */
+            #add-main-modal-content { max-height: calc(100vh - 120px); }
+
+            /* Meeting modal: limit height and make body scrollable so header/actions remain visible */
+            #add-meeting-modal .bg-bg-card {
+                max-height: calc(100vh - 120px);
+                overflow: hidden;
+                box-sizing: border-box;
+            }
+            #add-meeting-modal-body {
+                /* leave room for header and actions; allow body to scroll */
+                max-height: calc(100vh - 200px);
+                overflow-y: auto;
+                padding-bottom: 1rem;
+            }
         }
 
         .add-form-menu-item {
