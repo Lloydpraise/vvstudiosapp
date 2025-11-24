@@ -2,7 +2,24 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta id="dynamic-viewport" name="viewport" content="width=device-width, initial-scale=0.8, viewport-fit=cover">
+        <script>
+        (function(){
+            try {
+                var vp = document.getElementById('dynamic-viewport');
+                function updateViewport(){
+                    var w = window.innerWidth || document.documentElement.clientWidth || 1024;
+                    if (w < 768) {
+                        vp.setAttribute('content', 'width=device-width, initial-scale=0.8, minimum-scale=0.8, viewport-fit=cover');
+                    } else {
+                        vp.setAttribute('content', 'width=device-width, initial-scale=0.8, minimum-scale=0.8, viewport-fit=cover');
+                    }
+                }
+                updateViewport();
+                window.addEventListener('resize', updateViewport);
+            } catch(e){ console.warn('viewport script error', e); }
+        })();
+        </script>
     <title>Install VV Studios Portal</title>
 
     <script src="https://cdn.tailwindcss.com"></script>

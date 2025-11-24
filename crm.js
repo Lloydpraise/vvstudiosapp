@@ -61,6 +61,7 @@ let formOrigin = null;                // 'deal' or 'follow-up' when nested add
 let selectedFollowUp = null;          // selected follow-up object when acting on a follow-up
 let selectedMeeting = null;           // NEW: selected meeting object for modal actions
 let selectedContact = null;           // selected contact for follow-up actions
+let selectedContactAction = null;    // fallback contact context for Call/WhatsApp actions (from contact details)
 let currentCalendarDate = new Date(); // NEW: The date currently centered in the calendar view
 let selectedDailyDate = null;         // NEW: The date selected in the calendar for daily view
 let mobileContactsSearchQuery = '';   // NEW: Search query for mobile contacts
@@ -710,6 +711,7 @@ function showDetailInfo(infoHtml) {
 // Schedules modal helpers: explicit show/hide to avoid accidental multi-modal display
 function showSchedulesModal() {
   try {
+  traceSchedules('showSchedulesModal called');
       const bd = document.getElementById('schedules-modal-backdrop');
       console.log('[schedules] showSchedulesModal called, backdrop found?', !!bd);
     if (!bd) {
@@ -817,12 +819,13 @@ function showDebugToast(msg, timeout = 2500) {
 
 function hideSchedulesModal() {
   try {
+    traceSchedules('hideSchedulesModal called');
     const bd = document.getElementById('schedules-modal-backdrop');
     console.debug('[schedules] hideSchedulesModal called, backdrop found?', !!bd);
     if (!bd) return;
     bd.classList.add('hidden');
     try { bd.style.display = 'none'; } catch (e) { console.debug('[schedules] clear display failed', e); }
-    try { bd.style.zIndex = ''; } catch (e) { /* ignore */ }
+    try { bd.style.zIndex = ''; bd.style.pointerEvents = 'none'; bd.style.opacity = '0'; } catch (e) { /* ignore */ }
   } catch (e) { console.warn('hideSchedulesModal failed', e); }
 }
 
@@ -1660,8 +1663,9 @@ async function loadContacts() {
     // ADD .eq('business_id', BUSINESS_ID)
     const { data, error } = await client.from('contacts')
       .select('*')
-      .eq('business_id', BUSINESS_ID) // <-- ADDED THIS LINE
-      .order('name', { ascending: true });
+      .eq('business_id', BUSINESS_ID)
+      // Order by creation time descending so most recently added contacts appear first
+      .order('created_at', { ascending: false });
     if (error) throw error;
     contacts = data || [];
     logStep('Contacts loaded', contacts.length);
@@ -1677,8 +1681,9 @@ async function loadDeals() {
     // ADD .eq('business_id', BUSINESS_ID)
     const { data, error } = await client.from('deals_pipeline_view')
       .select('*')
-      .eq('business_id', BUSINESS_ID) // <-- ADDED THIS LINE
-      .order('created_at', { ascending: true });
+      .eq('business_id', BUSINESS_ID)
+      // Return newest deals first
+      .order('created_at', { ascending: false });
     if (error) throw error;
     // Normalize to the shape used by the original UI (dealName, contactName, contactPhone, amount, closeDate, stage)
     dealsData = (data || []).map(d => ({
@@ -1790,6 +1795,9 @@ function renderAfterSale(customers = []) {
   }
 
   header.classList.remove('hidden');
+
+  // Ensure after-sale customers are ordered newest-first (by date or added_date)
+  customers = (customers || []).slice().sort((a, b) => new Date(b.date || b.added_date || 0) - new Date(a.date || a.added_date || 0));
 
   // Desktop rows (grid like deals)
   // ---------------------------------------------------
@@ -2578,11 +2586,19 @@ async function scheduleMeeting(event) {
           showInAppAlert('Warning: meeting inserted but business_id was not set correctly. Check console for details.');
         }
         
-        await loadMeetings(); // Loaders should now be fixed to filter by business_id
+          await loadMeetings(); // Loaders should now be fixed to filter by business_id
 
-  closeModal('add-meeting-modal');
-  document.getElementById('add-meeting-form')?.reset();
-  showInAppAlert(`Meeting scheduled!`);
+        // Close the meeting modal and wait for the fade-out animation to finish
+        // so the in-app alert can appear above other UI. closeModal() performs
+        // a 200ms fade; wait slightly longer to be safe.
+        try { closeModal('add-meeting-modal'); } catch (e) {}
+        try { document.getElementById('confirm-meeting-modal')?.classList.add('hidden'); } catch (e) {}
+        await new Promise(res => setTimeout(res, 260));
+
+        document.getElementById('add-meeting-form')?.reset();
+        // Show success alert and ensure it sits above other modals/backdrops
+        showInAppAlert(`Meeting scheduled!`);
+        try { const im = document.getElementById('inapp-system-modal'); if (im) im.style.zIndex = '200500'; } catch (e) {}
 
     } catch (err) {
   console.error('❌ scheduleMeeting error', err);
@@ -3417,7 +3433,11 @@ function renderContacts(limit = currentPageView) {
   listContainer.innerHTML = '';
   if (contactCountSpan) contactCountSpan.textContent = contacts.length;
 
-  const toRender = contacts.slice(0, limit);
+  // Ensure contacts are shown with most-recently-added first. Use `added_date` or `created_at`.
+  const toRender = contacts
+    .slice()
+    .sort((a, b) => new Date(b.added_date || b.created_at || 0) - new Date(a.added_date || a.created_at || 0))
+    .slice(0, limit);
   toRender.forEach(contact => {
     const row = document.createElement('div');
     row.className = `contact-row text-sm`;
@@ -3597,7 +3617,11 @@ function renderMobileContacts(limit = currentPageView) {
   container.innerHTML = '';
 
   // Render contact cards with swipe-delete support (mobile)
-  const toRender = contacts.slice(0, limit);
+  // Keep newest contacts at the top on mobile as well
+  const toRender = contacts
+    .slice()
+    .sort((a, b) => new Date(b.added_date || b.created_at || 0) - new Date(a.added_date || a.created_at || 0))
+    .slice(0, limit);
   toRender.forEach(contact => {
     const outer = document.createElement('div');
     outer.className = 'relative overflow-visible mb-3';
@@ -3663,6 +3687,48 @@ function openContactDetailsModal(id) {
   }
 
   // Delete button removed as per user request
+
+  // Clear contact-action context and wire contact-level action buttons
+  selectedContactAction = null;
+  try {
+    const callBtn = document.getElementById('contact-call-btn');
+    const waBtn = document.getElementById('contact-whatsapp-btn');
+
+    if (callBtn) {
+      callBtn.removeEventListener('click', callBtn._listener || (() => {}));
+      const cb = () => {
+        selectedContactAction = { id: contact.id, contactId: contact.id, contactPhone: contact.phone || '', contactName: contact.name || '' };
+        const callContactText = `${contact.name} (${contact.phone || ''})`;
+        document.getElementById('call-log-contact') && (document.getElementById('call-log-contact').textContent = `Logging call for: ${callContactText}`);
+        closeModal('contact-details-modal');
+        openModal('call-log-modal');
+      };
+      callBtn.addEventListener('click', cb);
+      callBtn._listener = cb;
+    }
+
+    if (waBtn) {
+      waBtn.removeEventListener('click', waBtn._listener || (() => {}));
+      const wb = () => {
+        selectedContactAction = { id: contact.id, contactId: contact.id, contactPhone: contact.phone || '', contactName: contact.name || '' };
+        window.currentWhatsAppContext = {
+          type: 'contact',
+          business_id: BUSINESS_ID || null,
+          contact_id: contact.id || null,
+          contact_name: contact.name || ''
+        };
+        const waTo = document.getElementById('whatsapp-to');
+        const waMsg = document.getElementById('whatsapp-message-body');
+        if (waTo) waTo.value = contact.phone || '';
+        if (waMsg) waMsg.value = '';
+        updateWhatsAppNotesDisplay(document.getElementById('contact-details-notes')?.value || '');
+        closeModal('contact-details-modal');
+        openModal('whatsapp-modal');
+      };
+      waBtn.addEventListener('click', wb);
+      waBtn._listener = wb;
+    }
+  } catch (e) { console.warn('Failed to wire contact action buttons', e); }
 
   openModal('contact-details-modal');
 }
@@ -4337,7 +4403,12 @@ function renderDealsList(deals = dealsData.filter(d => PIPELINE_STAGES.includes(
 
   listContainer.innerHTML = '';
 
-  deals.forEach((deal, index) => {
+  // Ensure deals are shown newest-first by created_at (or fallback to added_date)
+  const sortedDeals = (deals || [])
+    .slice()
+    .sort((a, b) => new Date(b.created_at || b.added_date || 0) - new Date(a.created_at || a.added_date || 0));
+
+  sortedDeals.forEach((deal, index) => {
   const formattedAmount = formatKES(deal.amount);
   const formattedCloseDate = formatDate(deal.closeDate);
   const dealNumber = index + 1;
@@ -5242,6 +5313,21 @@ function initAfterSaleSearch() {
   const results = document.getElementById('after-sale-search-results');
   console.log('[init] initAfterSaleSearch() called', { hasInput: !!searchInput, hasResults: !!results });
   if (!searchInput || !results) return;
+
+  // Disable rendering of search results for the after-sale section while
+  // keeping the search input/bar visible. This preserves the UI but prevents
+  // any results from showing or interacting. Adjusting here avoids touching
+  // other sections or global search behavior.
+  const disableAfterSaleSearchResults = true;
+  if (disableAfterSaleSearchResults) {
+    try { results.innerHTML = ''; } catch (e) {}
+    try { results.classList.add('hidden'); } catch (e) {}
+    // Keep input responsive visually but do not render or reveal results
+    searchInput.addEventListener('input', () => { /* intentionally no-op */ });
+    searchInput.addEventListener('focus', () => { try { results.classList.add('hidden'); } catch (e) {} });
+    searchInput.addEventListener('blur', () => { try { results.classList.add('hidden'); } catch (e) {} });
+    return;
+  }
 
   function render(list) {
     results.innerHTML = list.map(c => `
@@ -6408,16 +6494,16 @@ document.getElementById('log-call-btn')?.addEventListener('click', async () => {
   try {
     const outcome = document.getElementById('call-outcome')?.value || '';
     const notes = document.getElementById('call-notes')?.value || '';
-    // Resolve selected follow-up context
-    const contactId = selectedFollowUp?.contactId || selectedFollowUp?.contact_id || null;
-    const dealId = selectedFollowUp?.deal_id || selectedFollowUp?.dealId || null;
-    const followUpId =
-      selectedFollowUp?.followup_id ||
-      selectedFollowUp?.followUpId ||
-      selectedFollowUp?.id ||
-    null;
 
-    // 1) Insert into call_logs (so call data feeds the analyzer later)
+    // Prefer selectedFollowUp context, fall back to contact modal action context
+    const ctx = selectedFollowUp || selectedContactAction || {};
+    const contactId = ctx?.contactId || ctx?.contact_id || null;
+    const contactPhone = ctx?.contactPhone || ctx?.phone || '';
+    const contactName = ctx?.contactName || ctx?.name || '';
+    const dealId = ctx?.deal_id || ctx?.dealId || null;
+    const followUpId = ctx?.followup_id || ctx?.followUpId || ctx?.id || null;
+
+    // 1) Insert into call_logs
     try {
       const callPayload = {
         business_id: BUSINESS_ID,
@@ -6425,7 +6511,7 @@ document.getElementById('log-call-btn')?.addEventListener('click', async () => {
         deal_id: dealId,
         call_direction: 'outbound',
         call_start: new Date().toISOString(),
-        call_end: new Date().toISOString(), // we don't have actual duration; keep same timestamp
+        call_end: new Date().toISOString(),
         duration_seconds: null,
         call_summary: notes || null,
         call_outcome: outcome || null,
@@ -6437,33 +6523,28 @@ document.getElementById('log-call-btn')?.addEventListener('click', async () => {
       console.warn('call_logs insert failed (non-fatal)', e);
     }
 
-    // 2) Insert feedback entry
+    // 2) Insert feedback entry (call)
     try {
       const fbPayload = {
-  business_id: BUSINESS_ID,
-  contact_id: contactId,
-  deal_id: dealId,
-  feedback_type: 'whatsapp',
-  feedback_stage: '1',          // Feedback 1 = action logged
-  feedback_notes: 'Message sent via WhatsApp', // simple description
-  message_sent: message,        // ✅ actual message content
-  created_at: new Date().toISOString(),
-  ...(followUpId ? { followup_id: followUpId } : {})
-};
-
-
-
-
-  console.debug('[DEBUG] inserting followup_feedback (call) payload', fbPayload);
-  const { data, error } = await client.from('followup_feedback').insert([fbPayload]).select().single();
-  if (error) throw error;
-  console.log('[DEBUG] followup_feedback (call) inserted', data);
+        business_id: BUSINESS_ID,
+        contact_id: contactId,
+        deal_id: dealId,
+        feedback_type: 'call',
+        feedback_stage: '1',
+        feedback_notes: notes || '',
+        created_at: new Date().toISOString(),
+        ...(followUpId ? { followup_id: followUpId } : {})
+      };
+      console.debug('[DEBUG] inserting followup_feedback (call) payload', fbPayload);
+      const { data, error } = await client.from('followup_feedback').insert([fbPayload]).select().single();
+      if (error) throw error;
+      console.log('[DEBUG] followup_feedback (call) inserted', data);
     } catch (e) {
       console.error('❌ followup_feedback insert (call) failed', e);
       showInAppAlert('Failed to save call feedback — check console.');
     }
 
-    // 3) Mark follow-up complete in UI/DB (keeps original behaviour)
+    // 3) Mark follow-up complete when this action originated from a follow-up
     if (selectedFollowUp && selectedFollowUp.id) {
       await completeFollowUp(selectedFollowUp.id);
     }
@@ -6523,14 +6604,17 @@ document.getElementById('send-whatsapp-btn')?.addEventListener('click', async ()
   try {
     const to = document.getElementById('whatsapp-to')?.value || '';
     const message = document.getElementById('whatsapp-message-body')?.value || '';
-    const contactPhone = selectedFollowUp?.contactPhone || selectedFollowUp?.phone || to || '';
-    const contactId = selectedFollowUp?.contactId || selectedFollowUp?.contact_id || null;
-    const followUpId = selectedFollowUp?.id || null;
-    const dealId = selectedFollowUp?.deal_id || selectedFollowUp?.dealId || null;
 
-    if (!message) { 
-      showInAppAlert('Please enter a message'); 
-      return; 
+    // Prefer selectedFollowUp context, fall back to contact modal action context
+    const ctx = selectedFollowUp || selectedContactAction || {};
+    const contactPhone = ctx?.contactPhone || ctx?.phone || to || '';
+    const contactId = ctx?.contactId || ctx?.contact_id || null;
+    const followUpId = ctx?.id || ctx?.followup_id || null;
+    const dealId = ctx?.deal_id || ctx?.dealId || null;
+
+    if (!message) {
+      showInAppAlert('Please enter a message');
+      return;
     }
 
     // 1) Save feedback to DB
@@ -6546,12 +6630,7 @@ document.getElementById('send-whatsapp-btn')?.addEventListener('click', async ()
       };
 
       console.debug('[DEBUG] inserting followup_feedback (whatsapp) payload', fbPayload);
-      const { data, error } = await client
-        .from('followup_feedback')
-        .insert([fbPayload])
-        .select()
-        .single();
-
+      const { data, error } = await client.from('followup_feedback').insert([fbPayload]).select().single();
       if (error) throw error;
       console.log('[DEBUG] followup_feedback (whatsapp) inserted', data);
 
@@ -6560,7 +6639,7 @@ document.getElementById('send-whatsapp-btn')?.addEventListener('click', async ()
       showInAppAlert('Failed to save WhatsApp feedback — check console.');
     }
 
-    // 2) Mark follow-up complete
+    // 2) Mark follow-up complete when this action originated from a follow-up
     if (selectedFollowUp && selectedFollowUp.id) {
       await completeFollowUp(selectedFollowUp.id);
     }
@@ -7402,11 +7481,12 @@ async function openAfterSalePopup(id, name, phone) {
       upsellBtn.dataset.contactId = id;
       upsellBtn.dataset.contactName = customer.name || '';
       upsellBtn.onclick = () => {
-        // Placeholder behaviour: open a simple alert. Replace with real upsell flow when needed.
         try {
-          showInAppAlert(`Upsell for ${customer.name || 'customer'} (Contact ID: ${id})`);
+          // Open the Add Deal form and prefill with this contact
+          openAddDealForContact(customer);
         } catch (e) {
-          console.log('Upsell clicked for', customer);
+          console.warn('Upsell open failed, falling back to alert', e);
+          showInAppAlert(`Upsell for ${customer.name || 'customer'} (Contact ID: ${id})`);
         }
       };
     }
@@ -7669,6 +7749,8 @@ function openAskForReferralModal(customer) {
   document.getElementById('referral-customer-name').textContent = customer.name || 'Customer';
   document.getElementById('referral-customer-phone').textContent = customer.phone || '';
   document.getElementById('referral-offer-input').value = '';
+  // store contact id on modal so handlers can read it later
+  try { referralModal.dataset.contactId = customer.id; } catch (e) {}
   referralModal.classList.remove('hidden');
   referralModal.classList.add('flex');
 }
@@ -7686,12 +7768,36 @@ function openAskForReviewModal(customer) {
   document.getElementById('review-customer-name').textContent = customer.name || 'Customer';
   document.getElementById('review-customer-phone').textContent = customer.phone || '';
   document.getElementById('review-offer-input').value = '';
+  // store contact id on modal so handlers can read it later
+  try { reviewModal.dataset.contactId = customer.id; } catch (e) {}
   reviewModal.classList.remove('hidden');
   reviewModal.classList.add('flex');
 }
 
 if (closeReviewModal) {
   closeReviewModal.addEventListener('click', () => reviewModal.classList.add('hidden'));
+}
+// Open Add Deal prefilled for a contact (used by Upsell button)
+function openAddDealForContact(customer) {
+  try {
+    if (!customer) return;
+    // Mark origin so nested flows can behave accordingly
+    formOrigin = 'after-sale-upsell';
+    // Set selectedDealContact so deal form behaves as if the user picked the contact
+    selectedDealContact = { id: customer.id, name: customer.name || '', phone: customer.phone || '' };
+
+    // Prefill DOM elements used by the add-deal form
+    const dealSearchEl = document.getElementById('deal-contact-search');
+    const contactIdEl = document.getElementById('new-deal-contact-id');
+    if (dealSearchEl) dealSearchEl.value = `${selectedDealContact.name} (${selectedDealContact.phone || ''})`;
+    if (contactIdEl) contactIdEl.value = selectedDealContact.id;
+
+    // Ensure the deal-stage select is populated
+    populateDealStageSelect();
+    // Open the Add modal and switch to Deal form
+    openAddModal();
+    switchAddForm('deal');
+  } catch (e) { console.warn('openAddDealForContact failed', e); }
 }
 // 🟣 Ask for Referral buttons
 const referralCallBtn = document.getElementById('referral-call-btn');
@@ -7721,14 +7827,17 @@ if (referralCallBtn && referralWhatsappBtn) {
     const phone = document.getElementById('referral-customer-phone').textContent;
     const offer = document.getElementById('referral-offer-input').value || 'We value your referrals!';
     
-    // ✅ Set AI Messaging Context
-  window.currentWhatsAppContext = {
-    type: "referral",
-    business_id: BUSINESS_ID,
-    contact_id: null, // no ID present in this modal
-    contact_name: name,
-    extra: { offer }
-  };
+      // ✅ Set AI Messaging Context (include contact id if available)
+      const contactId = (() => {
+        try { return parseInt(referralModal?.dataset?.contactId || null, 10) || null; } catch (e) { return null; }
+      })();
+      window.currentWhatsAppContext = {
+        type: "referral",
+        business_id: BUSINESS_ID,
+        contact_id: contactId,
+        contact_name: name,
+        extra: { offer }
+      };
     const waTo      = document.getElementById('whatsapp-to');
     const waMsg     = document.getElementById('whatsapp-message-body');
     const waSubject = document.getElementById('whatsapp-subject');
@@ -7767,14 +7876,17 @@ if (reviewCallBtn && reviewWhatsappBtn) {
     const phone = document.getElementById('review-customer-phone').textContent;
     const offer = document.getElementById('review-offer-input').value || 'We’d love your feedback!';
 
-    // ✅ Set AI Messaging Context
-  window.currentWhatsAppContext = {
-    type: "review",
-    business_id: BUSINESS_ID,
-    contact_id: null,
-    contact_name: name,
-    extra: { offer }
-  };
+    // ✅ Set AI Messaging Context (include contact id if available)
+    const contactId = (() => {
+      try { return parseInt(reviewModal?.dataset?.contactId || null, 10) || null; } catch (e) { return null; }
+    })();
+    window.currentWhatsAppContext = {
+      type: "review",
+      business_id: BUSINESS_ID,
+      contact_id: contactId,
+      contact_name: name,
+      extra: { offer }
+    };
     const waTo      = document.getElementById('whatsapp-to');
     const waMsg     = document.getElementById('whatsapp-message-body');
     const waSubject = document.getElementById('whatsapp-subject');

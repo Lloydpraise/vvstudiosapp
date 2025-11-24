@@ -2,8 +2,30 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- Match CRM default zoom: set initial scale to 80% for a tighter mobile fit -->
-    <meta name="viewport" content="width=device-width, initial-scale=0.8, minimum-scale=0.8, viewport-fit=cover">
+    <!-- Dynamic viewport: keep mobile at 0.8 (user preference) but use 1.0 on desktop to avoid zoomed-in layout -->
+    <meta id="dynamic-viewport" name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <script>
+        (function(){
+            try {
+                // Preserve the mobile tuning (initial-scale=0.8) while ensuring desktop uses 1.0
+                var vp = document.getElementById('dynamic-viewport');
+                function updateViewport() {
+                    var w = window.innerWidth || document.documentElement.clientWidth || 1024;
+                    // Treat < 768 as mobile (matches the app's breakpoints)
+                    if (w < 768) {
+                        vp.setAttribute('content', 'width=device-width, initial-scale=0.8, minimum-scale=0.8, viewport-fit=cover');
+                    } else {
+                        // Desktop: use 0.8 as requested
+                        vp.setAttribute('content', 'width=device-width, initial-scale=0.8, minimum-scale=0.8, viewport-fit=cover');
+                    }
+                }
+                // Run once early
+                updateViewport();
+                // Also update if the window is resized (user may toggle dev tools or change device)
+                window.addEventListener('resize', function(){ try { updateViewport(); } catch(e){} });
+            } catch (e) { console.warn('viewport script error', e); }
+        })();
+    </script>
     <title>VV Studios Analytics Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.5.1/chart.min.js"></script>
@@ -434,10 +456,7 @@
                         </div>
                     </div>
                     <div id="header-controls" class="absolute right-4 top-4 z-50 flex items-center space-x-4 md:relative md:right-0 md:top-0 md:mt-0 mt-4 lg:mt-0">
-                        <div class="relative w-full max-w-xs hidden md:block">
-                            <input type="text" placeholder="Search..." class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded-xl py-2 px-4 pl-10 text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 19l-6-6M10 16a6 6 0 100-12 6 6 0 000 12z"></path></svg>
-                        </div>
+                        <!-- Search removed: not used on dashboard -->
                         <button class="w-10 h-10 rounded-xl bg-[#1a1d23] flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-white/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 01-3.46 0"></path></svg>
                         </button>
@@ -458,7 +477,7 @@
             <section class="mb-10 p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate">
                 <div class="flex items-center justify-between flex-wrap">
                     <div class="w-full md:w-auto flex-1 mb-4 md:mb-0">
-                        <h2 class="text-white font-semibold text-lg mb-2">Package Countdown</h2>
+                        <h2 id="packageTitle" class="text-white font-semibold text-lg mb-2"><span id="packageName" class="font-semibold text-white">Package</span> Package Countdown</h2>
                         <div class="progress-bar-container">
                             <div id="countdown-bar" class="progress-bar" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%;"></div>
                         </div>
@@ -473,6 +492,34 @@
                     </div>
                 </div>
             </section>
+        <script>
+        // Metric tooltip click handlers: toggle tooltip visibility and close on outside click
+        document.addEventListener('click', function (e) {
+            // if clicking a metric-info button
+            const infoBtn = e.target.closest && e.target.closest('.metric-info');
+            if (infoBtn) {
+                const parent = infoBtn.parentElement || infoBtn.closest('.relative');
+                if (!parent) return;
+                // toggle show class
+                parent.classList.toggle('show-tooltip');
+                // hide other tooltips
+                Array.from(document.querySelectorAll('.relative.show-tooltip')).forEach(el => {
+                    if (el !== parent) el.classList.remove('show-tooltip');
+                });
+                e.stopPropagation();
+                return;
+            }
+            // click outside -> close all
+            Array.from(document.querySelectorAll('.relative.show-tooltip')).forEach(el=>el.classList.remove('show-tooltip'));
+        });
+        // Close on ESC
+        document.addEventListener('keydown', function(e){ if (e.key === 'Escape') { Array.from(document.querySelectorAll('.relative.show-tooltip')).forEach(el=>el.classList.remove('show-tooltip')); } });
+
+        // small CSS tweak to show metric tooltip when parent has .show-tooltip
+        const style = document.createElement('style');
+        style.innerHTML = '.relative .tooltip{ left: auto; right: 0; top: calc(100% + 8px); transform: translateY(0); visibility: hidden; opacity: 0; } .relative.show-tooltip .tooltip{ visibility: visible; opacity:1;} @media (max-width:1024px){ .relative .tooltip{ display:block; position:relative; left:0; right:0; top:8px; transform:none; white-space:normal; } }';
+        document.head.appendChild(style);
+        </script>
 
             <!-- Key Performance Indicators -->
 <section class="mb-10">
@@ -511,7 +558,13 @@
                     <!-- Icon for Percentage/Conversion Rate -->
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-orange-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><circle cx="6" cy="6" r="3"></circle><circle cx="18" cy="18" r="3"></circle></svg>
                 </div>
-                <h3 class="font-medium text-white/80">Conversion Rate</h3>
+                <div class="relative">
+                    <h3 class="font-medium text-white/80 inline">Conversion Rate</h3>
+                    <button class="metric-info ml-2 text-white/60" aria-label="Conversion Rate info" type="button">
+                        <i class="fa-solid fa-circle-info"></i>
+                    </button>
+                    <span class="tooltip metric-tooltip">Percent of contacts that became customers this month.</span>
+                </div>
             </div>
             <p id="conversionRate" class="text-3xl font-bold mb-1">0%</p>
             <p id="conversionRateChange" class="text-sm flex items-center">
@@ -527,7 +580,13 @@
                     <!-- Icon for Life Time Value (Target/Star) -->
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 5v.01M12 9v.01M12 13v.01M12 17v.01M5 12h.01M9 12h.01M13 12h.01M17 12h.01"></path></svg>
                 </div>
-                <h3 class="font-medium text-white/80">Life Time Value (LTV)</h3>
+                <div class="relative">
+                    <h3 class="font-medium text-white/80 inline">Life Time Value (LTV)</h3>
+                    <button class="metric-info ml-2 text-white/60" aria-label="LTV info" type="button">
+                        <i class="fa-solid fa-circle-info"></i>
+                    </button>
+                    <span class="tooltip metric-tooltip">Average total money a customer spends for your business over time.</span>
+                </div>
             </div>
             <p id="lifeTimeValue" class="text-3xl font-bold mb-1">Ksh 0</p>
             <p id="lifeTimeValueChange" class="text-sm flex items-center">
@@ -543,7 +602,13 @@
                     <!-- Icon for Cost of Customer Acquisition (Price Tag) -->
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 17H7l-3 4-3-4M21 17l-3 4-3-4H2V7h20v10z"></path></svg>
                 </div>
-                <h3 class="font-medium text-white/80">Customer Acquisition Cost (CAC)</h3>
+                <div class="relative">
+                    <h3 class="font-medium text-white/80 inline">Customer Acquisition Cost (CAC)</h3>
+                    <button class="metric-info ml-2 text-white/60" aria-label="CAC info" type="button">
+                        <i class="fa-solid fa-circle-info"></i>
+                    </button>
+                    <span class="tooltip metric-tooltip">Average amount you spend on ads to get one new customer. Lower is better.</span>
+                </div>
             </div>
             <p id="costOfAcquisition" class="text-3xl font-bold mb-1">Ksh 0</p>
             <p id="costOfAcquisitionChange" class="text-sm flex items-center">

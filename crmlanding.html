@@ -2,8 +2,26 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- Lock initial zoom to 80% for consistent mobile/desktop rendering and to reduce "zoomed-in" feel -->
-    <meta name="viewport" content="width=device-width, initial-scale=0.8, minimum-scale=0.8, maximum-scale=0.8, user-scalable=no">
+    <!-- Dynamic viewport: keep mobile at 0.8 (preserve your mobile tuning) but use 1.0 on desktop to avoid zoomed-in layout -->
+    <meta id="dynamic-viewport" name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <script>
+        (function(){
+            try {
+                var vp = document.getElementById('dynamic-viewport');
+                function updateViewport() {
+                    var w = window.innerWidth || document.documentElement.clientWidth || 1024;
+                    if (w < 768) {
+                        vp.setAttribute('content', 'width=device-width, initial-scale=0.8, minimum-scale=0.8, maximum-scale=0.8, user-scalable=no');
+                    } else {
+                        // Desktop: use 0.8 to match requested desktop scale
+                        vp.setAttribute('content', 'width=device-width, initial-scale=0.8, minimum-scale=0.8, maximum-scale=0.8, user-scalable=yes');
+                    }
+                }
+                updateViewport();
+                window.addEventListener('resize', function(){ try { updateViewport(); } catch(e){} });
+            } catch (e) { console.warn('viewport script error', e); }
+        })();
+    </script>
     <title>VV Studios</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" xintegrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -2048,9 +2066,14 @@
                             <label class="block text-sm font-medium text-white/70 mb-2">Notes (Editable):</label>
                             <textarea id="contact-details-notes" rows="4" class="w-full bg-bg-dark border border-border-dark rounded-lg p-3 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"></textarea>
                         </div>
-                        <button id="contact-follow-up-btn" class="w-full bg-main-purple hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors">
-                            <i class="fa-solid fa-clock-rotate-left mr-2"></i> Follow Up
-                        </button>
+                        <div class="flex justify-between space-x-4">
+                            <button id="contact-call-btn" class="flex-1 bg-main-purple hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors">
+                                <i class="fa-solid fa-phone mr-2"></i> Call
+                            </button>
+                            <button id="contact-whatsapp-btn" class="flex-1 bg-whatsapp-green hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors">
+                                <i class="fab fa-whatsapp mr-2"></i> Send WhatsApp
+                            </button>
+                        </div>
                     </div>
                     <button id="cancel-contact-details-modal" class="mt-4 w-full text-white/60 hover:text-white transition-colors" data-modal-close="contact-details-modal">Cancel</button>
                 </div>
@@ -2687,6 +2710,7 @@
                     const user = JSON.parse(stored);
                     const business = user.business_name || user.business || 'Your Business';
                     const admin = user.admin_name || user.firstName || user.first_name || '';
+                    const adminFirstName = (admin && typeof admin === 'string') ? admin.split(' ')[0] : admin;
 
                     const businessEl = document.getElementById('businessName');
                     const welcomeEl = document.getElementById('welcomeName');
@@ -2695,8 +2719,8 @@
 
                     if (businessEl) businessEl.textContent = business;
                     if (welcomeEl) welcomeEl.textContent = admin;
-                    if (profileName) profileName.textContent = admin || business;
-                    if (avatar && admin) avatar.textContent = admin.charAt(0).toUpperCase();
+                    if (profileName) profileName.textContent = adminFirstName || business;
+                    if (avatar) avatar.textContent = (adminFirstName && adminFirstName[0]) ? adminFirstName.charAt(0).toUpperCase() : (business && business[0] ? business.charAt(0).toUpperCase() : 'A');
                 }
             } catch (err) {
                 console.warn('Error parsing vvUser for header population', err);

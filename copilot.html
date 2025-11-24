@@ -2,11 +2,34 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta id="dynamic-viewport" name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <script>
+    (function(){
+      try {
+        var vp = document.getElementById('dynamic-viewport');
+        function updateViewport(){
+          var w = window.innerWidth || document.documentElement.clientWidth || 1024;
+          if (w < 768) {
+            // Mobile: slightly zoomed-out by default and prevent accidental double-tap zoom
+            vp.setAttribute('content', 'width=device-width, initial-scale=0.8, minimum-scale=0.8, maximum-scale=0.8, user-scalable=no, viewport-fit=cover');
+          } else {
+            // Desktop: allow scaling but keep a consistent base scale
+            vp.setAttribute('content', 'width=device-width, initial-scale=0.8, minimum-scale=0.8, maximum-scale=3.0, user-scalable=yes, viewport-fit=cover');
+          }
+        }
+        updateViewport();
+        window.addEventListener('resize', function(){ try { updateViewport(); } catch(e){} });
+      } catch(e) { console.warn('viewport script error', e); }
+    })();
+  </script>
   <title>Dynamic AI Business Assistant</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    body { font-family: 'Inter', sans-serif; }
     /* For a better scrolling experience */
     #chat-messages {
       scroll-behavior: smooth;
@@ -58,6 +81,27 @@
       #sidebar {
         transform: translateX(0) !important;
       }
+    }
+    /* Mobile-friendly adjustments (match crmlanding behavior) */
+    @media (max-width: 1024px) {
+      /* Make the mobile menu button stick on the viewport for easy access */
+      #open-menu-btn {
+        position: fixed;
+        top: 0.75rem;
+        left: 0.75rem;
+        z-index: 120;
+        background: transparent;
+        padding: 0.4rem 0.6rem;
+        border-radius: 0.5rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(4px);
+      }
+
+      /* Keep main content visible and not hidden under the fixed menu button */
+      main { padding-left: 3.25rem; }
+      header { padding-left: 3.25rem; }
     }
   </style>
 </head>
@@ -346,7 +390,7 @@
         try {
              // Fetch all messages for the current user, business, and section, sorted by created_at
              const { data: initialMessages, error } = await supabase
-                .from('messages')
+                .from('copilot_messages')
                 .select('id, role, content')
                 .eq('user_id', userId)
                 .eq('business_id', BUSINESS_ID)
@@ -378,7 +422,7 @@
             .channel(`messages_channel_${activeSection}_${BUSINESS_ID}`)
             .on(
                 'postgres_changes',
-                { event: 'INSERT', schema: 'public', table: 'messages', filter: `business_id=eq.${BUSINESS_ID}` },
+                { event: 'INSERT', schema: 'public', table: 'copilot_messages', filter: `business_id=eq.${BUSINESS_ID}` },
                 (payload) => {
                     // Check if the new message belongs to the current user and section
                     const newMessage = payload.new;

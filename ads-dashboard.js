@@ -76,8 +76,12 @@ function showDashboard(userData, rawPhone) {
     // Fill dashboard header
     document.getElementById("businessName").textContent = businessName;
     document.getElementById("welcomeName").textContent = adminName;
-    document.getElementById("profileName").textContent = businessName;
-    document.getElementById("profile-avatar").textContent = adminName.charAt(0).toUpperCase();
+    // Show admin first name in small profile area and use its initial for avatar
+    const adminFirstName = (adminName && typeof adminName === 'string') ? adminName.split(' ')[0] : adminName;
+    const profileNameEl = document.getElementById("profileName");
+    if (profileNameEl) profileNameEl.textContent = adminFirstName || businessName;
+    const avatarEl = document.getElementById("profile-avatar");
+    if (avatarEl) avatarEl.textContent = (adminFirstName && adminFirstName[0]) ? adminFirstName.charAt(0).toUpperCase() : (adminName && adminName[0] ? adminName.charAt(0).toUpperCase() : 'A');
     console.log(`[DEBUG] Header updated: Business Name: ${businessName}, Admin Name: ${adminName}`);
     
     // Package bar logic (now the comprehensive function)
@@ -217,6 +221,21 @@ function updateSubscriptionStatus(userData) {
 
         // expose package & remaining days globally for other modules
         try { window.currentPackage = pkg; window.daysRemaining = daysRemaining; } catch (e) {}
+
+        // Update package name label & color if present
+        try {
+          const pkgKey = (pkg || '').toString().toLowerCase();
+          const mapping = { free: 'text-white', growth: 'text-green-400', pro: 'text-yellow-400', premium: 'text-purple-400' };
+          const packageNameEl = document.getElementById('packageName');
+          if (packageNameEl) {
+            const display = (pkg || 'Free').toString();
+            const disp = display.charAt(0).toUpperCase() + display.slice(1);
+            packageNameEl.textContent = disp;
+            Object.values(mapping).forEach(c=>packageNameEl.classList.remove(c));
+            const cls = mapping[pkgKey] || 'text-white';
+            packageNameEl.classList.add(cls);
+          }
+        } catch (e) {}
 
         // Hide business copilot section for Free users
         try {
@@ -607,9 +626,11 @@ function updateKeyMetricsTotalSpend() {
   }
 }
 
+  // Call the helper to update any spend UI that expects a total spend
+  try { updateKeyMetricsTotalSpend(); } catch(e) { console.warn('[DEBUG] updateKeyMetricsTotalSpend call failed', e); }
 
-    // Clear any prior status
-    document.getElementById("status-message").textContent = "";
+  // Clear any prior status
+  document.getElementById("status-message").textContent = "";
 
   } catch (error) {
     console.error("[DEBUG] Error fetching ad results:", error);
@@ -681,42 +702,60 @@ function calculateAggregatedData(docs) {
       conversionRate: 0
     };
   }
-
-  // ✅ Step 1: compute real spend
+  // Defensive sums for actual fields returned by Supabase
+  let impressionsSum = 0;
+  let reachSum = 0;
+  let clicksSum = 0;
+  let leadsSum = 0;
+  let messagesStartedSum = 0;
+  let conversionsSum = 0;
   let totalSpend = 0;
+
   docs.forEach(doc => {
-    const spendVal =
-      doc.total_spend !== undefined && doc.total_spend !== null
-        ? parseFloat(doc.total_spend)
-        : doc.Spend !== undefined && doc.Spend !== null
-        ? parseFloat(doc.Spend)
-        : 0;
+    const safe = v => (v === undefined || v === null || v === '') ? 0 : Number(v);
+    impressionsSum += safe(doc.impressions || doc.Impressions);
+    reachSum += safe(doc.reach || doc.Reach);
+    clicksSum += safe(doc.clicks || doc.Clicks);
+    leadsSum += safe(doc.leads || doc.lead_count || 0);
+    messagesStartedSum += safe(doc.messages_started || 0);
+    conversionsSum += safe(doc.conversions || 0);
 
-    if (!isNaN(spendVal)) totalSpend += spendVal;
-  });
-  console.log(`[DEBUG] Total spend calculated in calculateAggregatedData: ${totalSpend}`);
-
-  // ✅ Step 2: continue with your existing aggregation
-  const sumFields = ['impressions', 'totalLeads'];
-  const avgFields = ['frequency', 'costPerLead', 'ctr', 'linkCtr', 'cpm', 'cpc', 'totalSales', 'roas', 'conversionRate'];
-
-  let aggregated = {};
-
-  // Sum fields
-  sumFields.forEach(field => {
-    aggregated[field] = docs.reduce((sum, doc) => sum + (doc[field] || 0), 0);
+    const spendVal = (doc.total_spend !== undefined && doc.total_spend !== null) ? Number(doc.total_spend)
+      : (doc.Spend !== undefined && doc.Spend !== null) ? Number(doc.Spend)
+      : (doc.spend !== undefined && doc.spend !== null) ? Number(doc.spend)
+      : 0;
+    totalSpend += isFinite(spendVal) ? spendVal : 0;
   });
 
-  // ✅ override totalSpend with the real one we just computed
-  aggregated.totalSpend = totalSpend;
+  // Derived metrics
+  const impressions = impressionsSum;
+  const frequency = reachSum > 0 ? (impressionsSum / reachSum) : 0; // avg times a person saw an ad
+  const totalLeads = leadsSum + messagesStartedSum; // consider messages as leads as well
+  const costPerLead = totalLeads > 0 ? (totalSpend / totalLeads) : 0;
+  const ctr = impressionsSum > 0 ? ((clicksSum / impressionsSum) * 100) : 0;
+  // linkCtr not available explicitly; fall back to ctr where appropriate
+  const linkCtr = ctr;
+  const cpm = impressionsSum > 0 ? (totalSpend / (impressionsSum / 1000)) : 0;
+  const cpc = clicksSum > 0 ? (totalSpend / clicksSum) : 0;
+  const conversionRate = totalLeads > 0 ? ((conversionsSum / totalLeads) * 100) : 0;
 
-  // Average fields
-  avgFields.forEach(field => {
-    const sum = docs.reduce((sum, doc) => sum + (doc[field] || 0), 0);
-    aggregated[field] = sum / docs.length;
-  });
+  // totalSales and roas will be handled by fetchTotalSales and updateAdDataForPeriod
+  const aggregated = {
+    impressions,
+    frequency,
+    totalLeads,
+    costPerLead,
+    ctr,
+    linkCtr,
+    cpm,
+    cpc,
+    totalSpend: Math.round((totalSpend + Number.EPSILON) * 100) / 100,
+    totalSales: 0,
+    roas: 0,
+    conversionRate
+  };
 
-  console.log("[DEBUG] Aggregation complete.");
+  console.log("[DEBUG] Aggregation complete.", aggregated);
   return aggregated;
 }
  
@@ -750,6 +789,28 @@ async function fetchTotalSales(businessId, period = 'today') {
     return totalSales;
   } catch (error) {
     console.error('[DEBUG] Error fetching total sales:', error);
+    return 0;
+  }
+}
+
+// Fetch total sales using explicit start/end Date objects (inclusive start, exclusive end)
+async function fetchTotalSalesForRange(businessId, startDateObj, endDateObj) {
+  try {
+    const startISO = startDateObj.toISOString();
+    const endISO = endDateObj.toISOString();
+    const { data, error } = await supabase
+      .from('sales')
+      .select('amount, timestamp')
+      .eq('business_id', businessId)
+      .gte('timestamp', startISO)
+      .lt('timestamp', endISO);
+
+    if (error) throw error;
+    const totalSales = (data || []).reduce((sum, sale) => sum + (parseFloat(sale.amount) || 0), 0);
+    console.log(`[DEBUG] Total Sales fetched for range ${startISO} - ${endISO}: ${totalSales}`);
+    return totalSales;
+  } catch (err) {
+    console.error('[DEBUG] Error in fetchTotalSalesForRange', err);
     return 0;
   }
 }
@@ -934,17 +995,35 @@ async function updateAdDataForPeriod(period) {
       if (roasEl) roasEl.textContent = `0.00x`;
       const conversionRateEl = document.getElementById("conversionRate");
       if (conversionRateEl) conversionRateEl.textContent = `0.0%`;
+
+      // render changes comparing zeros
+      renderChange('totalSpendChange', 0, 0);
+      renderChange('totalSalesChange', 0, 0);
+      renderChange('roasChange', 0, 0);
     } else {
-      const totalSalesValue = await fetchTotalSales(businessId, period);
+      // Fetch sales totals for current and previous ranges
+      const totalSalesCurrent = await fetchTotalSalesForRange(businessId, ranges.start, ranges.end);
+      const totalSalesPrev = await fetchTotalSalesForRange(businessId, ranges.prevStart, ranges.prevEnd);
+
       const totalSalesEl = document.getElementById("totalSales");
       if (totalSalesEl) {
-        totalSalesEl.textContent = `KES ${Number(totalSalesValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        totalSalesEl.textContent = `KES ${Number(totalSalesCurrent || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
       }
-      const roasValue = currentAgg.totalSpend > 0 ? totalSalesValue / currentAgg.totalSpend : 0;
+
+      // compute ROAS for both periods
+      const roasCurrent = currentAgg.totalSpend > 0 ? (totalSalesCurrent / currentAgg.totalSpend) : 0;
+      const roasPrev = prevAgg.totalSpend > 0 ? (totalSalesPrev / prevAgg.totalSpend) : 0;
+
       const roasEl = document.getElementById("roas");
-      if (roasEl) roasEl.textContent = `${roasValue.toFixed(2)}x`;
+      if (roasEl) roasEl.textContent = `${roasCurrent.toFixed(2)}x`;
+
       const conversionRateEl = document.getElementById("conversionRate");
       if (conversionRateEl) conversionRateEl.textContent = (currentAgg.conversionRate || 0).toFixed(1) + "%";
+
+      // Render percent changes for money metrics
+      renderChange('totalSpendChange', currentAgg.totalSpend || 0, prevAgg.totalSpend || 0, false);
+      renderChange('totalSalesChange', totalSalesCurrent || 0, totalSalesPrev || 0, false);
+      renderChange('roasChange', roasCurrent || 0, roasPrev || 0, false);
     }
   } catch (e) {
     console.warn("[DEBUG] error fetching sales/roas in new updateAdDataForPeriod", e);
@@ -1031,9 +1110,13 @@ async function loadCharts(period = 'days') {
     }
 
     // Prepare chart arrays
-    const labels = Object.keys(grouped).sort();
-    const spendData = labels.map(l => grouped[l].spend);
-    const salesSeries = labels.map(l => grouped[l].sales);
+    const rawLabels = Object.keys(grouped).sort();
+    const labels = rawLabels.map(l => {
+      const dt = new Date(l + '-01');
+      return isNaN(dt) ? l : dt.toLocaleString(undefined, { month: 'short', year: 'numeric' });
+    });
+    const spendData = rawLabels.map(l => grouped[l].spend);
+    const salesSeries = rawLabels.map(l => grouped[l].sales);
 
     /* -------------------------------------------------------------------------- */
     /*  🧾 2. Render Ad Spend vs Sales Chart                                     */
@@ -1064,7 +1147,6 @@ async function loadCharts(period = 'days') {
           ],
         },
         options: {
-          responsive: true,
           interaction: { mode: 'index', intersect: false },
           scales: {
             y: {
@@ -1079,7 +1161,7 @@ async function loadCharts(period = 'days') {
             },
           },
           plugins: {
-            legend: { position: 'bottom' },
+            legend: { position: 'bottom', labels: { boxWidth: 12, padding: 10, usePointStyle: true } },
             tooltip: {
               callbacks: {
                 afterBody: items => {
@@ -1143,10 +1225,14 @@ try {
   }
 
   // 4️⃣ Prepare chart arrays
-  const labels2 = Object.keys(groupedLeads).sort();
-  const totalLeads = labels2.map(l => groupedLeads[l].leads);
-  const convertedLeads = labels2.map(l => groupedLeads[l].converted);
-  const conversionRate = labels2.map(l => {
+  const rawLabels2 = Object.keys(groupedLeads).sort();
+  const labels2 = rawLabels2.map(l => {
+    const dt = new Date(l + '-01');
+    return isNaN(dt) ? l : dt.toLocaleString(undefined, { month: 'short', year: 'numeric' });
+  });
+  const totalLeads = rawLabels2.map(l => groupedLeads[l].leads);
+  const convertedLeads = rawLabels2.map(l => groupedLeads[l].converted);
+  const conversionRate = rawLabels2.map(l => {
     const { leads, converted } = groupedLeads[l];
     return leads > 0 ? ((converted / leads) * 100).toFixed(1) : 0;
   });
@@ -1184,7 +1270,6 @@ try {
         ],
       },
       options: {
-        responsive: true,
         interaction: { mode: 'index', intersect: false },
         scales: {
           y: {
@@ -1202,7 +1287,7 @@ try {
           },
         },
         plugins: {
-          legend: { position: 'bottom' },
+          legend: { position: 'bottom', labels: { boxWidth: 12, padding: 10, usePointStyle: true } },
           tooltip: {
             callbacks: {
               afterBody: items => {

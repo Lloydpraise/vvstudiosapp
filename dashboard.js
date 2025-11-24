@@ -1,4 +1,4 @@
-import { processSalesData } from './sales-logic.js';
+// sales-logic removed: metrics computed inline below
 
 // CRITICAL FIX (Working): Reverting to the standard '+esm' CDN URL but using a namespace import 
 // to resolve the 'createClient is undefined' error that happens with direct destructuring.
@@ -162,9 +162,15 @@ function proceedToDashboard(userData, rawPhone) {
     const businessName = loggedInUser.business_name || 'Your Business';
 
     if (welcomeName) welcomeName.textContent = adminName;
-    if (profileName) profileName.textContent = businessName; 
+    // Show admin's first name in the small profile area (not the business name)
+    if (profileName) profileName.textContent = adminFirstName;
     if (profileAvatar) {
-        profileAvatar.textContent = adminName.charAt(0).toUpperCase();
+        // Use admin's first name initial for the avatar
+        try {
+            profileAvatar.textContent = (adminFirstName && adminFirstName[0]) ? adminFirstName.charAt(0).toUpperCase() : (adminName && adminName[0] ? adminName.charAt(0).toUpperCase() : 'A');
+        } catch (e) {
+            profileAvatar.textContent = (adminName && adminName[0]) ? adminName.charAt(0).toUpperCase() : 'A';
+        }
     }
     if (businessNameEl) {
         businessNameEl.textContent = businessName;
@@ -353,6 +359,28 @@ export function updateSubscriptionStatus(userData) {
 
         // expose package & remaining days globally for other modules
         try { window.currentPackage = pkg; window.daysRemaining = daysRemaining; } catch (e) {}
+
+        // Update package label and color in the UI (e.g. "Pro Package Countdown")
+        try {
+            const pkgKey = (pkg || '').toString().toLowerCase();
+            const mapping = {
+                free: 'text-white',
+                growth: 'text-green-400',
+                pro: 'text-yellow-400',
+                premium: 'text-purple-400'
+            };
+            const packageNameEl = document.getElementById('packageName');
+            if (packageNameEl) {
+                const display = (pkg || 'Free').toString();
+                // Capitalize first letter
+                const disp = display.charAt(0).toUpperCase() + display.slice(1);
+                packageNameEl.textContent = disp;
+                // remove known color classes then add mapped class
+                Object.values(mapping).forEach(c => packageNameEl.classList.remove(c));
+                const cls = mapping[pkgKey] || 'text-white';
+                packageNameEl.classList.add(cls);
+            }
+        } catch (e) {}
 
         // Hide business copilot section for Free users
         try {
@@ -562,191 +590,7 @@ export function activateServices(services) {
     });
 }
 
-async function fetchAndRenderKPIs() {
-  try {
-    // 1️⃣ Fetch sales + deals + contacts
-    const { data: salesData, error: salesError } = await supabase
-      .from('after_sale_view')
-      .select('*')
-      .eq('business_id', businessId)
-      .order('timestamp', { ascending: false });
-
-    if (salesError) throw salesError;
-
-    const { data: contactsData, error: contactsError } = await supabase
-      .from('contacts')
-      .select('*')
-      .eq('business_id', businessId);
-
-    if (contactsError) throw contactsError;
-
-    const { data: adsData, error: adsError } = await supabase
-      .from('ads')
-      .select('total_spend, date')
-      .eq('business_id', businessId)
-      .order('date', { ascending: false });
-
-    if (adsError) throw adsError;
-
-    // Get current and last month
-    const now = new Date();
-    const thisMonth = now.getMonth();
-    const thisYear = now.getFullYear();
-    const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
-    const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
-
-    // ----------------------------
-    // 2️⃣ SALES MONTHLY
-    // ----------------------------
-    const filterSalesByMonth = (month, year) =>
-      salesData.filter(sale => {
-        const date = new Date(sale.timestamp);
-        return date.getMonth() === month && date.getFullYear() === year;
-      });
-
-    const salesThisMonth = filterSalesByMonth(thisMonth, thisYear);
-    const salesLastMonth = filterSalesByMonth(lastMonth, lastMonthYear);
-
-    const totalSalesThisMonth = salesThisMonth.reduce((sum, sale) => sum + Number(sale.amount || 0), 0);
-    const totalSalesLastMonth = salesLastMonth.reduce((sum, sale) => sum + Number(sale.amount || 0), 0);
-
-    let salesChange = 0;
-    if (totalSalesLastMonth > 0) salesChange = ((totalSalesThisMonth - totalSalesLastMonth) / totalSalesLastMonth) * 100;
-
-    // Update Sales KPI
-    document.getElementById("salesMonthly").textContent = "Ksh " + Math.round(totalSalesThisMonth).toLocaleString();
-    const salesChangeText = document.getElementById("salesMonthlyChange");
-    salesChangeText.innerHTML = `<svg id="salesMonthlyIcon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1"
-        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-        stroke-linecap="round" stroke-linejoin="round"></svg>
-        ${salesChange > 0 ? "+" : ""}${Math.round(salesChange*10)/10}%`;
-
-    const salesIcon = salesChangeText.querySelector("svg");
-    if (salesChange > 0) {
-      salesChangeText.classList.add("text-green-400"); salesChangeText.classList.remove("text-red-400");
-      salesIcon.innerHTML = `<path d="M12 19V5m0 0l-7 7m7-7l7 7"></path>`; // up
-    } else if (salesChange < 0) {
-      salesChangeText.classList.add("text-red-400"); salesChangeText.classList.remove("text-green-400");
-      salesIcon.innerHTML = `<path d="M12 5v14m0 0l-7-7m7 7l7-7"></path>`; // down
-    } else salesIcon.innerHTML = `<circle cx="12" cy="12" r="4"></circle>`; // neutral
-
-    // ----------------------------
-    // 3️⃣ CONVERSION RATE
-    // ----------------------------
-    // Conversion rate = (# of contacts with closed deals this month / total contacts) * 100
-    const closedDealsThisMonth = salesThisMonth.map(s => s.contact_id);
-    const uniqueClosedContacts = [...new Set(closedDealsThisMonth)];
-    const totalContacts = contactsData.length;
-    const conversionRate = totalContacts ? (uniqueClosedContacts.length / totalContacts) * 100 : 0;
-
-    // Conversion rate last month
-    const closedDealsLastMonth = salesLastMonth.map(s => s.contact_id);
-    const uniqueClosedContactsLast = [...new Set(closedDealsLastMonth)];
-    const conversionLastMonth = totalContacts ? (uniqueClosedContactsLast.length / totalContacts) * 100 : 0;
-
-    const conversionChange = conversionLastMonth ? ((conversionRate - conversionLastMonth)/conversionLastMonth)*100 : 0;
-
-    document.getElementById("conversionRate").textContent = Math.round(conversionRate) + "%";
-    const conversionChangeText = document.getElementById("conversionRateChange");
-    conversionChangeText.innerHTML = `<svg id="conversionRateIcon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1"
-        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-        stroke-linecap="round" stroke-linejoin="round"></svg>
-        ${conversionChange>0?"+":""}${Math.round(conversionChange*10)/10}%`;
-    const conversionIcon = conversionChangeText.querySelector("svg");
-    if (conversionChange>0){ conversionChangeText.classList.add("text-green-400"); conversionChangeText.classList.remove("text-red-400"); conversionIcon.innerHTML=`<path d="M12 19V5m0 0l-7 7m7-7l7 7"></path>`;}
-    else if(conversionChange<0){ conversionChangeText.classList.add("text-red-400"); conversionChangeText.classList.remove("text-green-400"); conversionIcon.innerHTML=`<path d="M12 5v14m0 0l-7-7m7 7l7-7"></path>`;}
-    else conversionIcon.innerHTML=`<circle cx="12" cy="12" r="4"></circle>`;
-
-    // ----------------------------
-    // 4️⃣ LTV
-    // ----------------------------
-    const groupByContact = salesArr => {
-      const map = {};
-      salesArr.forEach(sale => {
-        if (!map[sale.contact_id]) map[sale.contact_id] = [];
-        map[sale.contact_id].push(sale);
-      });
-      return map;
-    };
-
-    const thisMonthByContact = groupByContact(salesThisMonth);
-    const lastMonthByContact = groupByContact(salesLastMonth);
-
-    const calcLTV = byContact => {
-      const totalContacts = Object.keys(byContact).length;
-      let totalValue = 0, totalFrequency = 0;
-      Object.values(byContact).forEach(arr=>{
-        totalValue += arr.reduce((sum,s)=>sum+Number(s.amount||0),0);
-        totalFrequency += arr.length;
-      });
-      const avgValue = totalContacts?totalValue/totalContacts:0;
-      const avgFreq = totalContacts?totalFrequency/totalContacts:0;
-      return {avgValue, avgFreq, totalContacts};
-    };
-
-    const statsThis = calcLTV(thisMonthByContact);
-    const statsLast = calcLTV(lastMonthByContact);
-
-    const returningContacts = Object.keys(thisMonthByContact).filter(c=>lastMonthByContact[c]);
-    const retentionRate = statsThis.totalContacts?returningContacts.length/statsThis.totalContacts:0;
-
-    const ltvThis = statsThis.avgValue*statsThis.avgFreq*retentionRate;
-    const returningContactsLast = Object.keys(lastMonthByContact).filter(c=>thisMonthByContact[c]);
-    const retentionLast = statsLast.totalContacts?returningContactsLast.length/statsLast.totalContacts:0;
-    const ltvLast = statsLast.avgValue*statsLast.avgFreq*retentionLast;
-
-    let ltvChange=0; if(ltvLast>0) ltvChange=((ltvThis-ltvLast)/ltvLast)*100;
-    document.getElementById("lifeTimeValue").textContent="Ksh "+Math.round(ltvThis).toLocaleString();
-    const ltvChangeText=document.getElementById("lifeTimeValueChange");
-    ltvChangeText.innerHTML=`<svg id="lifeTimeValueIcon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1"
-        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-        stroke-linecap="round" stroke-linejoin="round"></svg>
-        ${ltvChange>0?"+":""}${Math.round(ltvChange*10)/10}%`;
-    const ltvIcon=ltvChangeText.querySelector("svg");
-    if(ltvChange>0){ ltvChangeText.classList.add("text-green-400"); ltvChangeText.classList.remove("text-red-400"); ltvIcon.innerHTML=`<path d="M12 19V5m0 0l-7 7m7-7l7 7"></path>`;}
-    else if(ltvChange<0){ ltvChangeText.classList.add("text-red-400"); ltvChangeText.classList.remove("text-green-400"); ltvIcon.innerHTML=`<path d="M12 5v14m0 0l-7-7m7 7l7-7"></path>`;}
-    else ltvIcon.innerHTML=`<circle cx="12" cy="12" r="4"></circle>`;
-
-    // ----------------------------
-    // 5️⃣ CAC
-    // ----------------------------
-    // First purchase by contact
-    const firstPurchase = {};
-    salesData.forEach(sale=>{
-      const c=sale.contact_id;
-      const d=new Date(sale.timestamp);
-      if(!firstPurchase[c] || d<new Date(firstPurchase[c])) firstPurchase[c]=d;
-    });
-
-    const countNew=(month,year)=>Object.values(firstPurchase).filter(d=>d.getMonth()===month && d.getFullYear()===year).length;
-    const newThis=countNew(thisMonth,thisYear);
-    const newLast=countNew(lastMonth,lastMonthYear);
-
-    const spendThis=adsData.find(a=>new Date(a.date).getMonth()===thisMonth && new Date(a.date).getFullYear()===thisYear)?.total_spend||0;
-    const spendLast=adsData.find(a=>new Date(a.date).getMonth()===lastMonth && new Date(a.date).getFullYear()===lastMonthYear)?.total_spend||0;
-
-    const cacThis=newThis?spendThis/newThis:0;
-    const cacLast=newLast?spendLast/newLast:0;
-
-    let cacChange=0; if(cacLast>0) cacChange=((cacThis-cacLast)/cacLast)*100;
-    document.getElementById("costOfAcquisition").textContent="Ksh "+Math.round(cacThis).toLocaleString();
-    const cacChangeText=document.getElementById("costOfAcquisitionChange");
-    cacChangeText.innerHTML=`<svg id="costOfAcquisitionIcon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1"
-        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-        stroke-linecap="round" stroke-linejoin="round"></svg>
-        ${cacChange>0?"+":""}${Math.round(cacChange*10)/10}%`;
-    const cacIcon=cacChangeText.querySelector("svg");
-    if(cacChange<0){ cacChangeText.classList.add("text-green-400"); cacChangeText.classList.remove("text-red-400"); cacIcon.innerHTML=`<path d="M12 19V5m0 0l-7 7m7-7l7 7"></path>`;}
-    else if(cacChange>0){ cacChangeText.classList.add("text-red-400"); cacChangeText.classList.remove("text-green-400"); cacIcon.innerHTML=`<path d="M12 5v14m0 0l-7-7m7 7l7-7"></path>`;}
-    else cacIcon.innerHTML=`<circle cx="12" cy="12" r="4"></circle>`;
-
-  } catch (err) {
-    console.error("Error fetching or calculating KPIs:", err);
-  }
-}
-
-// Run the function
-fetchAndRenderKPIs();
+// Removed duplicate KPI renderer `fetchAndRenderKPIs` to avoid flashing/conflicts.
 
 function renderServicesSection(userData) {
     try {
@@ -1024,24 +868,38 @@ function updateMetrics(data) {
         salesToday: document.getElementById('salesToday'),
         conversionRate: document.getElementById('conversionRate'),
     };
-    // For Free users show zeros to encourage upgrade
+    // For Free users: keep main KPI cards visible but zero-out legacy/paid-only fields
     try {
         if (window.currentPackage === 'Free') {
-            if (metrics.salesToday) metrics.salesToday.textContent = `Ksh 0`;
-            if (metrics.conversionRate) metrics.conversionRate.textContent = `0%`;
-            // also zero other common metric elements if present
             const avg = document.getElementById('averageOrderValue'); if (avg) avg.textContent = `Ksh 0`;
             const total = document.getElementById('totalRevenue'); if (total) total.textContent = `Ksh 0`;
-            const conv = document.getElementById('conversionRate'); if (conv) conv.textContent = `0%`;
             const convCount = document.getElementById('totalConversations'); if (convCount) convCount.textContent = `0`;
             const activeConv = document.getElementById('activeConversations'); if (activeConv) activeConv.textContent = `0`;
             const unique = document.getElementById('uniqueUsers'); if (unique) unique.textContent = `0`;
-            return;
         }
     } catch (e) {}
 
+    // New KPI elements on index.html
+    const salesMonthlyEl = document.getElementById('salesMonthly');
+    const salesMonthlyChangeEl = document.getElementById('salesMonthlyChange');
+    const lifeTimeValueEl = document.getElementById('lifeTimeValue');
+    const costOfAcquisitionEl = document.getElementById('costOfAcquisition');
+
     if (metrics.salesToday) metrics.salesToday.textContent = `Ksh ${(data.salesToday || 0).toLocaleString()}`;
     if (metrics.conversionRate) metrics.conversionRate.textContent = `${data.conversionRate || 0}%`;
+
+    if (salesMonthlyEl) salesMonthlyEl.textContent = `Ksh ${(data.totalRevenue || 0).toLocaleString()}`;
+    if (salesMonthlyChangeEl) {
+        const rc = (typeof data.revenueChange === 'number') ? data.revenueChange : Number(data.revenueChange || 0);
+        salesMonthlyChangeEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg> ${rc >= 0 ? '+' : ''}${rc}%`;
+        const ic = salesMonthlyChangeEl.querySelector('svg');
+        if (rc > 0) { salesMonthlyChangeEl.classList.add('text-green-400'); salesMonthlyChangeEl.classList.remove('text-red-400'); ic.innerHTML = `<path d="M12 19V5m0 0l-7 7m7-7l7 7"></path>`; }
+        else if (rc < 0) { salesMonthlyChangeEl.classList.add('text-red-400'); salesMonthlyChangeEl.classList.remove('text-green-400'); ic.innerHTML = `<path d="M12 5v14m0 0l-7-7m7 7l7-7"></path>`; }
+        else { ic.innerHTML = `<circle cx="12" cy="12" r="4"></circle>`; }
+    }
+    if (lifeTimeValueEl) lifeTimeValueEl.textContent = `Ksh ${(data.lifeTimeValue || 0).toLocaleString()}`;
+    // CAC will be filled after querying ad spend; default to 0 until computed
+    if (costOfAcquisitionEl) costOfAcquisitionEl.textContent = `Ksh 0`;
 }
 
 function updateBestSellingProducts(products) {
@@ -1088,33 +946,187 @@ async function fetchDashboardData() {
         const salesDocs = salesData;
         console.log('[DEBUG] Sales data fetched, count:', salesDocs.length);
 
-        let calculatedMetrics;
-
-        if (typeof processSalesData === 'function') {
-            console.log('[DEBUG] Processing data with sales-logic.js...');
-            calculatedMetrics = processSalesData(salesDocs);
-        } else {
-            console.log('[DEBUG] processSalesData not available. Using dummy metrics.');
-            calculatedMetrics = {
-                totalRevenue: 10000,
-                revenueChange: 5,
-                salesToday: 500, 
-                averageOrderValue: 50,
-                conversionRate: 10, 
-                totalConversations: 100,
-                activeConversations: 20,
-                uniqueUsers: 50,
-                bestSellingProducts: [{name: 'Product A', units: 10}, {name: 'Product B', units: 8}],
-                monthlyRevenueTrend: [{month: 'Jan', revenue: 1000}, {month: 'Feb', revenue: 1200}]
-            };
+        // Fetch contacts (used for conversion rate calculations)
+        let contactsData = [];
+        try {
+            const { data: cdata, error: contactsError } = await supabase
+                .from('contacts')
+                .select('*')
+                .eq('business_id', businessId);
+            if (contactsError) throw contactsError;
+            contactsData = cdata || [];
+            console.log('[DEBUG] Contacts fetched, count:', contactsData.length);
+        } catch (e) {
+            console.warn('[DEBUG] Could not fetch contacts:', e);
+            contactsData = [];
         }
-        
-        console.log('[DEBUG] Final calculated metrics:', calculatedMetrics);
 
-        console.log('[DEBUG] Updating UI with metrics...');
+        // Compute required metrics inline (only those shown on index.html)
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const prevMonthEnd = startOfMonth;
+
+        // helper: month key
+        const monthKey = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+        // Aggregate sales
+        let totalRevenueAllTime = 0;
+        const salesByMonth = new Map();
+        const uniqueCustomersAll = new Set();
+        const uniqueCustomersThisMonth = new Set();
+        const salesToday = (salesDocs || []).reduce((acc, s) => {
+            const amt = Number(s.amount) || 0;
+            totalRevenueAllTime += amt;
+
+            if (s.timestamp) {
+                const d = new Date(s.timestamp);
+                if (!isNaN(d)) {
+                    const k = monthKey(d);
+                    salesByMonth.set(k, (salesByMonth.get(k) || 0) + amt);
+
+                    // prefer contact_id but fall back to common alternatives
+                    const cid = s.contact_id || s.user_id || s.customer_id || s.client_id || null;
+                    if (k === monthKey(now) && cid) uniqueCustomersThisMonth.add(cid);
+                    if (cid) uniqueCustomersAll.add(cid);
+                }
+                const dateStr = new Date(s.timestamp).toISOString().slice(0,10);
+                if (dateStr === new Date().toISOString().slice(0,10)) return acc + amt;
+            }
+            return acc;
+        }, 0);
+
+        // ensure month keys exist
+        const thisKey = monthKey(now);
+        const prevKey = monthKey(prevMonthStart);
+        const thisMonthSales = Number(salesByMonth.get(thisKey) || 0);
+        const prevMonthSales = Number(salesByMonth.get(prevKey) || 0);
+
+        // revenue change
+        let revenueChange = 0;
+        if (prevMonthSales > 0) revenueChange = ((thisMonthSales - prevMonthSales) / prevMonthSales) * 100;
+        else revenueChange = thisMonthSales > 0 ? 100.0 : 0.0;
+
+        // lifetime / LTV
+        const lifeTimeValue = uniqueCustomersAll.size > 0 ? Math.round((totalRevenueAllTime / (uniqueCustomersAll.size || 1)) * 100) / 100 : 0;
+
+        // prepare monthlyRevenueTrend for chart (from salesByMonth)
+        const monthlyRevenueTrend = Array.from(salesByMonth.entries()).map(([m, r]) => ({ month: m, revenue: r })).sort((a,b)=>a.month.localeCompare(b.month));
+
+        // compute conversion rate using contacts (closed deals this month / total contacts)
+        const totalContacts = (contactsData || []).length;
+        const conversionRateVal = totalContacts ? (uniqueCustomersThisMonth.size / totalContacts) * 100 : 0;
+
+        const calculatedMetrics = {
+            totalRevenue: thisMonthSales,
+            revenueChange: Number(revenueChange.toFixed(1)),
+            salesToday,
+            conversionRate: Number(conversionRateVal.toFixed(1)),
+            monthlyRevenueTrend,
+            totalRevenueAllTime: Math.round(totalRevenueAllTime * 100) / 100,
+            uniqueCustomersThisMonth: uniqueCustomersThisMonth.size,
+            uniqueCustomersAll: uniqueCustomersAll.size,
+            lifeTimeValue
+        };
+
+        console.log('[DEBUG] Final calculated metrics (inline):', calculatedMetrics);
         updateMetrics(calculatedMetrics);
-        updateBestSellingProducts(calculatedMetrics.bestSellingProducts);
         
+        // Compute Customer Acquisition Cost (CAC) using ad spend for the current month
+        try {
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const startISO = startOfMonth.toISOString().slice(0,10);
+            const nextMonth = new Date(now.getFullYear(), now.getMonth()+1, 1);
+            const nextISO = nextMonth.toISOString().slice(0,10);
+
+            // Fetch ad spend for current month
+            const { data: adsThisMonth, error: adsErr } = await supabase
+                .from('ads')
+                .select('total_spend')
+                .eq('business_id', businessId)
+                .gte('date', startISO)
+                .lt('date', nextISO);
+
+            if (adsErr) throw adsErr;
+
+            const totalSpendThis = (adsThisMonth || []).reduce((s, r) => {
+                const raw = (r.total_spend !== undefined && r.total_spend !== null) ? Number(r.total_spend) : 0;
+                return s + (isFinite(raw) ? raw : 0);
+            }, 0);
+
+            // Compute previous month ranges
+            const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const prevEnd = startOfMonth;
+            const prevStartISO = prevStart.toISOString().slice(0,10);
+            const prevEndISO = prevEnd.toISOString().slice(0,10);
+
+            const { data: adsPrevMonth, error: adsPrevErr } = await supabase
+                .from('ads')
+                .select('total_spend')
+                .eq('business_id', businessId)
+                .gte('date', prevStartISO)
+                .lt('date', prevEndISO);
+
+            if (adsPrevErr) throw adsPrevErr;
+
+            const totalSpendPrev = (adsPrevMonth || []).reduce((s, r) => {
+                const raw = (r.total_spend !== undefined && r.total_spend !== null) ? Number(r.total_spend) : 0;
+                return s + (isFinite(raw) ? raw : 0);
+            }, 0);
+
+            // Derive unique customers for current and previous month from salesDocs
+            const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+            const prevMonthKey = `${prevStart.getFullYear()}-${String(prevStart.getMonth()+1).padStart(2,'0')}`;
+            const uniqueThis = new Set();
+            const uniquePrev = new Set();
+            (salesDocs || []).forEach(s => {
+                try {
+                    const d = new Date(s.timestamp);
+                    const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+                    if (s.user_id) {
+                        if (k === currentMonthKey) uniqueThis.add(s.user_id);
+                        if (k === prevMonthKey) uniquePrev.add(s.user_id);
+                    }
+                } catch (e) {}
+            });
+
+            const customersThis = uniqueThis.size || calculatedMetrics.uniqueCustomersThisMonth || 0;
+            const customersPrev = uniquePrev.size || 0;
+
+            const cacThis = customersThis > 0 ? (totalSpendThis / customersThis) : 0;
+            const cacPrev = customersPrev > 0 ? (totalSpendPrev / customersPrev) : 0;
+
+            // Update CAC element(s)
+            const cacEl = document.getElementById('costOfAcquisition');
+            const cacChangeEl = document.getElementById('costOfAcquisitionChange');
+            if (cacEl) cacEl.textContent = `Ksh ${Math.round(cacThis).toLocaleString()}`;
+
+            // compute percent change for CAC and render
+            if (cacChangeEl) {
+                if (!cacPrev || cacPrev === 0) {
+                    cacChangeEl.textContent = cacThis === 0 ? '—' : 'N/A';
+                } else {
+                    const pct = ((cacThis - cacPrev) / Math.abs(cacPrev)) * 100;
+                    const pctFixed = Math.abs(pct).toFixed(1);
+                    const arrow = (cacThis > cacPrev) ? '▲' : (cacThis < cacPrev ? '▼' : '▶');
+                    cacChangeEl.textContent = `${arrow} ${pctFixed}%`;
+                    cacChangeEl.classList.remove('text-green-400', 'text-red-400');
+                    // for CAC lower is better -> decrease is good
+                    if (cacThis === cacPrev) {
+                        // neutral
+                    } else if (cacThis < cacPrev) {
+                        cacChangeEl.classList.add('text-green-400');
+                    } else {
+                        cacChangeEl.classList.add('text-red-400');
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('[DEBUG] Could not compute CAC:', e);
+        }
+
         if (typeof Chart !== 'undefined') {
              renderSalesChart(calculatedMetrics.monthlyRevenueTrend);
         }
@@ -1134,7 +1146,26 @@ function renderSalesChart(data) {
     salesChartInstance = new Chart(ctx.getContext('2d'), {
         type: 'line',
         data: {
-            labels: data.map(d => d.month),
+            labels: data.map(d => {
+                const m = d.month;
+                const date = (typeof m === 'number') ? new Date(m) : new Date(m);
+                if (!isNaN(date)) {
+                    return date.toLocaleString(undefined, { month: 'short', year: 'numeric' });
+                }
+                if (typeof m === 'string') {
+                    if (/^[A-Za-z]{3,9}$/.test(m) && d.year) {
+                        const dt = new Date(`${m} 1 ${d.year}`);
+                        if (!isNaN(dt)) return dt.toLocaleString(undefined, { month: 'short', year: 'numeric' });
+                    }
+                    if (/\d{4}/.test(m)) {
+                        const dt = new Date(m);
+                        if (!isNaN(dt)) return dt.toLocaleString(undefined, { month: 'short', year: 'numeric' });
+                        const mm = m.match(/([A-Za-z]{3,9})\s*(\d{4})/);
+                        if (mm) return `${mm[1].slice(0,3)} ${mm[2]}`;
+                    }
+                }
+                return m;
+            }),
             datasets: [{
                 label: 'Monthly Revenue ($)',
                 data: data.map(d => d.revenue),
