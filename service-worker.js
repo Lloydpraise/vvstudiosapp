@@ -1,5 +1,7 @@
-// Bump this value whenever you deploy new static assets so clients update their cache.
-const CACHE_NAME = "vvstudios-cache-v2";
+// Cache name. Bump this value when doing a manual deploy to force a full refresh.
+// We also include a fallback network-first strategy for JS/CSS so clients get
+// fresh theme/logic files without waiting for a manual cache bump.
+const CACHE_NAME = "vvstudios-cache-v3";
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
@@ -9,6 +11,9 @@ const ASSETS_TO_CACHE = [
   "/install.js",
   "/auth.js",
   "/dashboard.js",
+  "/ads-dashboard.js",
+  "/theme.css",
+  "/theme-toggle.js",
   "/assets/logo.png",
   "/icons/icon-48.png",
   "/icons/icon-72.png",
@@ -120,6 +125,35 @@ self.addEventListener("fetch", (event) => {
 
   // For other requests → try cache-first, then network; if network → cache it (same-origin only)
   event.respondWith((async () => {
+    // For JS and CSS use network-first so updates (theme.css, theme-toggle.js)
+    // are picked up quickly on clients. For other resources use cache-first.
+    const url = new URL(req.url);
+    const isSameOrigin = url.origin === location.origin;
+    const isAssetRequiringFreshness = /\.js$|\.css$/.test(url.pathname) || req.destination === 'script' || req.destination === 'style';
+
+    if (isAssetRequiringFreshness) {
+      try {
+        // Try network first (no-store to avoid intermediate HTTP caches returning stale resources)
+        const networkResp = await fetch(req, { cache: 'no-store' });
+        if (isSameOrigin && networkResp && networkResp.ok) {
+          try {
+            const copy = networkResp.clone();
+            const cache = await caches.open(CACHE_NAME);
+            await cache.put(req, copy);
+          } catch (e) { console.warn('[SW] Could not cache fresh asset:', e); }
+        }
+        return networkResp;
+      } catch (err) {
+        // Network failed — fallback to cache if available
+        const cached = await caches.match(req);
+        if (cached) return cached;
+        const offline = await caches.match('/offline.html');
+        if (offline) return offline;
+        return Response.error();
+      }
+    }
+
+    // Default: cache-first for other assets
     const cached = await caches.match(req);
     if (cached) return cached;
 
@@ -127,29 +161,23 @@ self.addEventListener("fetch", (event) => {
       const networkResp = await fetch(req);
       // Only cache same-origin and successful responses (status 200)
       try {
-        const reqUrl = new URL(req.url);
-        if (reqUrl.origin === location.origin && networkResp && networkResp.ok) {
+        if (isSameOrigin && networkResp && networkResp.ok) {
           const copy = networkResp.clone();
           const cache = await caches.open(CACHE_NAME);
-          // Use request as key (this includes querystring)
           await cache.put(req, copy);
         }
       } catch (e) {
-        console.warn("[SW] Could not cache network response:", e);
+        console.warn('[SW] Could not cache network response:', e);
       }
       return networkResp;
     } catch (err) {
-      // network failed — provide sensible fallbacks
-      console.warn("[SW] Network fetch failed for:", req.url, err);
-      // If it's an image request, return a cached logo if available
-      if (req.destination === "image") {
-        const logo = await caches.match("/assets/logo.png");
+      console.warn('[SW] Network fetch failed for:', req.url, err);
+      if (req.destination === 'image') {
+        const logo = await caches.match('/assets/logo.png');
         if (logo) return logo;
       }
-      // Otherwise fallback to offline page (if available)
-      const offline = await caches.match("/offline.html");
+      const offline = await caches.match('/offline.html');
       if (offline) return offline;
-
       return Response.error();
     }
   })());
