@@ -429,6 +429,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         sidebar.classList.add('-translate-x-full');
         mobileMenuBackdrop.classList.add('hidden');
       });
+            // Close sidebar when any sidebar link is clicked (mobile behavior)
+            try {
+                document.querySelectorAll('#sidebar a').forEach(link => {
+                    link.addEventListener('click', () => {
+                        // only run for narrow viewports (mobile/tablet)
+                        if (window.innerWidth <= 1024) {
+                            sidebar.classList.add('-translate-x-full');
+                            mobileMenuBackdrop.classList.add('hidden');
+                        }
+                    });
+                });
+            } catch (e) {
+                console.warn('Failed to attach sidebar link close handlers', e);
+            }
     }
 
     // Load initial conversation list

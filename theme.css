@@ -65,3 +65,335 @@
 
 /* In light theme, ensure small components with explicit dark backgrounds are readable */
 [data-theme="light"] .chart-placeholder { background: linear-gradient(135deg, #f7f8fa 0%, #f3f4f6 100%) !important; border-color: #e6e9ee !important; }
+
+/* Sidebar and navigation adjustments (keep sidebar container white; only links are transparent) */
+[data-theme="light"] .sidebar-link {
+    background-color: transparent !important;
+    color: #6b7280 !important; /* inactive items: neutral gray */
+}
+
+[data-theme="light"] .sidebar-link .tooltip {
+    background-color: #f9fafb !important;
+    color: #0f1720 !important;
+    border: 1px solid #e6e9ee !important;
+}
+
+[data-theme="light"] .sidebar-link.active {
+    color: #0b5fff !important; /* keep active visible — blue-ish accent */
+    background-color: rgba(11,95,255,0.12) !important;
+    box-shadow: inset 4px 0 0 0 #0b5fff !important;
+}
+
+/* Ensure the hide/show transform is respected even when other rules set position/z-index */
+[data-theme="light"] #sidebar.-translate-x-full { transform: translateX(-100%) !important; }
+[data-theme="light"] #sidebar:not(.-translate-x-full) { transform: translateX(0) !important; }
+
+/* Header controls and small buttons that use explicit dark BG */
+[data-theme="light"] #header-controls > *,
+[data-theme="light"] #top-header,
+[data-theme="light"] .bg-\[\#1a1d23\] {
+    background-color: #f3f4f6 !important;
+    color: #0f1720 !important;
+}
+
+/* Cards and panels */
+[data-theme="light"] .p-6,
+[data-theme="light"] .rounded-2xl,
+[data-theme="light"] .bg-\[\#1a1d23\],
+[data-theme="light"] .bg-bg-card,
+[data-theme="light"] .card-animate {
+    background-color: #ffffff !important; /* use very light card to contrast slightly with page bg */
+    color: #0f1720 !important;
+    border-color: #e6e9ee !important;
+}
+
+/* Inputs, selects and textareas that used dark background */
+[data-theme="light"] input,
+[data-theme="light"] select,
+[data-theme="light"] textarea {
+    background-color: #ffffff !important;
+    color: #0f1720 !important;
+    border: 1px solid #e6e9ee !important;
+}
+
+/* Progress containers and subtle UI elements */
+[data-theme="light"] .progress-bar-container { background-color: #e9edf2 !important; }
+[data-theme="light"] .progress-bar { background-color: #c7d2fe !important; }
+
+/* Tables and list rows */
+[data-theme="light"] .contact-row,
+[data-theme="light"] .deal-list-row,
+[data-theme="light"] .contact-row.selected,
+[data-theme="light"] .deal-list-row.selected {
+    background-color: transparent !important;
+    color: #0f1720 !important;
+}
+
+/* Links and text emphasis */
+[data-theme="light"] a { color: #0b5fff !important; }
+[data-theme="light"] .text-green-400, [data-theme="light"] .text-green-500 { color: #10B981 !important; }
+
+/* Ensure icons that inherit text color switch too */
+[data-theme="light"] .fa-solid, [data-theme="light"] svg { color: inherit !important; }
+
+/* Keep accent backgrounds like bg-blue-600 alone — but ensure text inside is readable on light */
+[data-theme="light"] .bg-blue-600, [data-theme="light"] .bg-green-600, [data-theme="light"] .bg-orange-500 { color: #ffffff !important; }
+
+/* Delete / destructive buttons: ensure red actions remain visible on light backgrounds */
+[data-theme="light"] .text-red-400, [data-theme="light"] .text-red-500, [data-theme="light"] .text-red-600 {
+    color: #dc2626 !important;
+}
+[data-theme="light"] a.text-red-400, [data-theme="light"] button.text-red-400 { color: #dc2626 !important; }
+
+/* Purple buttons: force white text so they stand out on light background */
+[data-theme="light"] .bg-main-purple,
+[data-theme="light"] .bg-main-purple:hover,
+[data-theme="light"] .bg-purple-500,
+[data-theme="light"] .bg-purple-600,
+[data-theme="light"] .meeting-modal-day.selected,
+[data-theme="light"] .transport-btn.selected {
+    color: #ffffff !important;
+}
+
+/* Theme selector: when in light mode, make the dark option have a dark outline and white text for contrast */
+[data-theme="light"] .theme-toggle-btn[data-theme="dark"] {
+    border: 1px solid #0f1720 !important;
+    color: #ffffff !important;
+    background-color: #0f1720 !important; /* make the whole button dark */
+}
+[data-theme="light"] .theme-toggle-btn[data-theme="dark"].active {
+    background-color: #0f1720 !important;
+    color: #ffffff !important;
+}
+
+/* Sidebar locked items: use the same faint gray used for past calendar days */
+[data-theme="light"] .sidebar-link.text-white\/30,
+[data-theme="light"] .sidebar-link .fa-lock,
+[data-theme="light"] .sidebar-link .text-white\/30 {
+    color: #4b5563 !important; /* matches .past-meeting-day calendar badge color */
+}
+
+/* Nested contacts & selector area: ensure these switch to light theme */
+[data-theme="light"] #add-meeting-nested-contact,
+[data-theme="light"] #nested-selector-area,
+[data-theme="light"] #nested-search-input,
+[data-theme="light"] .nested-contact {
+    background-color: #ffffff !important;
+    color: #0f1720 !important;
+    border: 1px solid #e6e9ee !important;
+}
+
+/* Contacts details button: ensure any detail-action buttons use white text for contrast */
+[data-theme="light"] .details-btn,
+[data-theme="light"] .btn-details,
+[data-theme="light"] #contact-details-modal .details-btn {
+    color: #ffffff !important;
+}
+
+
+
+/* Ensure classes using bg-bg-dark are also converted */
+[data-theme="light"] .bg-bg-dark,
+[data-theme="light"] .bg-\[\#0f1115\],
+[data-theme="light"] .bg-\[\#14161a\] {
+    background-color: #f3f4f6 !important;
+    color: #0f1720 !important;
+}
+
+/* Specific: CRM sidebar settings button */
+[data-theme="light"] #sidebar-settings-btn {
+    background-color: #f3f4f6 !important;
+    color: #0f1720 !important;
+    border-color: #e6e9ee !important;
+}
+
+/* Follow-up modal top row: make header background soft and text dark, leave amount accent */
+[data-theme="light"] #follow-up-modal-content .bg-bg-dark,
+[data-theme="light"] #follow-up-modal-content .bg-bg-dark * {
+    background-color: #f7f8fa !important;
+    color: #0f1720 !important;
+}
+[data-theme="light"] #follow-up-modal-content #modal-amount { color: #b9770e !important; } /* keep faint-gold visible but slightly darker */
+
+/* Ensure modal titles inside modal-backdrop are dark */
+[data-theme="light"] .modal-backdrop h2,
+[data-theme="light"] .modal-backdrop .text-2xl,
+[data-theme="light"] .modal-backdrop .text-3xl { color: #0f1720 !important; }
+
+/* After-sale header */
+[data-theme="light"] #after-sale-header {
+    background-color: #f3f4f6 !important;
+    color: #0f1720 !important;
+    border-color: #e6e9ee !important;
+}
+
+/* Mobile navigation bar */
+[data-theme="light"] #mobile-nav-bar {
+    background-color: #f3f4f6 !important;
+    border-top: 1px solid #e6e9ee !important;
+}
+[data-theme="light"] #mobile-nav-bar .mobile-nav-btn { color: #6b7280 !important; }
+[data-theme="light"] #mobile-nav-bar .mobile-nav-btn[data-active="true"],
+[data-theme="light"] #mobile-nav-bar .mobile-nav-btn.active { color: #0b5fff !important; font-weight:600 !important; }
+
+/* Ads page: month/day toggle buttons that used bg-gray-700 */
+[data-theme="light"] .bg-gray-700 { background-color: #e5e7eb !important; color: #0f1720 !important; }
+[data-theme="light"] .bg-gray-700:hover { background-color: #dbe2ea !important; }
+
+/* Sidebar background should remain off-white when opened (avoid transparent) */
+[data-theme="light"] #sidebar { background-color: #ffffff !important; border-right: 1px solid #e6e9ee !important; }
+
+/* Stronger sidebar container for mobile/overlay: ensure it looks like a card and sits above content */
+[data-theme="light"] #sidebar {
+    background-color: #ffffff !important;
+    color: #0f1720 !important;
+    border-right: 1px solid #e6e9ee !important;
+    box-shadow: 0 8px 24px rgba(15,23,42,0.06) !important;
+    min-height: 100vh !important;
+    z-index: 90 !important;
+    -webkit-backface-visibility: hidden; /* avoid rendering artifacts when translating */
+    backface-visibility: hidden;
+}
+
+/* Ensure sidebar content can scroll if it grows taller than the viewport, and
+   reserve space at the bottom so the settings button doesn't overlap links. */
+[data-theme="light"] #sidebar {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 5.5rem !important; /* leave space for settings button */
+}
+
+/* Make sure links, icons and tooltip contrast inside sidebar */
+[data-theme="light"] #sidebar, [data-theme="light"] #sidebar * {
+    color: #0f1720 !important;
+}
+[data-theme="light"] #sidebar .sidebar-link { background: transparent !important; }
+[data-theme="light"] #sidebar .sidebar-link .tooltip { background-color: #ffffff !important; color: #0f1720 !important; border:1px solid #e6e9ee !important; }
+
+/* On mobile when sidebar slides in, ensure it overlays page content cleanly */
+@media (max-width: 1024px) {
+    /* Do not force the transform — keep JS-controlled translate classes to show/hide sidebar.
+       Only ensure the sidebar is fixed when visible, and keep z-index so it overlays content. */
+    [data-theme="light"] #sidebar {
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        /* don't override transform; JS will toggle the translating class */
+        z-index: 90 !important;
+    }
+    /* Backdrop: stronger veil so underlying content is obscured */
+    [data-theme="light"] #mobile-menu-backdrop { background-color: rgba(15,23,42,0.18) !important; z-index: 88 !important; }
+}
+
+/* Mobile: ensure the sidebar settings button is fixed to the viewport bottom and
+   aligned with the sidebar width so it doesn't end up after the scrollable links. */
+@media (max-width: 1024px) {
+    [data-theme="light"] #sidebar-settings-wrapper {
+        position: fixed !important;
+        bottom: 1rem !important;
+        left: 1rem !important;
+        width: calc(16rem - 2rem) !important; /* matches the sidebar inner spacing */
+        z-index: 95 !important; /* sit above the sidebar content */
+        pointer-events: auto !important;
+    }
+}
+
+/* Modals: overlay should be a subtle translucent shadow (not pure white) */
+[data-theme="light"] .modal-backdrop {
+    background-color: rgba(15,23,32,0.04) !important; /* subtle dark veil */
+}
+/* Modal content keep white but slightly translucent so stacked ones show as shadowed */
+[data-theme="light"] .modal-backdrop .bg-bg-card {
+    background-color: rgba(255,255,255,0.98) !important;
+}
+
+/* Mobile add button and submenu in light theme */
+[data-theme="light"] #mobile-add-toggle-btn {
+    /* keep green background but use a soft white border so it reads well on light bg */
+    border-color: #ffffff !important;
+    box-shadow: 0 8px 18px rgba(15,23,42,0.06) !important;
+}
+[data-theme="light"] #mobile-add-toggle-btn i,
+[data-theme="light"] #mobile-add-toggle-btn .fa-plus {
+    color: #ffffff !important; /* keep plus icon white over green */
+}
+
+[data-theme="light"] #mobile-add-sub-menu {
+    background-color: #ffffff !important;
+    border-color: #e6e9ee !important;
+    color: #0f1720 !important;
+    box-shadow: 0 10px 30px rgba(15,23,42,0.06) !important;
+}
+[data-theme="light"] #mobile-add-sub-menu .mobile-add-item-btn {
+    color: #0f1720 !important;
+    background-color: transparent !important;
+}
+[data-theme="light"] #mobile-add-sub-menu .mobile-add-item-btn:hover {
+    background-color: #f3f4f6 !important;
+}
+
+/* Payment method buttons (Select payment method modal) --------------------------------- */
+/* These buttons are generated dynamically with the class `payment-method` and have
+   inline dark utility classes; override them in light theme so they read as cards. */
+[data-theme="light"] .payment-method {
+    background-color: #f9fafb !important; /* soft card */
+    color: #0f1720 !important; /* dark text */
+    border-color: #e6e9ee !important;
+    box-shadow: none !important;
+}
+
+[data-theme="light"] .payment-method:hover {
+    background-color: #f3f4f6 !important;
+}
+
+/* Ensure inner labels and fonts become dark */
+[data-theme="light"] .payment-method .font-medium,
+[data-theme="light"] .payment-method span,
+[data-theme="light"] .payment-method > div { color: #0f1720 !important; }
+
+/* Selected state: JS toggles ring classes; emulate a visible blue ring in light theme */
+[data-theme="light"] .payment-method.ring-2,
+[data-theme="light"] .payment-method.ring-blue-500 {
+    box-shadow: 0 0 0 3px rgba(11,95,255,0.12) !important;
+    border-color: rgba(11,95,255,0.12) !important;
+}
+
+/* Make any SVG elements inside the payment button render crisply on light bg */
+[data-theme="light"] .payment-method svg { filter: none !important; }
+
+/* Plan selection modal (Growth / Pro / Premium) -------------------------------------- */
+/* These are the buttons inside the `openUpgradeFlow` modal with class `select-plan`. */
+[data-theme="light"] .select-plan {
+    background-color: #ffffff !important; /* card on light page */
+    color: #0f1720 !important;
+    border-color: #e6e9ee !important;
+    box-shadow: 0 6px 18px rgba(15,23,42,0.04) !important;
+}
+
+[data-theme="light"] .select-plan:hover {
+    background-color: #f8fafc !important;
+}
+
+/* Make the small description (was text-white/60) dark for readability */
+[data-theme="light"] .select-plan .text-white\/60,
+[data-theme="light"] .select-plan p,
+[data-theme="light"] .select-plan .text-sm {
+    color: #475569 !important;
+}
+
+/* Keep the accent heading colors (green/amber/purple) but ensure they are vivid enough */
+[data-theme="light"] .select-plan .text-green-400 { color: #10B981 !important; }
+[data-theme="light"] .select-plan .text-amber-400 { color: #d97706 !important; }
+[data-theme="light"] .select-plan .text-purple-400 { color: #7c3aed !important; }
+
+/* Active / keyboard-focused state so selection is visible before modal closes */
+[data-theme="light"] .select-plan:focus,
+[data-theme="light"] .select-plan:active {
+    outline: none !important;
+    box-shadow: 0 0 0 4px rgba(11,95,255,0.10) !important;
+    border-color: rgba(11,95,255,0.12) !important;
+}
+
+
+
