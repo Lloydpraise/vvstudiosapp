@@ -701,6 +701,103 @@ function renderServicesSection(userData) {
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('[DEBUG] DOMContentLoaded fired');
 
+    // Initialize frontend analytics (captures clicks, modals, forms, pageviews)
+    try {
+        const saved = localStorage.getItem('vvUser');
+        let parsed = null;
+        try { parsed = saved ? JSON.parse(saved) : null; } catch (e) { parsed = null; }
+        const initialUserId = (parsed && (parsed.id || parsed.user_id)) || (loggedInUser && (loggedInUser.id || loggedInUser.user_id)) || null;
+        const initialBizId = (parsed && (parsed.business_id || parsed['business id'])) || businessId || null;
+
+        if (window.Analytics && typeof window.Analytics.init === 'function') {
+            window.Analytics.init({
+                userId: initialUserId,
+                businessId: initialBizId,
+                sendEvent: async (payload) => {
+                    try {
+                        if (typeof supabase !== 'undefined' && supabase && typeof supabase.rpc === 'function') {
+                            // Call Postgres RPC via supabase client; matches function parameters
+                            await supabase.rpc('track_event', {
+                                user_id: payload.user_id,
+                                business_id: payload.business_id,
+                                event_type: payload.event_type,
+                                event_name: payload.event_name,
+                                event_data: payload.event_data,
+                                page_url: payload.page_url,
+                                screen_name: payload.screen_name,
+                                device_type: payload.device_type,
+                                platform: payload.platform,
+                                browser: payload.browser
+                            });
+                            return;
+                        }
+                        // Fallback: POST to /rpc/track_event
+                        await fetch('/rpc/track_event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    } catch (e) {
+                        console.warn('Analytics sendEvent failed', e);
+                    }
+                }
+            });
+        }
+    } catch (e) {
+        console.warn('Failed to initialize Analytics', e);
+    }
+
+    // Initialize onboarding foundation (first-time setup + per-section tutorials)
+    try {
+        if (window.Onboarding && typeof window.Onboarding.init === 'function') {
+            window.Onboarding.init({
+                userId: (loggedInUser && (loggedInUser.id || loggedInUser.user_id)) || null,
+                businessId: businessId || null,
+                tutorialLimit: 3,
+                analytics: window.Analytics || null
+            });
+            // Attach nav tracker to sidebar links (records visits and shows short tips)
+            try { window.Onboarding.attachNavTracker('#sidebar a'); } catch (e) {}
+        }
+    } catch (e) {
+        console.warn('Failed to initialize Onboarding', e);
+    }
+
+    // If we're on the Ads page, dynamically load the Ads tour helper
+    try {
+        if (document.body && document.body.getAttribute('data-page') === 'ads') {
+            const existing = document.querySelector('script[src="ads-tour.js"]');
+            if (!existing) {
+                const s = document.createElement('script');
+                s.src = 'ads-tour.js';
+                s.defer = true;
+                s.onload = () => {
+                    try {
+                        if (window.AdsTour && typeof window.AdsTour.init === 'function') {
+                            window.AdsTour.init({ businessId: businessId || null, autoShowMaxViews: 5 });
+                        } else if (window.AdsTour && window.AdsTour.addFloatingButton) {
+                            window.AdsTour.addFloatingButton();
+                        }
+                        // add a small Take Tour button near the profile menu for easy access
+                        try {
+                            const profileBtn = document.getElementById('profile-menu-button');
+                            if (profileBtn && !document.getElementById('vv-profile-take-tour')) {
+                                const t = document.createElement('button');
+                                t.id = 'vv-profile-take-tour';
+                                t.textContent = 'Take Tour';
+                                t.style.marginLeft = '8px';
+                                t.className = 'px-3 py-1 rounded-xl text-sm font-semibold';
+                                t.style.background = '#f97316';
+                                t.style.color = '#fff';
+                                t.addEventListener('click', (ev) => { ev.preventDefault(); try { if (window.AdsTour && window.AdsTour.start) window.AdsTour.start(); } catch (e) {} });
+                                profileBtn.parentNode.insertBefore(t, profileBtn.nextSibling);
+                            }
+                        } catch (e) {}
+                    } catch (e) {}
+                };
+                document.body.appendChild(s);
+            } else {
+                try { if (window.AdsTour && window.AdsTour.addFloatingButton) window.AdsTour.addFloatingButton(); } catch (e) {}
+            }
+        }
+    } catch (e) { console.warn('Failed to load ads tour', e); }
+
     const loginContainer = document.getElementById('login-container');
     const loginForm = document.getElementById('login-form');
     const errorMessage = document.getElementById('errorMessage') || document.getElementById('error-message');

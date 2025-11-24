@@ -34,6 +34,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="manifest" href="./manifest.json">
+    <link rel="stylesheet" href="theme.css">
     <meta name="theme-color" content="#0f1115">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -468,6 +469,15 @@
                         
                         <div id="profile-dropdown" class="absolute top-14 right-0 z-50 w-48 bg-[#1a1d23] rounded-xl border border-[#2b2f3a] p-2 shadow-lg hidden transition-opacity duration-200">
                             <a href="#" class="block p-2 text-sm text-white/80 hover:bg-[#2b2f3a] rounded-lg transition-colors">Change Password</a>
+                            <div class="block p-2 rounded-lg">
+                                <div class="theme-toggle-wrapper">
+                                    <span class="text-sm text-white/80">Theme</span>
+                                    <div class="theme-toggle-buttons">
+                                        <button type="button" class="theme-toggle-btn px-2 py-1 bg-[#1a1d23] text-white" data-theme="dark">Dark</button>
+                                        <button type="button" class="theme-toggle-btn px-2 py-1 bg-white text-[#0f1115]" data-theme="light">Light</button>
+                                    </div>
+                                </div>
+                            </div>
                             <a href="#" id="logoutButton" class="block p-2 text-sm text-red-400 hover:bg-[#2b2f3a] rounded-lg transition-colors">Logout</a>
                         </div>
                     </div>
@@ -731,6 +741,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.4.0/axios.min.js"></script>
     <!-- Supabase (ES module) -->
     <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"></script>
+    <script src="theme-toggle.js" defer></script>
     <script src="router.js"></script>
     <script src="auth.js"></script>
     <script type="module" src="dashboard.js"></script>

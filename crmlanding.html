@@ -28,6 +28,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="theme.css">
+        <script src="theme-toggle.js" defer></script>
     <script>
         // Placeholder for Firebase configuration (Required for context)
         const __app_id = 'crm-app-id';
@@ -1112,8 +1114,17 @@
 
             <!-- Profile dropdown (copied from dashboardlanding.html style) -->
             <div id="profile-dropdown" class="absolute top-14 right-0 z-50 w-48 bg-bg-card rounded-xl border border-border-dark p-2 shadow-lg hidden transition-opacity duration-200">
-                <a href="#" class="block p-2 text-sm text-white/80 hover:bg-[#2b2f3a] rounded-lg transition-colors">Change Password</a>
-                <a href="#" id="logoutButton" class="block p-2 text-sm text-red-400 hover:bg-[#2b2f3a] rounded-lg transition-colors">Logout</a>
+                    <a href="#" class="block p-2 text-sm text-white/80 hover:bg-[#2b2f3a] rounded-lg transition-colors">Change Password</a>
+                    <div class="block p-2 rounded-lg">
+                        <div class="theme-toggle-wrapper">
+                            <span class="text-sm text-white/80">Theme</span>
+                            <div class="theme-toggle-buttons">
+                                <button type="button" class="theme-toggle-btn px-2 py-1 bg-bg-card text-white" data-theme="dark">Dark</button>
+                                <button type="button" class="theme-toggle-btn px-2 py-1 bg-white text-[#0f1115]" data-theme="light">Light</button>
+                            </div>
+                        </div>
+                    </div>
+                    <a href="#" id="logoutButton" class="block p-2 text-sm text-red-400 hover:bg-[#2b2f3a] rounded-lg transition-colors">Logout</a>
             </div>
         </div>
     </div>

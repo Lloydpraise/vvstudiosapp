@@ -7,8 +7,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="theme.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="module" src="ads-dashboard.js"></script>
+    <script src="theme-toggle.js" defer></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
         .progress-bar-container { height: 8px; background-color: #4b5563; border-radius: 9999px; overflow: hidden; }
@@ -250,6 +252,15 @@
                             <p id="profileName" class="font-medium text-sm hidden sm:block"></p>
                         </button>
                         <div id="profile-dropdown" class="absolute top-14 right-0 z-50 w-48 bg-[#1a1d23] rounded-xl border border-[#2b2f3a] p-2 shadow-lg hidden">
+                            <div class="block p-2 rounded-lg">
+                                <div class="theme-toggle-wrapper">
+                                    <span class="text-sm text-white/80">Theme</span>
+                                    <div class="theme-toggle-buttons">
+                                        <button type="button" class="theme-toggle-btn px-2 py-1 bg-[#1a1d23] text-white" data-theme="dark">Dark</button>
+                                        <button type="button" class="theme-toggle-btn px-2 py-1 bg-white text-[#0f1115]" data-theme="light">Light</button>
+                                    </div>
+                                </div>
+                            </div>
                             <a href="#" id="dropdown-logout-btn" class="block p-2 text-sm text-red-400 hover:bg-[#2b2f3a] rounded-lg">Logout</a>
                         </div>
                     </div>

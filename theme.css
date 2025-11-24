@@ -1,0 +1,67 @@
+/* Simple theme overrides: dark is default; light inverts common dark backgrounds and white text.
+   This intentionally only swaps dark <-> white for backgrounds and primary text colors.
+   Accent colors (buttons, badges, colored icons) are left unchanged.
+*/
+
+:root {
+    --bg-default: #0f1115;
+    --card-default: #1a1d23;
+    --sidebar-default: #14161a;
+    --border-default: #2b2f3a;
+    --text-default: #ffffff;
+}
+
+
+/* Light theme: invert dark backgrounds to a soft off-white, and white texts to a dark charcoal. */
+[data-theme="light"] body,
+[data-theme="light"] .bg-\[\#0f1115\],
+[data-theme="light"] .bg-\[\#1a1d23\],
+[data-theme="light"] .bg-bg-card,
+[data-theme="light"] .bg-sidebar,
+[data-theme="light"] .bg-\[\#14161a\],
+[data-theme="light"] .bg-\[\#2b2f3a\] {
+    background-color: #f3f4f6 !important; /* soft gray, less bright than pure white */
+    color: #0f1720 !important; /* slightly lighter than previous black */
+}
+
+/* Convert white-ish text to dark on light theme. Include common Tailwind utility variants. */
+[data-theme="light"] .text-white,
+[data-theme="light"] .text-white\/60,
+[data-theme="light"] .text-white\/70,
+[data-theme="light"] .text-white\/80,
+[data-theme="light"] .text-white\/50 {
+    color: #0f1720 !important;
+}
+
+/* Borders that are dark become soft gray in light theme */
+[data-theme="light"] .border-\[\#2b2f3a\],
+[data-theme="light"] .border-border-dark {
+    border-color: #d1d5db !important;
+}
+
+/* Tooltips and dropdowns (dark surfaces) should become off-white in light theme */
+[data-theme="light"] .tooltip,
+[data-theme="light"] #profile-dropdown,
+[data-theme="light"] .modal-backdrop,
+[data-theme="light"] .card-animate {
+    background-color: #f9fafb !important;
+    color: #0f1720 !important;
+}
+
+/* Ensure subtle elements that explicitly expect white text get corrected */
+[data-theme="light"] .text-white\/60 { opacity: 0.95; }
+
+/* Keep accent and colored buttons alone: do not target classes like bg-blue-600, bg-orange-500 etc. */
+
+/* Theme selector button styles and active state */
+.theme-toggle-wrapper { display:flex; align-items:center; justify-content:space-between; }
+.theme-toggle-buttons { display:flex; gap:6px; }
+.theme-toggle-btn { padding:6px 8px; border-radius:8px; font-size:12px; cursor:pointer; border:1px solid transparent; }
+.theme-toggle-btn.active { box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+
+/* In light theme, ensure theme-toggle buttons that may have inline white bg are toned down */
+[data-theme="light"] .theme-toggle-btn[data-theme="light"] { background-color: #f3f4f6 !important; color: #0f1720 !important; border-color:#e6e9ee !important; }
+[data-theme="light"] .theme-toggle-btn[data-theme="dark"] { background-color: transparent !important; color: #0f1720 !important; border-color: transparent !important; }
+
+/* In light theme, ensure small components with explicit dark backgrounds are readable */
+[data-theme="light"] .chart-placeholder { background: linear-gradient(135deg, #f7f8fa 0%, #f3f4f6 100%) !important; border-color: #e6e9ee !important; }
