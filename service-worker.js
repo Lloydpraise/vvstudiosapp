@@ -1,4 +1,5 @@
-const CACHE_NAME = "vvstudios-cache-v1";
+// Bump this value whenever you deploy new static assets so clients update their cache.
+const CACHE_NAME = "vvstudios-cache-v2";
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
@@ -62,7 +63,25 @@ self.addEventListener("activate", (event) => {
     );
     await self.clients.claim();
     console.log("[SW] Activated and old caches cleared.");
+
+    // Notify open pages that a new Service Worker is active so they can reload if needed.
+    try {
+      const allClients = await self.clients.matchAll({ includeUncontrolled: true });
+      for (const client of allClients) {
+        client.postMessage({ type: 'SW_UPDATED', cacheName: CACHE_NAME });
+      }
+    } catch (e) {
+      console.warn('[SW] Could not postMessage to clients:', e);
+    }
   })());
+});
+
+// Allow page to trigger skipWaiting via postMessage
+self.addEventListener('message', (event) => {
+  if (!event.data) return;
+  if (event.data === 'SKIP_WAITING' || event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // FETCH

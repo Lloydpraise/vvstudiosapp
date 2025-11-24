@@ -31,13 +31,24 @@ try {
 } catch (e) {}
 
 // Load business info from localStorage
-let BUSINESS_ID = localStorage.getItem('business_id');
+let BUSINESS_ID = (function(){
+  try {
+    const vvRaw = localStorage.getItem('vvUser');
+    if (vvRaw) {
+      const vv = JSON.parse(vvRaw);
+      return vv?.business_id || vv?.['business id'] || localStorage.getItem('business_id') || null;
+    }
+    return localStorage.getItem('business_id') || null;
+  } catch (e) {
+    return localStorage.getItem('business_id') || null;
+  }
+})();
+
 let BUSINESS_NAME = localStorage.getItem('business_name') || 'VV Studios'; // Added default name for WhatsApp reminder
 let ADMIN_NAME = localStorage.getItem('admin_name');
 
 if (!BUSINESS_ID) {
-  console.warn('⚠️ No BUSINESS_ID found in localStorage. Using fallback test ID.');
-  BUSINESS_ID = 'fortunebooks12';
+  console.warn('⚠️ No BUSINESS_ID found in localStorage. Please login to access business-specific data.');
 }
 
 // Quick connection test
@@ -5018,6 +5029,19 @@ function switchAddForm(formName) {
   if (targetForm) targetForm.classList.remove('hidden');
   if (targetMenuItem) targetMenuItem.classList.add('active');
 
+  // If switching away from the deal form, ensure any readonly/preloaded state is cleared
+  try {
+    if (formName !== 'deal') {
+      const dealSearch = document.getElementById('deal-contact-search');
+      if (dealSearch && dealSearch.dataset.prefilled === 'true') {
+        dealSearch.removeAttribute('readonly');
+        delete dealSearch.dataset.prefilled;
+      }
+      const dealResults = document.getElementById('deal-contact-results');
+      if (dealResults) dealResults.classList.add('hidden');
+    }
+  } catch (e) { /* non-fatal */ }
+
   if (formName === 'deal') {
     populateDealStageSelect();
     initDealContactSearch();
@@ -7485,8 +7509,8 @@ async function openAfterSalePopup(id, name, phone) {
           // Open the Add Deal form and prefill with this contact
           openAddDealForContact(customer);
         } catch (e) {
-          console.warn('Upsell open failed, falling back to alert', e);
-          showInAppAlert(`Upsell for ${customer.name || 'customer'} (Contact ID: ${id})`);
+          // Fail silently for UX (don't show distracting alert)
+          console.warn('Upsell open failed', e);
         }
       };
     }
@@ -7795,8 +7819,39 @@ function openAddDealForContact(customer) {
     // Ensure the deal-stage select is populated
     populateDealStageSelect();
     // Open the Add modal and switch to Deal form
+    // Open the Add modal and switch to Deal form. Ensure it appears above any open parent modal
     openAddModal();
     switchAddForm('deal');
+
+      try {
+        // Hide nested contact selector to prevent nested-contacts flow when opening from an upsell
+        const nestedArea = document.getElementById('nested-selector-area');
+        if (nestedArea) nestedArea.classList.add('hidden');
+
+        // Also hide any nested-search-results and clear selected chips so no nested contacts remain applied
+        const nestedResults = document.getElementById('nested-search-results');
+        if (nestedResults) nestedResults.classList.add('hidden');
+        const nestedSelected = document.getElementById('nested-selected-list');
+        if (nestedSelected) nestedSelected.innerHTML = '';
+
+        // Ensure the deal contact input is readonly and results hidden so only prefilled contact shows
+        const dealSearch = document.getElementById('deal-contact-search');
+        const dealResults = document.getElementById('deal-contact-results');
+        if (dealSearch) {
+          dealSearch.setAttribute('readonly', 'true');
+          dealSearch.dataset.prefilled = 'true';
+        }
+        if (dealResults) dealResults.classList.add('hidden');
+
+        // Bring the add modal to the front so it overlays the after-sale modal
+        const addModalEl = document.getElementById('add-main-modal');
+        const afterSaleEl = document.getElementById('after-sale-modal');
+        const afterSaleZ = afterSaleEl ? parseInt(getComputedStyle(afterSaleEl).zIndex) || 9998 : 9998;
+        if (addModalEl) {
+          // use a value safely above the after-sale modal
+          addModalEl.style.zIndex = (afterSaleZ + 2).toString();
+        }
+      } catch (e) { console.warn('openAddDealForContact post-open adjustments failed', e); }
   } catch (e) { console.warn('openAddDealForContact failed', e); }
 }
 // 🟣 Ask for Referral buttons

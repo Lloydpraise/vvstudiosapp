@@ -49,9 +49,9 @@ function getLoggedInUser() {
 }
 
 function logout() {
-    console.log("[DEBUG] Logging out: Clearing localStorage and reloading page.");
-    localStorage.removeItem("vvUser");
-    window.location.reload();
+  console.log("[DEBUG] Logging out: Clearing localStorage and redirecting to login.");
+  localStorage.removeItem("vvUser");
+  window.location.href = 'index.html';
 }
 
 // --- UI Switch ---
@@ -130,10 +130,11 @@ async function handleLogin(e) {
                 
                 // Save user data to localStorage (consistent with dashboard.js)
                 const fullUserData = {
-                    ...userData,
-                    business_id: userData['business id'] || userData.business_id || normalized,
-                    phone_number: normalized,
-                    phone: phone // Raw phone for UX
+                  ...userData,
+                  // Do NOT fallback to the normalized phone as a business id; only use values from Supabase
+                  business_id: userData['business id'] || userData.business_id || null,
+                  phone_number: normalized,
+                  phone: phone // Raw phone for UX
                 };
                 localStorage.setItem("vvUser", JSON.stringify(fullUserData));
                 console.log("[DEBUG] Full user data saved to localStorage.");

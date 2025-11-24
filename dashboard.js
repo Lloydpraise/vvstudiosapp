@@ -768,7 +768,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         logoutButton.addEventListener('click', (e) => {
             e.preventDefault();
             localStorage.removeItem('vvUser');
-            window.location.reload();
+            window.location.href = 'index.html';
         });
     }
 

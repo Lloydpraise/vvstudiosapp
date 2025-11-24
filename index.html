@@ -992,6 +992,50 @@
                 .then(() => console.log('ServiceWorker registered'))
                 .catch(err => console.error("SW registration failed:", err));
         }
+        // Listen for Service Worker update notifications and show a non-intrusive top tip
+        if (navigator.serviceWorker) {
+            navigator.serviceWorker.addEventListener('message', (event) => {
+                try {
+                    const data = event.data;
+                    if (!data) return;
+                    if (data.type === 'SW_UPDATED') {
+                        // Show a transient tip at the very top saying 'new updates applied'
+                        const bannerId = 'sw-update-tip';
+                        if (!document.getElementById(bannerId)) {
+                            const banner = document.createElement('div');
+                            banner.id = bannerId;
+                            banner.textContent = 'new updates applied';
+                            banner.style.position = 'fixed';
+                            banner.style.top = '0';
+                            banner.style.left = '0';
+                            banner.style.right = '0';
+                            banner.style.zIndex = '9999';
+                            banner.style.background = 'linear-gradient(90deg,#10b981,#06b6d4)';
+                            banner.style.color = '#fff';
+                            banner.style.padding = '10px 12px';
+                            banner.style.textAlign = 'center';
+                            banner.style.fontWeight = '600';
+                            banner.style.fontFamily = 'Inter, sans-serif';
+                            banner.style.boxShadow = '0 2px 8px rgba(0,0,0,0.16)';
+                            banner.style.pointerEvents = 'none';
+                            document.body.appendChild(banner);
+                        }
+
+                        // Tell the SW to skip waiting so the new SW can activate immediately
+                        if (navigator.serviceWorker.controller) {
+                            navigator.serviceWorker.controller.postMessage('SKIP_WAITING');
+                        }
+
+                        // Keep the tip for a few seconds then reload to pick up the new assets
+                        setTimeout(() => {
+                            const el = document.getElementById('sw-update-tip');
+                            if (el) el.remove();
+                            window.location.reload();
+                        }, 3000);
+                    }
+                } catch (e) { console.warn('SW message handler error', e); }
+            });
+        }
         </script>
 </body>
 </html>

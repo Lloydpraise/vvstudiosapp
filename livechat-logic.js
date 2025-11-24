@@ -28,7 +28,18 @@ try {
 // Use a fixed business ID for the dashboard scope
 if (!window.authUtils) {
     window.authUtils = {
-        getBusinessId: () => 'fortunebooks12' 
+        getBusinessId: () => {
+            try {
+                const vvRaw = localStorage.getItem('vvUser');
+                if (vvRaw) {
+                    const vv = JSON.parse(vvRaw);
+                    return vv?.business_id || vv?.['business id'] || null;
+                }
+                return localStorage.getItem('business_id') || null;
+            } catch (e) {
+                return localStorage.getItem('business_id') || null;
+            }
+        }
     };
 }
 

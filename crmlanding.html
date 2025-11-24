@@ -2771,8 +2771,8 @@
                 logoutBtn.addEventListener('click', function (e) {
                     e.preventDefault();
                     localStorage.removeItem('vvUser');
-                    // Optionally send to login page or reload to show login
-                    window.location.reload();
+                    // Redirect back to the login page
+                    window.location.href = 'index.html';
                 });
             }
 
