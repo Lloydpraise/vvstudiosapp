@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta id="dynamic-viewport" name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Welcome | VV Studios</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.5.1/chart.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        // Viewport handling
+        (function(){
+            try {
+                var vp = document.getElementById('dynamic-viewport');
+                function updateViewport() {
+                    var w = window.innerWidth || document.documentElement.clientWidth || 1024;
+                    if (w < 768) {
+                        vp.setAttribute('content', 'width=device-width, initial-scale=0.8, minimum-scale=0.8, viewport-fit=cover');
+                    } else {
+                        vp.setAttribute('content', 'width=device-width, initial-scale=0.8, minimum-scale=0.8, viewport-fit=cover');
+                    }
+                }
+                updateViewport();
+                window.addEventListener('resize', function(){ try { updateViewport(); } catch(e){} });
+            } catch (e) { }
+        })();
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f1115; color: white; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background-color: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.1); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.2); }
+
+        /* Animations */
+        .card-animate { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .card-animate:hover { transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2); }
+        
+        .fade-in { animation: fadeIn 0.6s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Sidebar & Navigation */
+        .sidebar-link { position: relative; transition: all 0.2s ease; }
+        .sidebar-link:hover { background-color: rgba(255, 255, 255, 0.05); }
+        .sidebar-link.active { color: #FFD700; background-color: rgba(255, 215, 0, 0.1); }
+
+        /* Task List Styles */
+        .task-card {
+            background: linear-gradient(145deg, #1a1d23 0%, #15171c 100%);
+            border: 1px solid #2b2f3a;
+        }
+        .task-number {
+            background: rgba(255, 255, 255, 0.05);
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.5);
+            font-weight: 600;
+        }
+        .task-done .task-number {
+            background: #10B981;
+            color: #000;
+        }
+
+        /* Progress Bar */
+        .completion-bar-bg {
+            background-color: #2b2f3a;
+            height: 6px;
+            border-radius: 99px;
+            overflow: hidden;
+        }
+        .completion-bar-fill {
+            background-color: #10B981;
+            height: 100%;
+            width: 15%; /* Initial small fill */
+            transition: width 0.5s ease;
+        }
+
+        /* Upgrade Button Pulse */
+        @keyframes pulse-blue {
+            0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(37, 99, 235, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+        }
+        .btn-upgrade {
+            animation: pulse-blue 2s infinite;
+        }
+
+        /* Text Gradients */
+        .text-gradient-welcome {
+            background: linear-gradient(to right, #60a5fa, #4ade80);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: transparent;
+        }
+
+        /* Blur Overlay for Locked Items */
+        .locked-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 17, 21, 0.7);
+            backdrop-filter: blur(2px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: inherit;
+            z-index: 10;
+        }
+    </style>
+    <script>
+        // Inject shared sidebar HTML early so deferred scripts (auth.js) can bind to it on DOMContentLoaded
+        (function(){
+            try {
+                fetch('sidebar.html').then(r => r.text()).then(html => {
+                    function insertSidebar(){
+                        const flex = document.querySelector('.flex.h-screen');
+                        if (!flex) return setTimeout(insertSidebar, 40);
+                        try {
+                            const temp = document.createElement('div');
+                            temp.innerHTML = html;
+                            const aside = temp.querySelector('aside');
+                            if (aside && !document.getElementById('sidebar')) {
+                                flex.insertBefore(aside, flex.firstChild);
+                            }
+                        } catch (e) { /* ignore */ }
+                    }
+                    insertSidebar();
+                }).catch(() => {});
+            } catch (e) {}
+        })();
+    </script>
+    <script src="auth.js" defer></script>
+</head>
+<body class="bg-[#0f1115] text-white overflow-hidden">
+
+    <div class="flex h-screen">
+        <!-- Sidebar will be injected from sidebar.html -->
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto relative" id="main-scroll">
+            
+            <!-- Mobile Header -->
+            <div class="lg:hidden flex items-center justify-between p-4 bg-[#14161a] border-b border-white/5 sticky top-0 z-30">
+                <div class="flex items-center gap-3">
+                    <img src="assets/logo.png" onerror="this.src='https://via.placeholder.com/32'" class="w-8 h-8 rounded-full" alt="Logo">
+                    <span class="font-bold">VV Studios</span>
+                </div>
+                <button class="text-white/70">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+            </div>
+
+            <div class="p-6 md:p-10 max-w-7xl mx-auto pb-32">
+                
+                <!-- Header Section -->
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4 relative">
+                    <div class="w-full">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h1 class="text-3xl md:text-5xl font-bold mb-2 text-gradient-welcome">
+                                    Welcome to VV Studios!
+                                </h1>
+                                <p class="text-white/60 text-lg">
+                                    Get Ready to show more, sell more and scale faster!
+                                </p>
+                            </div>
+                            
+                            <!-- Upgrade Button (Top Right) -->
+                            <a id="upgrade-button" href="plans.html" class="hidden md:flex w-auto bg-blue-600 text-white font-semibold py-3 px-4 rounded-xl hover:bg-blue-700 transition-colors items-center gap-2 shadow-lg shadow-blue-900/40">
+                                <span>Upgrade Now</span>
+                                <i class="fa-solid fa-arrow-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mobile Upgrade Button (Visible only on mobile) -->
+                <div class="md:hidden mb-8">
+                    <a id="upgrade-button-mobile" href="plans.html" class="w-full flex justify-center bg-blue-600 text-white font-semibold py-3 px-4 rounded-xl items-center gap-2 transition-colors shadow-lg shadow-blue-900/40">
+                        <span>Upgrade Now</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </a>
+                </div>
+
+                <!-- Get Started Section -->
+                <section class="mb-12 fade-in">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-orange-400"></i> Get Started
+                        </h2>
+                        <div class="flex items-center gap-3 text-sm text-white/40">
+                            <span>15% Completed</span>
+                            <div class="w-24 h-2 bg-white/10 rounded-full overflow-hidden">
+                                <div class="h-full bg-green-500 w-[15%]"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <!-- Task 1 -->
+                        <div class="task-card p-4 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4 group hover:border-white/20 transition-colors">
+                            <div class="flex items-center gap-4 w-full md:w-auto">
+                                <span class="task-number">1</span>
+                                <div>
+                                    <h3 class="font-medium text-white group-hover:text-orange-400 transition-colors">Get your Projections & Vision Board</h3>
+                                    <p class="text-xs text-white/40">See your potential revenue and growth path.</p>
+                                </div>
+                            </div>
+                            <a href="simulator.html" class="w-full md:w-auto px-5 py-2 bg-orange-600 hover:bg-orange-500 text-white text-sm font-semibold rounded-lg transition-colors text-center shadow-lg shadow-orange-900/20">
+                                Start Now
+                            </a>
+                        </div>
+
+                        <!-- Task 2 -->
+                        <div class="task-card p-4 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4 group hover:border-white/20 transition-colors">
+                            <div class="flex items-center gap-4 w-full md:w-auto">
+                                <span class="task-number">2</span>
+                                <div>
+                                    <h3 class="font-medium text-white group-hover:text-orange-400 transition-colors">Set Up Business Profile</h3>
+                                    <p class="text-xs text-white/40">Complete your details for better AI suggestions.</p>
+                                </div>
+                            </div>
+                            <button class="w-full md:w-auto px-5 py-2 bg-[#2b2f3a] hover:bg-[#374151] text-white/80 hover:text-white text-sm font-semibold rounded-lg transition-colors border border-white/5">
+                                Set Up
+                            </button>
+                        </div>
+
+                        <!-- Task 3 -->
+                        <div class="task-card p-4 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4 group hover:border-white/20 transition-colors">
+                            <div class="flex items-center gap-4 w-full md:w-auto">
+                                <span class="task-number">3</span>
+                                <div>
+                                    <h3 class="font-medium text-white group-hover:text-orange-400 transition-colors">Create One Offer</h3>
+                                    <p class="text-xs text-white/40">Define what you're selling to generate leads.</p>
+                                </div>
+                            </div>
+                            <button class="w-full md:w-auto px-5 py-2 bg-[#2b2f3a] hover:bg-[#374151] text-white/80 hover:text-white text-sm font-semibold rounded-lg transition-colors border border-white/5">
+                                Create Offer
+                            </button>
+                        </div>
+
+                        <!-- Task 4 -->
+                        <div class="task-card p-4 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4 group hover:border-white/20 transition-colors">
+                            <div class="flex items-center gap-4 w-full md:w-auto">
+                                <span class="task-number">4</span>
+                                <div>
+                                    <h3 class="font-medium text-white group-hover:text-orange-400 transition-colors">Run a free Business Audit</h3>
+                                    <p class="text-xs text-white/40">Check your online presence health score.</p>
+                                </div>
+                            </div>
+                            <button class="w-full md:w-auto px-5 py-2 bg-[#2b2f3a] hover:bg-[#374151] text-white/80 hover:text-white text-sm font-semibold rounded-lg transition-colors border border-white/5">
+                                Run Audit
+                            </button>
+                        </div>
+
+                        <!-- Task 5 (Locked Logic Visualized) -->
+                        <div class="task-card p-4 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4 opacity-50 relative overflow-hidden">
+                            <!-- Locked Overlay inside the card logic -->
+                            <div class="flex items-center gap-4 w-full md:w-auto">
+                                <span class="task-number"><i class="fa-solid fa-lock text-[10px]"></i></span>
+                                <div>
+                                    <h3 class="font-medium text-white">Book a Free Strategy Call</h3>
+                                    <p class="text-xs text-white/40">Unlock this by completing the tasks above.</p>
+                                </div>
+                            </div>
+                            <button disabled class="w-full md:w-auto px-5 py-2 bg-gray-700 text-white/30 text-sm font-semibold rounded-lg cursor-not-allowed border border-white/5">
+                                Book Call
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Vision Board Section -->
+                <section class="mb-12 fade-in" style="animation-delay: 0.1s;">
+                    <div class="mb-4">
+                        <h2 class="text-xl font-bold text-white">Your Vision Board</h2>
+                        <p class="text-sm text-white/60">Your roadmap to success.</p>
+                    </div>
+
+                    <!-- Empty State (Default for Free User initially) -->
+                    <div id="vision-board-empty" class="bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] p-8 text-center">
+                        <div class="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fa-solid fa-chart-line text-blue-400 text-2xl"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-white mb-2">No Projections Yet</h3>
+                        <p class="text-white/50 text-sm max-w-md mx-auto mb-6">
+                            Use our simulator to create a vision board. See how many leads you need, your potential revenue, and your path to scaling.
+                        </p>
+                        <a href="simulator.html" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-colors shadow-lg shadow-blue-900/30">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            Get Vision Board
+                        </a>
+                    </div>
+
+                    <!-- Populated State (Hidden by default, can be toggled via JS for demo) -->
+                    <div id="vision-board-data" class="hidden bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] p-6 card-animate">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div class="p-4 bg-white/5 rounded-xl border border-white/5">
+                                <p class="text-xs text-white/40 uppercase tracking-wide font-bold mb-1">Projected Monthly Sales</p>
+                                <p class="text-2xl font-bold text-green-400">KES 1,200,000</p>
+                            </div>
+                            <div class="p-4 bg-white/5 rounded-xl border border-white/5">
+                                <p class="text-xs text-white/40 uppercase tracking-wide font-bold mb-1">Target CAC</p>
+                                <p class="text-2xl font-bold text-blue-400">KES 450</p>
+                            </div>
+                            <div class="p-4 bg-white/5 rounded-xl border border-white/5">
+                                <p class="text-xs text-white/40 uppercase tracking-wide font-bold mb-1">Monthly Customers</p>
+                                <p class="text-2xl font-bold text-purple-400">145</p>
+                            </div>
+                        </div>
+                        <div class="mt-6 flex justify-end">
+                            <a href="simulator.html" class="text-sm text-white/50 hover:text-white flex items-center gap-2 transition-colors">
+                                <i class="fa-solid fa-sliders"></i> Adjust numbers
+                            </a>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Two Column Layout for Services & Learning -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 fade-in" style="animation-delay: 0.2s;">
+                    
+                    <!-- About Services -->
+                    <section>
+                        <h2 class="text-xl font-bold text-white mb-4">About Our Services</h2>
+                        <div class="bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] p-6 md:p-8 card-animate flex flex-col h-full justify-between">
+                            <div>
+                                <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mb-4">
+                                    <i class="fa-solid fa-layer-group text-purple-400 text-xl"></i>
+                                </div>
+                                <h3 class="text-xl font-bold text-white mb-3">Explore What We Do</h3>
+                                <p class="text-white/60 text-sm leading-relaxed mb-6">
+                                    Learn more about our comprehensive suite of services. From AI-driven analytics to expert ad management, discover how our tools work together to grow your business.
+                                </p>
+                            </div>
+                            <button class="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-colors shadow-lg shadow-purple-900/30">
+                                About Services
+                            </button>
+                        </div>
+                    </section>
+
+                    <!-- Learning Materials -->
+                    <section>
+                        <h2 class="text-xl font-bold text-white mb-4">Learning Materials</h2>
+                        <div class="bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] p-6 md:p-8 card-animate flex flex-col h-full justify-between">
+                            <div>
+                                <div class="w-12 h-12 bg-orange-500/20 rounded-lg flex items-center justify-center mb-4">
+                                    <i class="fa-solid fa-graduation-cap text-orange-400 text-xl"></i>
+                                </div>
+                                <h3 class="text-xl font-bold text-white mb-3">Learn Digital Marketing</h3>
+                                <p class="text-white/60 text-sm leading-relaxed mb-6">
+                                    Access our library of free resources designed to help you master digital marketing. Learn strategies that you can apply immediately to start seeing results.
+                                </p>
+                            </div>
+                            <button class="w-full py-3 bg-[#1a1d23] border border-white/20 hover:bg-white/5 text-white font-bold rounded-xl transition-colors">
+                                Start Learning
+                            </button>
+                        </div>
+                    </section>
+
+                </div>
+
+                <!-- Footer / Support -->
+                <div class="mt-16 border-t border-white/5 pt-8 text-center">
+                    <p class="text-white/30 text-sm">Need help with your plan? <a href="#" class="text-blue-400 hover:underline">Contact Support</a></p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check for simulated login state
+            const user = localStorage.getItem('vvUser');
+            // If strictly needed, we could redirect if no user, but for "Free Experience" preview we keep it open
+            
+            // Logout logic
+            document.getElementById('logout-btn').addEventListener('click', () => {
+                localStorage.removeItem('vvUser');
+                window.location.href = 'index.html';
+            });
+
+            // Simulate Vision Board Data Check (Prototype logic)
+            // If simulator data exists in local storage, show the populated card instead of empty state
+            const simData = localStorage.getItem('sim_projections');
+            if (simData) {
+                try {
+                    const data = JSON.parse(simData);
+                    document.getElementById('vision-board-empty').classList.add('hidden');
+                    document.getElementById('vision-board-data').classList.remove('hidden');
+                    // We could populate the numbers here if we knew the structure, 
+                    // but static layout is fine for now.
+                } catch(e) {}
+            }
+        });
+    </script>
+    <script>
+        // Register service worker and show update tip when a new SW activates
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js')
+                .then(() => console.log('ServiceWorker registered (free page)'))
+                .catch(err => console.error('SW registration failed (free page):', err));
+        }
+
+        if (navigator.serviceWorker) {
+            navigator.serviceWorker.addEventListener('message', (event) => {
+                try {
+                    const data = event.data;
+                    if (!data) return;
+                    if (data.type === 'SW_UPDATED') {
+                        const bannerId = 'sw-update-tip';
+                        if (!document.getElementById(bannerId)) {
+                            const banner = document.createElement('div');
+                            banner.id = bannerId;
+                            banner.textContent = 'new updates applied';
+                            banner.style.position = 'fixed';
+                            banner.style.top = '0';
+                            banner.style.left = '0';
+                            banner.style.right = '0';
+                            banner.style.zIndex = '9999';
+                            banner.style.background = 'linear-gradient(90deg,#10b981,#06b6d4)';
+                            banner.style.color = '#fff';
+                            banner.style.padding = '10px 12px';
+                            banner.style.textAlign = 'center';
+                            banner.style.fontWeight = '600';
+                            banner.style.fontFamily = 'Inter, sans-serif';
+                            banner.style.boxShadow = '0 2px 8px rgba(0,0,0,0.16)';
+                            banner.style.pointerEvents = 'none';
+                            document.body.appendChild(banner);
+                        }
+
+                        // Ask the SW to activate now
+                        if (navigator.serviceWorker.controller) {
+                            navigator.serviceWorker.controller.postMessage('SKIP_WAITING');
+                        }
+
+                        // Remove tip after a few seconds and reload to pick up new assets
+                        setTimeout(() => {
+                            const el = document.getElementById('sw-update-tip');
+                            if (el) el.remove();
+                            window.location.reload();
+                        }, 3000);
+                    }
+                } catch (e) { console.warn('SW message handler (free page) error', e); }
+            });
+        }
+    </script>
+</body>
+</html>

@@ -17,18 +17,8 @@ const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 console.log('[INIT] Supabase client created ✅', client);
 
-// Quick global debug capture: fires once to confirm clicks reach the document early.
-try {
-  document.addEventListener('click', function _globalSchedDebug(ev) {
-    try {
-      const btn = ev.target.closest && ev.target.closest('#sidebar-followup-schedules');
-      if (btn) {
-        // show an alert once so user sees immediate feedback even if console is hidden
-        try { alert('DEBUG: Schedules click detected (global listener)'); } catch (e) { console.log('DEBUG alert failed', e); }
-      }
-    } catch (e) {}
-  }, { capture: true, once: true });
-} catch (e) {}
+// NOTE: Removed global debug click listener that previously caused an alert
+// and could interrupt normal modal opening flow.
 
 // Load business info from localStorage
 let BUSINESS_ID = (function(){
@@ -322,760 +312,101 @@ try {
 function escapeHtml(s){ if (!s && s !== 0) return ''; return String(s).replace(/[&<>"]+/g, function(chr){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[chr] || chr; }); }
 
 
-// Safe initializer for schedules modal interactions. Provides minimal, idempotent wiring
-// so callers can invoke it without causing ReferenceErrors. The full interaction set
-// is implemented elsewhere in the file when present; this ensures a fallback exists.
+// Schedules & Follow-up templates UI removed
+// The original implementation (modal, detail views, create/edit flows) was removed
+// per request. We keep small no-op stubs so other parts of the app can call
+// these names without throwing runtime errors.
+
+// Initialize lightweight interactions inside the schedules modal. Keep minimal
+// so we don't reintroduce the previous conflicting handlers.
 function initSchedulesModalInteractions() {
-  if (initSchedulesModalInteractions._inited) return;
-  initSchedulesModalInteractions._inited = true;
-
   try {
-    // Tab switching
-      document.querySelectorAll('[data-schedules-tab]').forEach(btn => {
-      if (btn.dataset._schAttached) return;
-      btn.addEventListener('click', (e) => {
-        const which = e.currentTarget.dataset.schedulesTab;
-        document.querySelectorAll('[data-schedules-tab]').forEach(b => b.classList.remove('active'));
-        e.currentTarget.classList.add('active');
-        if (which === 'system') {
-          document.getElementById('schedules-system')?.classList.remove('hidden');
-          document.getElementById('schedules-special')?.classList.add('hidden');
-            // show section-level info button for system
-            try { document.getElementById('schedules-section-info-btn').style.display = ''; } catch (e) {}
-        } else {
-          document.getElementById('schedules-system')?.classList.add('hidden');
-          document.getElementById('schedules-special')?.classList.remove('hidden');
-            // hide section-level info button on special
-            try { document.getElementById('schedules-section-info-btn').style.display = 'none'; } catch (e) {}
-        }
-      });
-      btn.dataset._schAttached = '1';
+    // Attach a close handler to any element inside the modal that has
+    // `data-schedules-close` to allow closing from template markup.
+    const bd = document.getElementById('schedules-modal-backdrop');
+    if (!bd) return;
+    bd.querySelectorAll('[data-schedules-close]').forEach(btn => {
+      if (btn._schedulesInit) return;
+      btn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); hideSchedulesModal(); });
+      btn._schedulesInit = true;
     });
-
-    // Card click -> open the detail modal if present
-    document.querySelectorAll('.schedule-card').forEach(card => {
-      if (card.dataset._schCardAttached) return;
-      card.addEventListener('click', (e) => {
-        // If an explicit opener exists use it
-        if (typeof openScheduleDetailFromCard === 'function') return openScheduleDetailFromCard(card, { edit: false });
-        // Fallback: populate detail modal fields if detail modal exists
-        const days = card.dataset.days || card.getAttribute('data-days') || '';
-        const title = card.querySelector('.font-semibold') ? card.querySelector('.font-semibold').textContent.trim() : '';
-        const msgEl = card.querySelector('.text-sm') || card.querySelector('p');
-        const message = msgEl ? msgEl.textContent.trim() : '';
-        const detailBackdrop = document.getElementById('schedule-detail-modal-backdrop');
-        if (!detailBackdrop) return;
-        document.getElementById('detail-days') && (document.getElementById('detail-days').textContent = days);
-        document.getElementById('detail-title') && (document.getElementById('detail-title').textContent = title);
-        document.getElementById('detail-message') && (document.getElementById('detail-message').textContent = message);
-        openModal('schedule-detail-modal-backdrop');
-      });
-      card.dataset._schCardAttached = '1';
-    });
-    // Track hovered card so the section-level ? button can show the hovered card's info
-    document.querySelectorAll('.schedule-card').forEach(card => {
-      if (card.dataset._schHoverAttached) return;
-      card.addEventListener('mouseenter', () => { hoveredScheduleCard = card; });
-      card.addEventListener('mouseleave', () => { if (hoveredScheduleCard === card) hoveredScheduleCard = null; });
-      card.dataset._schHoverAttached = '1';
-    });
-
-    // Section-level info button (shows info for hovered card or first card)
-    const sectionInfoBtn = document.getElementById('schedules-section-info-btn');
-    if (sectionInfoBtn && !sectionInfoBtn._attached) {
-      sectionInfoBtn.addEventListener('click', (ev) => {
-        ev.preventDefault();
-        ev.stopPropagation();
-        const card = hoveredScheduleCard || document.querySelector('#schedules-system .schedule-card');
-        if (!card) return;
-        const info = card.dataset.info || card.getAttribute('data-info') || (card.querySelector('.text-sm') ? card.querySelector('.text-sm').textContent.trim() : 'No info');
-        showFollowupInfo(card, info);
-      });
-      sectionInfoBtn._attached = true;
+    // ESC to close
+    if (!initSchedulesModalInteractions._escAttached) {
+      document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') hideSchedulesModal(); });
+      initSchedulesModalInteractions._escAttached = true;
     }
-
-    // Create button inside the Schedules modal - attach only this specific button
-    // Do NOT touch other create/add buttons on the page. Idempotent attach.
-    try {
-      const createBtn = document.getElementById('create-followup-btn');
-      if (createBtn && !createBtn._schedulesAttached) {
-        createBtn.addEventListener('click', (ev) => {
-          ev.preventDefault(); ev.stopPropagation();
-          // Open the Create Special Follow-Up modal
-          try { showCreateFollowupModal(); } catch (e) { console.warn('[schedules] showCreateFollowupModal missing', e); }
-        });
-        createBtn._schedulesAttached = true;
-      }
-    } catch (e) { /* non-fatal */ }
-  } catch (e) {
-    console.warn('initSchedulesModalInteractions fallback failed', e);
-  }
+  } catch (e) { console.warn('initSchedulesModalInteractions failed', e); }
 }
 
-  // Open detail modal for a schedule card and prepare edit handlers
-  function openScheduleDetailFromCard(card, opts = { edit: false }) {
+// Show the Schedules / Templates modal and load templates from DB.
+async function showSchedulesModal() {
+  try {
+    console.debug('[schedules] showSchedulesModal called');
+    const bd = document.getElementById('schedules-modal-backdrop');
+    if (!bd) { console.warn('[schedules] modal backdrop not found'); return; }
+    // Bring backdrop into view
+    bd.classList.remove('hidden'); bd.style.display = 'flex'; bd.style.zIndex = '120000'; bd.setAttribute('aria-hidden','false');
+    try { if (bd.parentNode !== document.body) document.body.appendChild(bd); } catch (e) {}
+
+    // Ensure basic layout for inner modal
     try {
-      selectedScheduleCard = card;
-      const days = card.dataset.days || card.getAttribute('data-days') || '';
-      const title = card.querySelector('.font-semibold') ? card.querySelector('.font-semibold').textContent.trim() : '';
-      const msgEl = card.querySelector('.text-sm') || card.querySelector('p');
-      const message = msgEl ? msgEl.textContent.trim() : '';
-
-      const detailBackdrop = document.getElementById('schedule-detail-modal-backdrop');
-      if (!detailBackdrop) return;
-      // populate view
-      document.getElementById('detail-days') && (document.getElementById('detail-days').textContent = days);
-  // stage (template stage)
-  const stageVal = card.dataset.type || card.getAttribute('data-type') || card.getAttribute('data-template-stage') || '';
-  document.getElementById('detail-stage') && (document.getElementById('detail-stage').textContent = stageVal);
-      document.getElementById('detail-title') && (document.getElementById('detail-title').textContent = title);
-      document.getElementById('detail-message') && (document.getElementById('detail-message').textContent = message);
-
-      // Ensure footer buttons exist
-      const leftBtn = document.getElementById('detail-left-btn');
-      const rightBtn = document.getElementById('detail-right-btn');
-      if (!leftBtn || !rightBtn) return openModal('schedule-detail-modal-backdrop');
-
-      // Setup initial view mode
-      exitDetailEditMode();
-
-      // Attach handlers (idempotent)
-      if (!leftBtn._attached) {
-        leftBtn.addEventListener('click', (ev) => {
-          // In view mode this is Cancel (closes). In edit mode this will be Discard (revert).
-          if (leftBtn.dataset.mode === 'discard') {
-            // prevent the generic modal-close handler from also running
-            try { ev.preventDefault(); ev.stopPropagation(); } catch (e) {}
-            discardDetailEdits();
-          } else {
-            // leave default behavior so data-modal-close (if present) will close the modal
-          }
-        });
-        leftBtn._attached = true;
-      }
-      if (!rightBtn._attached) {
-        rightBtn.addEventListener('click', (ev) => {
-          if (rightBtn.dataset.mode === 'save') {
-            saveDetailEdits();
-          } else {
-            enterDetailEditMode();
-          }
-        });
-        rightBtn._attached = true;
-      }
-
-      // Also allow the small top Edit button to toggle
-        // The detail header info button (replaces previous top Edit button)
-        const topInfo = document.getElementById('detail-info-btn');
-        if (topInfo && !topInfo._attached) {
-          topInfo.addEventListener('click', (e) => {
-            e.preventDefault(); e.stopPropagation();
-            // show info for the selected card (fallback to selectedScheduleCard or read from modal fields)
-            const card = selectedScheduleCard;
-            const info = (card && (card.dataset.info || card.getAttribute('data-info'))) || document.getElementById('detail-message')?.textContent || 'No info available';
-            showDetailInfo(info);
-          });
-          topInfo._attached = true;
-        }
-
-      openModal('schedule-detail-modal-backdrop');
-    } catch (e) { console.warn('openScheduleDetailFromCard failed', e); }
-  }
-
-  function enterDetailEditMode() {
-    try {
-      const leftBtn = document.getElementById('detail-left-btn');
-      const rightBtn = document.getElementById('detail-right-btn');
-      const daysEl = document.getElementById('detail-days');
-      const stageEl = document.getElementById('detail-stage');
-      const titleEl = document.getElementById('detail-title');
-      const msgEl = document.getElementById('detail-message');
-      if (!daysEl || !titleEl || !msgEl) return;
-      // Replace with inputs
-      const daysVal = daysEl.textContent.trim();
-      const stageVal = stageEl ? stageEl.textContent.trim() : '';
-      const titleVal = titleEl.textContent.trim();
-      const msgVal = msgEl.textContent.trim();
-      daysEl.innerHTML = `<input id="detail-days-input" type="number" class="w-24 bg-bg-dark border border-border-dark rounded p-2 text-white" value="${daysVal}">`;
-      if (stageEl) stageEl.innerHTML = `<input id="detail-stage-input" class="w-full bg-bg-dark border border-border-dark rounded p-2 text-white" value="${escapeHtml(stageVal)}">`;
-      titleEl.innerHTML = `<input id="detail-title-input" class="w-full bg-bg-dark border border-border-dark rounded p-2 text-white" value="${escapeHtml(titleVal)}">`;
-      msgEl.innerHTML = `<textarea id="detail-message-input" class="w-full bg-bg-dark border border-border-dark rounded p-2 text-white" rows="6">${escapeHtml(msgVal)}</textarea>`;
-      // update buttons
-      if (leftBtn) { leftBtn.textContent = 'Discard'; leftBtn.dataset.mode = 'discard'; }
-      if (rightBtn) { rightBtn.textContent = 'Save'; rightBtn.dataset.mode = 'save'; }
-    } catch (e) { console.warn('enterDetailEditMode failed', e); }
-  }
-
-  function exitDetailEditMode() {
-    try {
-      const leftBtn = document.getElementById('detail-left-btn');
-      const rightBtn = document.getElementById('detail-right-btn');
-      const daysEl = document.getElementById('detail-days');
-      const stageEl = document.getElementById('detail-stage');
-      const titleEl = document.getElementById('detail-title');
-      const msgEl = document.getElementById('detail-message');
-      if (!daysEl || !titleEl || !msgEl) return;
-      // If inputs exist, replace by their current text values (or original if absent)
-      const di = document.getElementById('detail-days-input');
-      const si = document.getElementById('detail-stage-input');
-      const ti = document.getElementById('detail-title-input');
-      const mi = document.getElementById('detail-message-input');
-      if (di) daysEl.textContent = di.value;
-      if (si && stageEl) stageEl.textContent = si.value;
-      if (ti) titleEl.textContent = ti.value;
-      if (mi) msgEl.textContent = mi.value;
-      // update buttons
-      if (leftBtn) { leftBtn.textContent = 'Cancel'; leftBtn.dataset.mode = 'cancel'; }
-      if (rightBtn) { rightBtn.textContent = 'Edit'; rightBtn.dataset.mode = 'edit'; }
-    } catch (e) { console.warn('exitDetailEditMode failed', e); }
-  }
-
-  function discardDetailEdits() {
-    try {
-      // revert to values sourced from selectedScheduleCard
-      if (!selectedScheduleCard) return exitDetailEditMode();
-      const days = selectedScheduleCard.dataset.days || '';
-      const stage = selectedScheduleCard.dataset.type || selectedScheduleCard.getAttribute('data-type') || '';
-      const title = selectedScheduleCard.querySelector('.font-semibold') ? selectedScheduleCard.querySelector('.font-semibold').textContent.trim() : '';
-      const msgEl = selectedScheduleCard.querySelector('.text-sm') || selectedScheduleCard.querySelector('p');
-      const message = msgEl ? msgEl.textContent.trim() : '';
-      document.getElementById('detail-days') && (document.getElementById('detail-days').textContent = days);
-      document.getElementById('detail-stage') && (document.getElementById('detail-stage').textContent = stage);
-      document.getElementById('detail-title') && (document.getElementById('detail-title').textContent = title);
-      document.getElementById('detail-message') && (document.getElementById('detail-message').textContent = message);
-      exitDetailEditMode();
-    } catch (e) { console.warn('discardDetailEdits failed', e); }
-  }
-
-  function saveDetailEdits() {
-    try {
-      if (!selectedScheduleCard) return;
-      const di = document.getElementById('detail-days-input');
-      const ti = document.getElementById('detail-title-input');
-      const mi = document.getElementById('detail-message-input');
-      if (di) {
-        selectedScheduleCard.dataset.days = di.value;
-        const badge = selectedScheduleCard.querySelector('.w-12'); if (badge) badge.textContent = di.value;
-        document.getElementById('detail-days') && (document.getElementById('detail-days').textContent = di.value);
-      }
-      if (ti) {
-        const titleTxt = ti.value;
-        const titleEl = selectedScheduleCard.querySelector('.font-semibold'); if (titleEl) titleEl.textContent = titleTxt;
-        document.getElementById('detail-title') && (document.getElementById('detail-title').textContent = titleTxt);
-      }
-      if (mi) {
-        const msgTxt = mi.value;
-        const msgEl = selectedScheduleCard.querySelector('.text-sm'); if (msgEl) msgEl.textContent = msgTxt;
-        document.getElementById('detail-message') && (document.getElementById('detail-message').textContent = msgTxt);
-      }
-      // Persist to DB if this card is backed by a personalized template
-      try {
-        const tid = selectedScheduleCard.dataset.templateId || selectedScheduleCard.getAttribute('data-template-id');
-        if (tid) {
-          const body = {};
-          if (di) body.recommended_delay_days = Number(di.value) || 0;
-          if (ti) body.template_title = ti.value || '';
-          if (mi) body.personalized_message = mi.value || '';
-          const si = document.getElementById('detail-stage-input');
-          if (si) {
-            body.template_stage = si.value || '';
-            // update the card's dataset so UI stays consistent
-            try { selectedScheduleCard.dataset.type = si.value || ''; } catch (e) {}
-          }
-          body.updated_at = new Date().toISOString();
-          (async () => {
-            try {
-              const { data, error } = await client.from('personalized_business_templates').update(body).eq('id', Number(tid)).select();
-              if (error) throw error;
-              try { if (typeof showInAppAlert === 'function') showInAppAlert('Template saved'); else showDebugToast('Template saved'); } catch (e) {}
-              // reload templates to ensure UI is in sync
-              await loadPersonalizedTemplates();
-            } catch (e) { console.warn('saveDetailEdits: update failed', e); }
-          })();
-        }
-      } catch (e) { console.warn('saveDetailEdits: persist failed', e); }
-      // Exit edit mode
-      exitDetailEditMode();
-    } catch (e) { console.warn('saveDetailEdits failed', e); }
-  }
-
-  // Simple HTML escaper for injected values
-  function escapeHtml(s) { return (s || '').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-
-  // Info popup (renders near card and removes on click-away). Adds a subtle overlay behind the popup
-  let _followupInfoEl = null;
-  let _followupInfoOverlay = null;
-  function showFollowupInfo(card, infoHtml) {
-    try {
-      hideFollowupInfo();
-      const rect = card.getBoundingClientRect();
-      // overlay
-      const ov = document.createElement('div');
-      ov.className = 'followup-info-overlay';
-      ov.style.position = 'fixed';
-      ov.style.inset = '0';
-      ov.style.background = 'rgba(0,0,0,0.25)';
-      ov.style.zIndex = 200400;
-      ov.addEventListener('click', hideFollowupInfo);
-      document.body.appendChild(ov);
-      _followupInfoOverlay = ov;
-
-      const el = document.createElement('div');
-      el.className = 'followup-info-popup';
-      el.style.position = 'absolute';
-      // prefer to place above the card and slightly to the right if space allows
-      const popupWidth = 320;
-      let left = window.scrollX + rect.right - popupWidth;
-      if (left < 12) left = window.scrollX + rect.left + 12;
-      let top = window.scrollY + rect.top - 8;
-      if (top < 12) top = window.scrollY + rect.bottom + 8;
-      el.style.left = left + 'px';
-      el.style.top = top + 'px';
-      el.style.width = popupWidth + 'px';
-      el.style.maxHeight = '300px';
-      el.style.overflow = 'auto';
-      el.style.background = 'rgba(11,17,28,0.98)';
-      el.style.color = '#fff';
-      el.style.border = '1px solid rgba(255,255,255,0.06)';
-      el.style.padding = '12px';
-      el.style.borderRadius = '10px';
-      el.style.boxShadow = '0 6px 30px rgba(2,6,23,0.85)';
-      el.style.zIndex = 200500;
-      el.innerHTML = `<div style="font-weight:700;margin-bottom:6px;">Why this follow up?</div><div style="font-size:13px;line-height:1.35">${escapeHtml(infoHtml)}</div>`;
-      document.body.appendChild(el);
-      _followupInfoEl = el;
-      // click away and ESC handler
-      setTimeout(() => {
-        document.addEventListener('click', _followupInfoClickAway);
-        document.addEventListener('keydown', _followupInfoKeyHandler);
-      }, 20);
-    } catch (e) { console.warn('showFollowupInfo failed', e); }
-  }
-  function hideFollowupInfo() {
-    try {
-      if (_followupInfoEl) { try { _followupInfoEl.remove(); } catch (e) {} _followupInfoEl = null; }
-      if (_followupInfoOverlay) { try { _followupInfoOverlay.remove(); } catch (e) {} _followupInfoOverlay = null; }
-      document.removeEventListener('click', _followupInfoClickAway);
-      document.removeEventListener('keydown', _followupInfoKeyHandler);
+      const inner = bd.querySelector('#schedules-modal');
+      if (inner) { inner.style.display = 'block'; }
     } catch (e) {}
-  }
-  function _followupInfoClickAway(ev) {
-    if (!_followupInfoEl && !_followupInfoOverlay) return;
-    if (_followupInfoEl && _followupInfoEl.contains(ev.target)) return;
-    hideFollowupInfo();
-  }
-  function _followupInfoKeyHandler(ev) { if (ev.key === 'Escape') hideFollowupInfo(); }
 
-// Show a detail-info popup positioned above the detail modal on desktop, centered on mobile
-function showDetailInfo(infoHtml) {
-  try {
-    hideFollowupInfo();
-    const detailModal = document.getElementById('schedule-detail-modal');
-    const ov = document.createElement('div');
-    ov.className = 'followup-info-overlay';
-    ov.style.position = 'fixed';
-    ov.style.inset = '0';
-    ov.style.background = 'rgba(0,0,0,0.25)';
-    ov.style.zIndex = 200400;
-    ov.addEventListener('click', hideFollowupInfo);
-    document.body.appendChild(ov);
-    _followupInfoOverlay = ov;
+    // Minimal init of interactions
+    try { initSchedulesModalInteractions(); } catch (e) { console.warn('[schedules] initSchedulesModalInteractions error', e); }
+    // Ensure Create button handlers are attached so Create opens immediately
+    try { setupCreateFollowupHandlers(); } catch (e) { console.warn('[schedules] setupCreateFollowupHandlers error', e); }
 
-    const el = document.createElement('div');
-    el.className = 'followup-info-popup';
-    el.style.position = 'fixed';
-    el.style.width = '320px';
-    el.style.maxHeight = '60vh';
-    el.style.overflow = 'auto';
-    el.style.background = 'rgba(11,17,28,0.98)';
-    el.style.color = '#fff';
-    el.style.border = '1px solid rgba(255,255,255,0.06)';
-    el.style.padding = '12px';
-    el.style.borderRadius = '10px';
-    el.style.boxShadow = '0 6px 30px rgba(2,6,23,0.85)';
-    el.style.zIndex = 200500;
-
-    if (isMobile() || !detailModal) {
-      // center on screen
-      el.style.left = '50%';
-      el.style.top = '50%';
-      el.style.transform = 'translate(-50%,-50%)';
-    } else {
-      // position above the detail modal
-      const rect = detailModal.getBoundingClientRect();
-      const left = Math.min(window.innerWidth - 340, Math.max(12, rect.left + (rect.width / 2) - 160));
-      const top = Math.max(12, rect.top - 12 - 160);
-      el.style.left = left + 'px';
-      el.style.top = top + 'px';
-    }
-
-    el.innerHTML = `<div style="font-weight:700;margin-bottom:6px;">Why this follow up?</div><div style="font-size:13px;line-height:1.35">${escapeHtml(infoHtml)}</div>`;
-    document.body.appendChild(el);
-    _followupInfoEl = el;
-    setTimeout(() => {
-      document.addEventListener('click', _followupInfoClickAway);
-      document.addEventListener('keydown', _followupInfoKeyHandler);
-    }, 20);
-  } catch (e) { console.warn('showDetailInfo failed', e); }
-}
-
-// Schedules modal helpers: explicit show/hide to avoid accidental multi-modal display
-function showSchedulesModal() {
-  try {
-  traceSchedules('showSchedulesModal called');
-      const bd = document.getElementById('schedules-modal-backdrop');
-      console.log('[schedules] showSchedulesModal called, backdrop found?', !!bd);
-    if (!bd) {
-        console.warn('[schedules] schedules modal backdrop not found in DOM');
-      return;
-    }
-      // Ensure it's visible and sits above other modals
-      try {
-        // push other modals down so schedules modal sits above them
-        document.querySelectorAll('.modal-backdrop').forEach(m => { try { m.style.zIndex = 9998; } catch (e) {} });
-      } catch (e) {}
-    // Remove hiding classes and force display
-    bd.classList.remove('hidden');
-    bd.classList.remove('invisible');
-    try { bd.style.display = 'flex'; } catch (e) { console.debug('[schedules] set display failed', e); }
-    // Force common layout & visibility properties in case CSS differs or was overridden
-    try { bd.style.position = 'fixed'; bd.style.top = '0'; bd.style.left = '0'; bd.style.width = '100%'; bd.style.height = '100%'; } catch (e) {}
-    try { bd.style.alignItems = 'center'; bd.style.justifyContent = 'center'; } catch (e) {}
-    try { bd.style.backgroundColor = 'rgba(0,0,0,0.85)'; } catch (e) {}
-    try { bd.style.opacity = '1'; bd.style.visibility = 'visible'; bd.style.pointerEvents = 'auto'; } catch (e) {}
-    try { bd.setAttribute('aria-hidden', 'false'); } catch (e) {}
-      // Ensure it's on top of standard modals
-      try { bd.style.zIndex = 120000; } catch (e) { console.log('[schedules] set zIndex failed', e); }
-    // Move backdrop to the end of body so it is not hidden behind other stacking contexts
-    try {
-      if (bd.parentNode !== document.body) document.body.appendChild(bd);
-    } catch (e) { console.debug('[schedules] move backdrop to body failed', e); }
-    // Also ensure inner modal is visible and centered. Make the inner wrapper fill
-    // the backdrop and act as a flex container to reliably center the modal across
-    // browsers and stacking contexts.
-    try {
-      const wrapper = bd.querySelector('.absolute.inset-0');
-      if (wrapper) {
-        wrapper.style.position = 'fixed';
-        wrapper.style.left = '0';
-        wrapper.style.top = '0';
-        wrapper.style.width = '100%';
-        wrapper.style.height = '100%';
-        wrapper.style.display = 'flex';
-        wrapper.style.alignItems = 'center';
-        wrapper.style.justifyContent = 'center';
-        wrapper.style.padding = '1rem';
-      }
-      const m = bd.querySelector('#schedules-modal');
-      if (m) {
-        m.style.margin = '0 auto';
-        m.style.transform = 'none';
-        m.style.display = 'block';
-        m.style.position = 'relative';
-        m.style.top = '0';
-        m.style.maxWidth = '760px';
-      }
-    } catch (e) { console.log('[schedules] ensure inner modal visible failed', e); }
-    // Initialize interactions (idempotent)
-      try { initSchedulesModalInteractions(); } catch (e) { console.warn('[schedules] initSchedulesModalInteractions failed', e); }
-    // Ensure System tab is active on open
+    // Default to system tab if present
     try {
       const sysBtn = document.querySelector('[data-schedules-tab="system"]');
-      const specBtn = document.querySelector('[data-schedules-tab="special"]');
       if (sysBtn) { document.querySelectorAll('[data-schedules-tab]').forEach(b => b.classList.remove('active')); sysBtn.classList.add('active'); }
       document.getElementById('schedules-system')?.classList.remove('hidden');
       document.getElementById('schedules-special')?.classList.add('hidden');
-    } catch (e) { /* ignore */ }
-    try { showDebugToast('Schedules modal shown'); } catch (e) {}
-    // Load personalized templates for this business and render into the modal
-    try {
-      loadPersonalizedTemplates();
-    } catch (e) { console.warn('showSchedulesModal: loadPersonalizedTemplates failed', e); }
-      // Fallback: if still hidden somehow, try the generic openModal
-    setTimeout(() => {
-        const stillHidden = bd.classList.contains('hidden');
-        console.log('[schedules] after show, stillHidden?', stillHidden);
-        if (stillHidden && typeof openModal === 'function') {
-          console.log('[schedules] fallback to openModal for schedules-modal-backdrop');
-          try { openModal('schedules-modal-backdrop'); } catch (e) { console.warn('[schedules] fallback openModal failed', e); }
-        }
-    }, 60);
-  } catch (e) { console.warn('showSchedulesModal failed', e); }
-}
+    } catch (e) {}
 
-// Small on-screen debug toast so clicks are visible even if console is closed
-function showDebugToast(msg, timeout = 2500) {
-  try {
-    let t = document.getElementById('debug-toast');
-    if (!t) {
-      t = document.createElement('div');
-      t.id = 'debug-toast';
-      t.style.position = 'fixed';
-      t.style.left = '12px';
-      t.style.bottom = '12px';
-      t.style.background = 'rgba(0,0,0,0.8)';
-      t.style.color = '#fff';
-      t.style.padding = '8px 12px';
-      t.style.borderRadius = '8px';
-      t.style.zIndex = 12000;
-      t.style.fontSize = '13px';
-      document.body.appendChild(t);
-    }
-    t.textContent = msg;
-    t.style.opacity = '1';
-    clearTimeout(t._hideTO);
-    t._hideTO = setTimeout(() => { try { t.style.opacity = '0'; } catch (e){} }, timeout);
-  } catch (e) { /* ignore */ }
+    // Load templates and render
+    try { const loaded = await loadPersonalizedTemplates(); console.debug('[schedules] loadPersonalizedTemplates returned', (loaded && loaded.length) || 0); } catch (e) { console.warn('showSchedulesModal: loadPersonalizedTemplates failed', e); }
+  } catch (e) { console.warn('showSchedulesModal failed', e); }
 }
 
 function hideSchedulesModal() {
   try {
-    traceSchedules('hideSchedulesModal called');
     const bd = document.getElementById('schedules-modal-backdrop');
-    console.debug('[schedules] hideSchedulesModal called, backdrop found?', !!bd);
     if (!bd) return;
-    bd.classList.add('hidden');
-    try { bd.style.display = 'none'; } catch (e) { console.debug('[schedules] clear display failed', e); }
-    try { bd.style.zIndex = ''; bd.style.pointerEvents = 'none'; bd.style.opacity = '0'; } catch (e) { /* ignore */ }
+    bd.classList.add('hidden'); bd.style.display = 'none'; bd.setAttribute('aria-hidden','true'); bd.style.zIndex = '';
   } catch (e) { console.warn('hideSchedulesModal failed', e); }
 }
 
-// -----------------------
-// CREATE FOLLOWUP: UI wiring for the Create Special Follow-Up modal
-// -----------------------
-function showCreateFollowupModal() {
-  try {
-    const bd = document.getElementById('create-followup-modal-backdrop');
-    if (!bd) return console.warn('[create] create modal backdrop not found');
-    // bring to top
-    try { document.querySelectorAll('.modal-backdrop').forEach(m => { try { m.style.zIndex = 9998; } catch(e){} }); } catch(e){}
-    bd.classList.remove('hidden'); bd.style.display = 'flex'; bd.style.zIndex = 121000;
-    // move to body to avoid stacking contexts
-    try { if (bd.parentNode !== document.body) document.body.appendChild(bd); } catch (e) {}
-    // ensure interactions wired
-    try { setupCreateFollowupHandlers(); } catch (e) { console.warn('[create] setup handlers failed', e); }
-  } catch (e) { console.warn('showCreateFollowupModal failed', e); }
-}
-
-function hideCreateFollowupModal() {
-  try {
-    const bd = document.getElementById('create-followup-modal-backdrop');
-    if (!bd) return;
-    bd.classList.add('hidden'); bd.style.display = 'none'; bd.style.zIndex = '';
-  } catch (e) { console.warn('hideCreateFollowupModal failed', e); }
-}
-
-// Local state for create modal selections
-const _createFollowupState = {
-  mode: null, // 'all_contacts' | 'selected_contacts' ...
-  selected: [] // array of { id, type, label }
-};
-
-function setupCreateFollowupHandlers() {
-  try {
-    if (setupCreateFollowupHandlers._inited) return;
-    setupCreateFollowupHandlers._inited = true;
-
-    // Open create modal when header button clicked
-    const createBtn = document.getElementById('create-followup-btn');
-    if (createBtn && !createBtn._attached) {
-      createBtn.addEventListener('click', (e) => {
-        e.preventDefault(); e.stopPropagation();
-        showCreateFollowupModal();
-      });
-      createBtn._attached = true;
-    }
-
-    // Follow-upon select wiring (dropdown) - replaces previous radio UI
-    const followUponSelect = document.getElementById('create-followupon-select');
-    if (followUponSelect && !followUponSelect._attached) {
-      followUponSelect.addEventListener('change', (ev) => {
-        const val = ev.currentTarget.value;
-        _createFollowupState.mode = val;
-        const area = document.getElementById('nested-selector-area');
-        const searchInput = document.getElementById('nested-search-input');
-        const results = document.getElementById('nested-search-results');
-        const selList = document.getElementById('nested-selected-list');
-        // clear previous selections visually but keep state cleared
-        if (selList) selList.innerHTML = '';
-        _createFollowupState.selected = [];
-
-        if (val && val.startsWith('selected_')) {
-          if (area) area.classList.remove('hidden');
-          if (results) results.classList.add('hidden');
-          if (searchInput) { searchInput.value = ''; try { searchInput.focus(); } catch(e){} }
-          // pre-render all items for the type
-          renderNestedResults('', val);
-        } else {
-          if (area) area.classList.add('hidden');
-        }
-      });
-      followUponSelect._attached = true;
-    }
-
-    // Search input (debounced)
-    const nestedInput = document.getElementById('nested-search-input');
-    if (nestedInput && !nestedInput._attached) {
-      nestedInput.addEventListener('input', debounce((ev) => {
-        const q = (ev.target.value || '').trim();
-        renderNestedResults(q, _createFollowupState.mode || 'selected_contacts');
-      }, 180));
-      nestedInput._attached = true;
-    }
-
-    // Selection delegate for results
-    document.body.addEventListener('click', function (ev) {
-      const row = ev.target.closest && ev.target.closest('.nested-search-item');
-      if (!row) return;
-      ev.preventDefault(); ev.stopPropagation();
-      const type = row.dataset.type; const id = row.dataset.id; const label = row.dataset.label;
-      toggleCreateSelection({ id, type, label });
-    });
-
-    // Cancel / close
-    const cancel = document.getElementById('create-cancel-btn');
-    if (cancel && !cancel._attached) { cancel.addEventListener('click', () => hideCreateFollowupModal()); cancel._attached = 1; }
-
-    // Trigger select change -> show pipeline selector when needed
-    const trigger = document.getElementById('create-trigger');
-    if (trigger && !trigger._attached) {
-      trigger.addEventListener('change', (e) => {
-        const v = e.target.value;
-        const pipeline = document.getElementById('create-pipeline-select');
-        if (v === 'deal_stage_changed') {
-          if (pipeline) pipeline.classList.remove('hidden');
-          // populate pipeline options
-          const sel = document.getElementById('create-pipeline');
-          if (sel) {
-            sel.innerHTML = '<option value="">-- select stage --</option>' + PIPELINE_STAGES.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
-          }
-        } else {
-          if (pipeline) pipeline.classList.add('hidden');
-        }
-      });
-      trigger._attached = 1;
-    }
-
-    // Submit -> open confirm
-    const submitBtn = document.getElementById('create-submit-btn');
-    if (submitBtn && !submitBtn._attached) {
-      submitBtn.addEventListener('click', (e) => {
-        e.preventDefault(); e.stopPropagation();
-        // simple validation
-        const name = document.getElementById('create-name')?.value?.trim();
-        const reason = document.getElementById('create-reason')?.value?.trim();
-        if (!name || !reason) { showInAppAlert('Please provide a name and a short reason'); return; }
-        // open confirm modal
-        const confirm = document.getElementById('create-followup-confirm');
-        if (!confirm) return;
-        confirm.classList.remove('hidden');
-        try { if (confirm.parentNode !== document.body) document.body.appendChild(confirm); } catch (e) {}
-      });
-      submitBtn._attached = 1;
-    }
-
-    // Confirm modal handlers
-    const confirmCancel = document.getElementById('confirm-cancel');
-    if (confirmCancel && !confirmCancel._attached) { confirmCancel.addEventListener('click', (e) => { e.preventDefault(); document.getElementById('create-followup-confirm')?.classList.add('hidden'); }); confirmCancel._attached = 1; }
-    const confirmSubmit = document.getElementById('confirm-submit');
-    if (confirmSubmit && !confirmSubmit._attached) {
-      confirmSubmit.addEventListener('click', async (e) => {
-        e.preventDefault();
-        // build payload
-        const payload = buildCreateFollowupPayload();
-        console.log('[create] submit payload', payload);
-        document.getElementById('create-followup-confirm')?.classList.add('hidden');
-        // Map form values to personalized_business_templates fields
-        const tpl = {
-          business_id: BUSINESS_ID,
-          template_title: payload.name || '',
-          personalized_message: payload.message || '',
-          recommended_delay_days: Number(payload.interval) || 0,
-          template_stage: payload.pipeline && payload.pipeline.length ? payload.pipeline : 'special',
-          tone: null,
-          ai_created: false
-        };
-        try {
-          // If editing existing template, update instead of insert
-          if (setupCreateFollowupHandlers._editingTemplateId) {
-            const id = setupCreateFollowupHandlers._editingTemplateId;
-            const { data, error } = await client.from('personalized_business_templates').update({
-              template_title: tpl.template_title,
-              personalized_message: tpl.personalized_message,
-              recommended_delay_days: tpl.recommended_delay_days,
-              template_stage: tpl.template_stage,
-              tone: tpl.tone,
-              ai_created: tpl.ai_created,
-              updated_at: new Date().toISOString()
-            }).eq('id', id).select();
-            if (error) throw error;
-            try { if (typeof showInAppAlert === 'function') showInAppAlert('Template updated'); else showDebugToast('Template updated'); } catch (e) {}
-            setupCreateFollowupHandlers._editingTemplateId = null;
-          } else {
-            const { data, error } = await client.from('personalized_business_templates').insert([tpl]).select();
-            if (error) throw error;
-            try { if (typeof showInAppAlert === 'function') showInAppAlert('Template submitted for review'); else showDebugToast('Template submitted for review'); } catch (e) {}
-          }
-        } catch (err) {
-          console.error('[create] failed to save template', err);
-          try { showDebugToast('Failed to save template'); } catch (e) {}
-        }
-        // close modal and reload templates
-        hideCreateFollowupModal();
-        try { await loadPersonalizedTemplates(); } catch (e) { console.warn('reload templates failed', e); }
-      });
-      confirmSubmit._attached = 1;
-    }
-
-    // Click-away: hide nested selector/search when clicking outside to reduce distraction
-    if (!setupCreateFollowupHandlers._clickAwayAttached) {
-      document.addEventListener('click', function(ev) {
-        try {
-          const area = document.getElementById('nested-selector-area');
-          if (!area || area.classList.contains('hidden')) return;
-          const target = ev.target;
-          const inside = target.closest && (target.closest('#nested-selector-area') || target.closest('#nested-search-input') || target.closest('#nested-search-results') || target.closest('#create-followupon-select') || target.closest('#nested-selected-list'));
-          if (!inside) {
-            area.classList.add('hidden');
-            const results = document.getElementById('nested-search-results'); if (results) results.classList.add('hidden');
-          }
-        } catch (e) {}
-      }, true);
-      setupCreateFollowupHandlers._clickAwayAttached = true;
-    }
-
-  } catch (e) { console.warn('setupCreateFollowupHandlers failed', e); }
-}
-
-// Simple client-side editing state for create modal
-setupCreateFollowupHandlers._editingTemplateId = null;
-
-// Load personalized templates from Supabase and render into schedules modal
+// Load templates from Supabase and render them into the modal containers.
 async function loadPersonalizedTemplates() {
   try {
     const sysContainer = document.getElementById('schedules-system');
     const specContainer = document.getElementById('schedules-special');
     if (sysContainer) sysContainer.innerHTML = '';
     if (specContainer) specContainer.innerHTML = '';
+    if (!BUSINESS_ID) return [];
     const { data, error } = await client.from('personalized_business_templates').select('*').eq('business_id', BUSINESS_ID).order('recommended_delay_days', { ascending: true });
-    if (error) throw error;
+    if (error) { console.warn('loadPersonalizedTemplates: query error', error); return []; }
     const templates = data || [];
-    // Render templates; categorize by template_stage === 'system' -> system, else special
-    templates.forEach(t => {
-      const el = createScheduleCardFromTemplate(t);
-      if (t.template_stage === 'system') {
+    templates.forEach(tpl => {
+      const el = createScheduleCardFromTemplate(tpl);
+      if ((tpl.template_stage || '').toLowerCase() === 'system') {
         sysContainer && sysContainer.appendChild(el);
       } else {
         specContainer && specContainer.appendChild(el);
       }
     });
-    // Re-initialize modal interactions so newly injected cards have click handlers
-    try { initSchedulesModalInteractions(); } catch (e) { console.warn('initSchedulesModalInteractions failed after render', e); }
-  } catch (e) { console.warn('loadPersonalizedTemplates failed', e); }
+    return templates;
+  } catch (e) { console.warn('loadPersonalizedTemplates failed', e); return []; }
 }
 
+// Minimal card renderer. Cards open the detail modal when clicked.
 function createScheduleCardFromTemplate(tpl) {
   try {
+    console.debug('[schedules] rendering card for template id=', tpl && tpl.id);
     const days = tpl.recommended_delay_days || 0;
     const title = tpl.template_title || 'Untitled';
     const msg = tpl.personalized_message || '';
@@ -1084,121 +415,184 @@ function createScheduleCardFromTemplate(tpl) {
     card.setAttribute('data-days', String(days));
     card.setAttribute('data-type', tpl.template_stage || 'special');
     card.setAttribute('data-info', tpl.personalized_message || '');
-    card.setAttribute('data-template-id', String(tpl.id));
-
+    card.setAttribute('data-template-id', String(tpl.id || ''));
     card.innerHTML = `
       <div class="w-12 h-12 flex items-center justify-center rounded-lg ${tpl.template_stage === 'special' ? 'bg-orange-500' : 'bg-blue-600'} text-white font-bold text-lg flex-shrink-0">${escapeHtml(String(days))}</div>
       <div class="flex-1">
         <div class="font-semibold text-white">${escapeHtml(title)}</div>
         <div class="text-sm text-white/60 mt-1">${escapeHtml(msg.length > 120 ? msg.slice(0, 117) + '...' : msg)}</div>
       </div>
-      <button class="card-edit-btn opacity-0 pointer-events-none absolute right-3 top-3 w-9 h-9 bg-white/10 rounded-md border border-border-dark text-white hover:bg-white/12 transition-opacity" title="Edit">
-        <i class="fa fa-pen"></i>
-      </button>
     `;
-    // attach click handler to open detail modal
     card.addEventListener('click', (ev) => {
-      // ignore clicks on edit button to avoid double open
-      if (ev.target.closest && ev.target.closest('.card-edit-btn')) return;
-      try { openScheduleDetailFromCard(card, { edit: false }); } catch (e) { console.warn('openScheduleDetailFromCard failed', e); }
-    });
-    // edit button should open detail in edit mode
-    const editBtn = card.querySelector('.card-edit-btn');
-    if (editBtn) editBtn.addEventListener('click', (ev) => {
       ev.preventDefault(); ev.stopPropagation();
-      try { openScheduleDetailFromCard(card, { edit: true }); enterDetailEditMode(); } catch (e) { console.warn('edit click failed', e); }
+      try { console.debug('[schedules] card clicked, opening detail for template id=', tpl && tpl.id); openScheduleDetailFromCard(card, { edit: false }); } catch (e) { console.warn('open detail failed', e); }
     });
-    // show edit button on hover (desktop)
-    card.addEventListener('mouseenter', () => { try { card.querySelector('.card-edit-btn')?.classList.remove('opacity-0'); card.querySelector('.card-edit-btn')?.classList.remove('pointer-events-none'); } catch (e){} });
-    card.addEventListener('mouseleave', () => { try { card.querySelector('.card-edit-btn')?.classList.add('opacity-0'); card.querySelector('.card-edit-btn')?.classList.add('pointer-events-none'); } catch (e){} });
     return card;
   } catch (e) { console.warn('createScheduleCardFromTemplate failed', e); return document.createElement('div'); }
 }
 
-function buildCreateFollowupPayload() {
+// Fallback detail opener: populate the detail modal with card data and show it.
+function openScheduleDetailFromCard(card, opts = { edit: false }) {
   try {
-    const followUpon = document.querySelector('#create-followup-form [name="followupon"]:checked')?.value || '';
-    const name = document.getElementById('create-name')?.value || '';
-    const reason = document.getElementById('create-reason')?.value || '';
-    const message = document.getElementById('create-message')?.value || '';
-    const trigger = document.getElementById('create-trigger')?.value || '';
-    const pipeline = document.getElementById('create-pipeline')?.value || '';
-    const interval = parseInt(document.getElementById('create-interval')?.value || '0', 10) || 0;
-    return {
-      followUpon, name, reason, message, trigger, pipeline, interval, selected: _createFollowupState.selected.slice()
+    const days = card.getAttribute('data-days') || '';
+    const stage = card.getAttribute('data-type') || '';
+    const title = card.querySelector('.font-semibold') ? card.querySelector('.font-semibold').textContent.trim() : '';
+    const msgEl = card.querySelector('.text-sm');
+    const message = msgEl ? msgEl.textContent.trim() : '';
+    const bd = document.getElementById('schedule-detail-modal-backdrop');
+    if (!bd) return;
+    const dd = document.getElementById('detail-days'); if (dd) dd.textContent = days;
+    const ds = document.getElementById('detail-stage'); if (ds) ds.textContent = stage;
+    const dt = document.getElementById('detail-title'); if (dt) dt.textContent = title;
+    const dm = document.getElementById('detail-message'); if (dm) dm.textContent = message;
+    bd.classList.remove('hidden'); bd.style.display = 'flex'; bd.style.zIndex = '121000'; bd.setAttribute('aria-hidden','false');
+  } catch (e) { console.warn('openScheduleDetailFromCard failed', e); }
+}
+
+// -----------------------
+// Create Follow-Up (Templates) modal handlers
+// -----------------------
+function showCreateFollowupModal() {
+  try {
+    // Prefer to use global openModal utility if present
+    const bd = document.getElementById('create-followup-modal-backdrop');
+    if (!bd) { console.warn('[create] create modal backdrop not found'); return; }
+    // Ensure modal is attached to body so it can overlay other modals
+    try { if (bd.parentNode !== document.body) document.body.appendChild(bd); } catch (e) { console.warn('[create] append to body failed', e); }
+    // Ensure create modal appears above the schedules modal
+    try { bd.classList.remove('hidden'); bd.style.display = 'flex'; bd.style.zIndex = '130500'; bd.setAttribute('aria-hidden','false'); } catch (e) { console.warn('[create] show failed', e); }
+    // Also bump inner wrapper if present
+    try { const inner = bd.querySelector('.bg-bg-card'); if (inner) inner.style.zIndex = '130600'; } catch (e) {}
+    try { setupCreateFollowupHandlers(); } catch (e) { console.warn('setupCreateFollowupHandlers failed', e); }
+  } catch (e) { console.warn('showCreateFollowupModal failed', e); }
+}
+
+function hideCreateFollowupModal() {
+  try {
+    if (typeof closeModal === 'function') closeModal('create-followup-modal-backdrop');
+    else {
+      const bd = document.getElementById('create-followup-modal-backdrop');
+      if (!bd) return; bd.classList.add('hidden'); bd.style.display = 'none'; bd.setAttribute('aria-hidden','true'); bd.style.zIndex = '';
+    }
+  } catch (e) { console.warn('hideCreateFollowupModal failed', e); }
+}
+
+async function _insertTemplateToDB(payload) {
+  try {
+    if (!BUSINESS_ID) throw new Error('Missing BUSINESS_ID');
+    const tpl = {
+      business_id: BUSINESS_ID,
+      template_stage: payload.template_stage || 'special',
+      template_title: payload.name || payload.template_title || 'Untitled',
+      personalized_message: payload.message || '',
+      recommended_delay_days: payload.interval != null ? Number(payload.interval) : null,
+      tone: payload.tone || null,
+      ai_created: false,
+      step_number: payload.step_number || null,
+      is_active: payload.is_active != null ? !!payload.is_active : true
     };
-  } catch (e) { return {}; }
+    const { data, error } = await client.from('personalized_business_templates').insert([tpl]).select();
+    if (error) throw error;
+    return data && data[0];
+  } catch (e) {
+    console.error('Insert template failed', e);
+    throw e;
+  }
 }
 
-function toggleCreateSelection(item) {
+function setupCreateFollowupHandlers() {
   try {
-    if (!item || !item.id) return;
-    const found = _createFollowupState.selected.find(s => s.type === item.type && String(s.id) === String(item.id));
-    if (found) {
-      _createFollowupState.selected = _createFollowupState.selected.filter(s => !(s.type === item.type && String(s.id) === String(item.id)));
-    } else {
-      _createFollowupState.selected.push({ id: item.id, type: item.type, label: item.label });
-    }
-    renderSelectedChips();
-    // update checkbox state in results
-    const row = document.querySelector(`.nested-search-item[data-type="${item.type}"][data-id="${item.id}"]`);
-    if (row) {
-      const ck = row.querySelector('input[type="checkbox"]'); if (ck) ck.checked = !!(!found);
-    }
-  } catch (e) { console.warn('toggleCreateSelection failed', e); }
-}
+    if (setupCreateFollowupHandlers._inited) return;
+    setupCreateFollowupHandlers._inited = true;
 
-function renderSelectedChips() {
-  try {
-    const list = document.getElementById('nested-selected-list'); if (!list) return;
-    list.innerHTML = '';
-    _createFollowupState.selected.forEach(s => {
-      const el = document.createElement('div'); el.className = 'inline-flex items-center gap-2 bg-bg-dark border border-border-dark rounded-full px-3 py-1 text-sm mr-2 mb-2';
-      el.innerHTML = `<span class="text-white/80">${escapeHtml(s.label)}</span><button class="ml-2 text-white/50" data-remove-id="${s.id}" data-remove-type="${s.type}">✕</button>`;
-      list.appendChild(el);
-      el.querySelector('button')?.addEventListener('click', (ev) => {
-        ev.preventDefault(); ev.stopPropagation(); _createFollowupState.selected = _createFollowupState.selected.filter(x => !(String(x.id) === String(s.id) && x.type === s.type)); renderSelectedChips();
+    // Attach create button inside schedules modal
+    const createBtn = document.getElementById('create-followup-btn');
+    if (createBtn && !createBtn._attached) {
+      createBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); showCreateFollowupModal(); });
+      createBtn._attached = true;
+    }
+
+    // Cancel button
+    const cancel = document.getElementById('create-cancel-btn');
+    if (cancel && !cancel._attached) {
+      cancel.addEventListener('click', (e) => { try { e.preventDefault(); e.stopPropagation(); hideCreateFollowupModal(); } catch (err){} });
+      cancel._attached = true;
+    }
+
+    // Submit -> show confirm
+    const submitBtn = document.getElementById('create-submit-btn');
+    if (submitBtn && !submitBtn._attached) {
+      submitBtn.addEventListener('click', (e) => {
+        try {
+          e.preventDefault(); e.stopPropagation();
+          const name = document.getElementById('create-name')?.value?.trim();
+          const reason = document.getElementById('create-reason')?.value?.trim();
+          if (!name || !reason) { try { if (typeof showInAppAlert === 'function') showInAppAlert('Please provide a name and a short reason'); else alert('Please provide a name and a short reason'); } catch (e) {} return; }
+          const confirm = document.getElementById('create-followup-confirm');
+          if (confirm) { confirm.classList.remove('hidden'); if (confirm.parentNode !== document.body) document.body.appendChild(confirm); }
+        } catch (err) { console.warn('create submit failed', err); }
       });
-    });
-    // keep the most recent selections visible by scrolling to end
-    try { list.scrollLeft = list.scrollWidth; } catch (e) {}
-  } catch (e) { console.warn('renderSelectedChips failed', e); }
+      submitBtn._attached = true;
+    }
+
+    // Confirm modal handlers
+    const confirmCancel = document.getElementById('confirm-cancel');
+    if (confirmCancel && !confirmCancel._attached) { confirmCancel.addEventListener('click', (e) => { try { e.preventDefault(); e.stopPropagation(); document.getElementById('create-followup-confirm')?.classList.add('hidden'); } catch (err){} }); confirmCancel._attached = 1; }
+
+    const confirmSubmit = document.getElementById('confirm-submit');
+    if (confirmSubmit && !confirmSubmit._attached) {
+      confirmSubmit.addEventListener('click', async (e) => {
+        try {
+          e.preventDefault(); e.stopPropagation();
+          const payload = {
+            name: document.getElementById('create-name')?.value?.trim(),
+            reason: document.getElementById('create-reason')?.value?.trim(),
+            message: document.getElementById('create-message')?.value || '',
+            trigger: document.getElementById('create-trigger')?.value || '',
+            pipeline: document.getElementById('create-pipeline')?.value || '',
+            interval: Number(document.getElementById('create-interval')?.value || 0),
+            template_stage: 'special'
+          };
+          document.getElementById('create-followup-confirm')?.classList.add('hidden');
+          // Insert into DB
+          try {
+            await _insertTemplateToDB(payload);
+            try { if (typeof showInAppAlert === 'function') showInAppAlert('Template submitted for review'); else console.log('Template submitted for review'); } catch (e) {}
+          } catch (err) {
+            try { if (typeof showInAppAlert === 'function') showInAppAlert('Failed to submit template'); else console.error(err); } catch (e) {}
+          }
+          hideCreateFollowupModal();
+          try { await loadPersonalizedTemplates(); } catch (e) { console.warn('reload templates failed', e); }
+        } catch (err) { console.warn('confirm submit failed', err); }
+      });
+      confirmSubmit._attached = true;
+    }
+
+  } catch (e) { console.warn('setupCreateFollowupHandlers failed', e); }
 }
 
-function renderNestedResults(query = '', mode = 'selected_contacts') {
-  try {
-    const results = document.getElementById('nested-search-results'); if (!results) return;
-    results.innerHTML = '';
-    results.classList.add('hidden');
-    let type = 'contact'; let items = [];
-    if (mode === 'selected_deals') { type = 'deal'; items = dealsData || []; }
-    else if (mode === 'selected_meetings') { type = 'meeting'; items = meetingsData || []; }
-    else { type = 'contact'; items = contacts || []; }
-    const q = (query || '').toLowerCase();
-    const filtered = items.filter(it => {
-      if (!q) return true;
-      if (type === 'contact') return (it.name || '').toLowerCase().includes(q) || (it.phone || '').toLowerCase().includes(q);
-      if (type === 'deal') return (it.dealName || '').toLowerCase().includes(q) || (it.contactName || '').toLowerCase().includes(q);
-      if (type === 'meeting') return (it.agenda || it.name || '').toLowerCase().includes(q) || (it.contactName || '').toLowerCase().includes(q);
-      return false;
-    }).slice(0, 60);
-    if (!filtered.length) return;
-    filtered.forEach(it => {
-      let label = '';
-      let id = it.id || it.contact_id || it.contactId || it.deal_id || it.dealId || (it.raw && it.raw.id) || '';
-      if (type === 'contact') label = `${it.name || 'Unnamed'}${it.phone ? ' • ' + it.phone : ''}`;
-      if (type === 'deal') label = `${it.dealName || it.deal_name || 'Deal'}${it.contactName ? ' • ' + it.contactName : ''}`;
-      if (type === 'meeting') label = `${it.agenda || it.name || 'Meeting'}${it.setDate ? ' • ' + (new Date(it.setDate).toLocaleString()) : ''}`;
-      const div = document.createElement('div');
-      div.className = 'nested-search-item flex items-center gap-3 px-3 py-2 hover:bg-bg-dark/60 cursor-pointer border-b border-border-dark';
-      div.dataset.type = type; div.dataset.id = id; div.dataset.label = label;
-      const checked = !!_createFollowupState.selected.find(s => String(s.id) === String(id) && s.type === type);
-      div.innerHTML = `<input type="checkbox" class="w-4 h-4" ${checked ? 'checked' : ''} readonly><div class="flex-1 text-sm text-white/80">${escapeHtml(label)}</div>`;
-      results.appendChild(div);
+// Attach a single sidebar click handler that opens the templates modal.
+(function attachSchedulesSidebar() {
+  function attach() {
+    const btn = document.getElementById('sidebar-followup-schedules');
+    if (!btn) return;
+    if (btn._schedulesAttached) return;
+    btn.addEventListener('click', (e) => {
+      try { e.preventDefault(); e.stopPropagation(); console.debug('[schedules] sidebar clicked'); showSchedulesModal(); } catch (err) { console.warn('schedules click failed', err); }
     });
-    results.classList.remove('hidden');
-  } catch (e) { console.warn('renderNestedResults failed', e); }
-}
+    btn._schedulesAttached = true;
+    console.debug('[schedules] attached sidebar handler to #sidebar-followup-schedules');
+  }
+  if (document.readyState === 'complete' || document.readyState === 'interactive') setTimeout(attach, 40);
+  else document.addEventListener('DOMContentLoaded', attach);
+})();
+
+// Also ensure create handlers are attached on DOM ready so Create button inside the modal
+// is responsive even before the modal is opened for the first time.
+try {
+  if (document.readyState === 'complete' || document.readyState === 'interactive') setTimeout(() => { try { setupCreateFollowupHandlers(); console.debug('[schedules] setupCreateFollowupHandlers attached at init'); } catch(e){} }, 60);
+  else document.addEventListener('DOMContentLoaded', () => { try { setupCreateFollowupHandlers(); console.debug('[schedules] setupCreateFollowupHandlers attached on DOMContentLoaded'); } catch(e){} });
+} catch (e) {}
 
 
 // -----------------------
@@ -6345,23 +5739,8 @@ function attachEventListeners() {
     }
   } catch (e) { /* ignore */ }
   // Delegated fallback: ensure clicks on the Settings -> Schedules item open schedules modal
-  // This captures clicks even if the direct attach above failed or ran too early.
-  try {
-    if (!document._schedulesDelegatedAttached) {
-      document.addEventListener('click', (ev) => {
-        try {
-          const btn = ev.target.closest && ev.target.closest('#sidebar-followup-schedules');
-          if (!btn) return;
-          ev.preventDefault();
-          console.debug('[schedules][delegated] detected click on sidebar-followup-schedules');
-          showDebugToast('schedules clicked (delegated)');
-          try { closeSidebar(); } catch (err) { console.debug('[schedules] closeSidebar failed', err); }
-          try { showSchedulesModal(); } catch (err) { console.warn('[schedules][delegated] showSchedulesModal failed', err); }
-        } catch (e) { /* swallow */ }
-      }, true); // capture phase so we run before other handlers
-      document._schedulesDelegatedAttached = true;
-    }
-  } catch (e) { console.warn('Failed to attach delegated schedules click handler', e); }
+  // Schedules feature disabled: clicks on the sidebar schedules item no longer open the modal.
+  // (Previously there was a delegated click handler here.)
   // NEW: New Meeting button
   document.getElementById('new-meeting-btn')?.addEventListener('click', () => {
     // Ensure any other modals (like schedules) are hidden to avoid overlap
@@ -6386,24 +5765,7 @@ function attachEventListeners() {
     try { closeSidebar(); } catch (err) {}
     openBusinessProfileModal();
   });
-  // Follow-Up Schedules: open modal from settings submenu
-  const _schedulesBtn = document.getElementById('sidebar-followup-schedules');
-  console.log('[schedules] sidebar followup schedules element exists?', !!_schedulesBtn);
-  if (_schedulesBtn) {
-    _schedulesBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      console.log('[schedules] sidebar-followup-schedules clicked');
-      showDebugToast('schedules clicked (direct)');
-      try { closeSidebar(); } catch (err) { console.log('[schedules] closeSidebar failed', err); }
-      try {
-        // Use the explicit helper that sets z-index and initializes interactions
-        showSchedulesModal();
-        console.log('[schedules] showSchedulesModal invoked from settings click');
-      } catch (err) { console.warn('Failed to show schedules modal', err); }
-    });
-  } else {
-    console.warn('[schedules] sidebar-followup-schedules element not found during attach');
-  }
+  // Follow-Up Schedules item intentionally left inactive. No direct click handler attached.
   document.getElementById('business-profile-form')?.addEventListener('submit', saveBusinessProfile);
   // Cancel with unsaved changes guard
   const bpCancel = document.getElementById('bp-cancel-btn');

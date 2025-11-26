@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta id="dynamic-viewport" name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Compare Plans | VV Studios</title>
+    
+    <!-- Core Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Styles from simulator.html -->
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f1115; color: white; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background-color: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.1); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.2); }
+
+        /* Animations */
+        .card-animate { transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease; }
+        .card-animate:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1); }
+        
+        .fade-in { animation: fadeIn 0.6s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Highlight Colors */
+        .text-gold { color: #FFD700; }
+        .border-gold { border-color: #FFD700; }
+        .bg-gold { background-color: #FFD700; }
+        
+        /* Checkmark Colors */
+        .check-free { color: white; }
+        .check-growth { color: #4ade80; }
+        .check-pro { color: #FFD700; }
+        .check-premium { color: #a78bfa; }
+
+        /* Card Borders */
+        .border-card { border: 1px solid #2b2f3a; }
+        
+        /* Glow effects */
+        .glow-gold { box-shadow: 0 0 15px rgba(255, 215, 0, 0.1); }
+        .glow-green { box-shadow: 0 0 15px rgba(74, 222, 128, 0.1); }
+        .glow-purple { box-shadow: 0 0 15px rgba(167, 139, 250, 0.1); }
+
+        /* Toggle Button Styles */
+        .billing-btn { transition: all 0.3s ease; }
+        .billing-btn.active { background-color: rgba(255, 255, 255, 0.1); color: white; border-color: rgba(255, 255, 255, 0.2); }
+        .billing-btn:not(.active) { color: rgba(255, 255, 255, 0.5); border-color: transparent; }
+        .billing-btn:not(.active):hover { color: rgba(255, 255, 255, 0.8); }
+
+        .price-transition { transition: all 0.3s ease-out; }
+    </style>
+</head>
+<body class="bg-[#0f1115] text-white min-h-screen flex flex-col">
+
+    <!-- Simple Header -->
+    <header class="p-6 flex justify-between items-center max-w-[1400px] mx-auto w-full border-b border-white/5 bg-[#0f1115]/80 backdrop-blur-md sticky top-0 z-50">
+        <div class="flex items-center gap-3">
+            <img src="assets/logo.png" onerror="this.src='https://via.placeholder.com/40'" class="w-10 h-10 rounded-full bg-gray-800" alt="Logo">
+            <span class="font-bold text-xl tracking-tight">VV Studios <span class="text-white/40 font-normal">| Plans</span></span>
+        </div>
+        <div class="flex gap-4">
+            <a href="simulator.html" class="text-sm text-white/60 hover:text-white transition-colors flex items-center">
+                <i class="fa-solid fa-calculator mr-2"></i> Simulator
+            </a>
+            <a href="index.html" class="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm text-white transition-colors border border-white/10">
+                Dashboard
+            </a>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 w-full max-w-[1600px] mx-auto p-4 md:p-8 mb-12 fade-in">
+        
+        <div class="text-center mb-8 mt-4">
+            <h1 class="text-3xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-green-400">
+                Choose the Right System for Scale
+            </h1>
+            <p class="text-white/60 text-lg max-w-2xl mx-auto mb-8">
+                Compare packages to find the perfect balance of automation, AI support, and human expertise for your business.
+            </p>
+
+            <!-- Billing Toggle -->
+            <div class="inline-flex bg-[#1a1d23] p-1.5 rounded-xl border border-white/10 relative">
+                <button onclick="setBilling(1)" id="btn-1" class="billing-btn active px-6 py-2 rounded-lg text-sm font-medium border">
+                    Monthly
+                </button>
+                <button onclick="setBilling(3)" id="btn-3" class="billing-btn px-6 py-2 rounded-lg text-sm font-medium border flex items-center gap-2">
+                    Quarterly <span class="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded uppercase tracking-wider font-bold">-15%</span>
+                </button>
+                <button onclick="setBilling(6)" id="btn-6" class="billing-btn px-6 py-2 rounded-lg text-sm font-medium border flex items-center gap-2">
+                    Semi-Annual <span class="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded uppercase tracking-wider font-bold">-30%</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- PRICING GRID -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
+            
+            <!-- FREE PLAN -->
+            <div class="bg-[#1a1d23] rounded-2xl border border-card card-animate flex flex-col h-full relative overflow-hidden group">
+                <div class="absolute top-0 left-0 w-full h-1 bg-white/20"></div>
+                <div class="p-6 md:p-8 flex-1">
+                    <div class="mb-6">
+                        <h3 class="text-2xl font-bold text-white mb-2">Free</h3>
+                        <div class="h-10 flex items-baseline gap-1">
+                            <span class="text-3xl font-bold text-white">KES 0</span>
+                        </div>
+                        <p class="text-sm text-white/50 italic mb-4 mt-2">Get started with free tools</p>
+                        <div class="h-px w-full bg-white/10 my-4"></div>
+                    </div>
+                    
+                    <ul class="space-y-4 text-sm text-white/80">
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-check mt-1 check-free"></i>
+                            <span>Business Projections</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-check mt-1 check-free"></i>
+                            <span>Basic Offer Maker</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-check mt-1 check-free"></i>
+                            <span>Quick Copywriter <span class="text-xs text-white/50 block">(simple, fast messages)</span></span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-check mt-1 check-free"></i>
+                            <span>Online Presence Audits</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-check mt-1 check-free"></i>
+                            <span>Content Creation</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="p-6 border-t border-white/5 mt-auto bg-[#14161a]">
+                    <a href="#" class="block w-full py-3 px-4 bg-white/10 hover:bg-white/20 text-white text-center rounded-xl font-semibold transition-colors">
+                        Start Free
+                    </a>
+                </div>
+            </div>
+
+            <!-- GROWTH PLAN -->
+            <div class="bg-[#1a1d23] rounded-2xl border border-green-500/30 card-animate flex flex-col h-full relative overflow-hidden group glow-green transform md:-translate-y-2 z-10">
+                <div class="absolute top-0 right-0 bg-green-500 text-black text-[10px] font-bold px-3 py-1 rounded-bl-lg">POPULAR</div>
+                <div class="absolute top-0 left-0 w-full h-1 bg-green-500"></div>
+                <div class="p-6 md:p-8 flex-1">
+                    <div class="mb-6">
+                        <h3 class="text-2xl font-bold text-green-400 mb-2">Growth</h3>
+                        
+                        <!-- Price Section -->
+                        <div class="price-transition">
+                            <div class="flex items-baseline gap-1">
+                                <span class="text-sm text-green-400 font-bold mr-1">KES</span>
+                                <span class="text-3xl font-bold text-white" id="price-growth-val">6,000</span>
+                                <span class="text-white/50 text-sm">/mo</span>
+                            </div>
+                            <div class="text-xs text-green-400/60 mt-1 h-4" id="price-growth-detail">
+                                Billed monthly
+                            </div>
+                        </div>
+
+                        <p class="text-sm text-green-400/70 italic mb-4 mt-2">Sell More with Assisted Follow Ups</p>
+                        <div class="h-px w-full bg-green-500/20 my-4"></div>
+                    </div>
+                    
+                    <ul class="space-y-4 text-sm text-white/80">
+                        <li class="flex items-start gap-3 text-white/40 text-xs uppercase tracking-wider font-semibold">
+                            <span>Everything in Free +</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-check mt-1 check-growth"></i>
+                            <span>Basic Business Assistant</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-check mt-1 check-growth"></i>
+                            <span>Deep Copywriter AI <span class="text-xs text-white/50 block">(targeted, unlimited messages)</span></span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-check mt-1 check-growth"></i>
+                            <span>Follow Up Schedules & Templates</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-check mt-1 check-growth"></i>
+                            <span>Robust Leads Tracking</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-check mt-1 check-growth"></i>
+                            <span>Ads Management & Intelligence</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-check mt-1 check-growth"></i>
+                            <span>Detailed Ad Analysis</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-check mt-1 check-growth"></i>
+                            <span>Meeting Schedulers & Reminders</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-check mt-1 check-growth"></i>
+                            <span>Projections based on Live Data</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-check mt-1 check-growth"></i>
+                            <span>Curated Learning Resources</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="p-6 border-t border-white/5 mt-auto bg-[#14161a]">
+                    <a href="#" class="block w-full py-3 px-4 bg-green-600 hover:bg-green-500 text-white text-center rounded-xl font-bold shadow-lg shadow-green-900/30 transition-colors">
+                        Select Growth
+                    </a>
+                </div>
+            </div>
+
+            <!-- PRO PLAN -->
+            <div class="bg-[#1a1d23] rounded-2xl border border-gold/40 card-animate flex flex-col h-full relative overflow-hidden group glow-gold">
+                <div class="absolute top-0 right-0 bg-gold text-black text-[10px] font-bold px-3 py-1 rounded-bl-lg">RECOMMENDED</div>
+                <div class="absolute top-0 left-0 w-full h-1 bg-gold"></div>
+                <div class="p-6 md:p-8 flex-1">
+                    <div class="mb-6">
+                        <h3 class="text-2xl font-bold text-gold mb-2">Pro</h3>
+
+                        <!-- Price Section -->
+                        <div class="price-transition">
+                            <div class="flex items-baseline gap-1">
+                                <span class="text-sm text-gold font-bold mr-1">KES</span>
+                                <span class="text-3xl font-bold text-white" id="price-pro-val">12,000</span>
+                                <span class="text-white/50 text-sm">/mo</span>
+                            </div>
+                            <div class="text-xs text-gold/60 mt-1 h-4" id="price-pro-detail">
+                                Billed monthly
+                            </div>
+                        </div>
+
+                        <p class="text-sm text-gold/70 italic mb-4 mt-2">Fully Automated Follow Ups</p>
+                        <div class="h-px w-full bg-gold/20 my-4"></div>
+                    </div>
+                    
+                    <ul class="space-y-4 text-sm text-white/80">
+                        <li class="flex items-start gap-3 text-gold/60 text-xs uppercase tracking-wider font-semibold">
+                            <span>Everything in Growth +</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-robot mt-1 text-gold"></i>
+                            <span><strong>Sales Assistant AI</strong><br><span class="text-xs text-white/50">24/7 Real-time WhatsApp Chat</span></span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-check mt-1 check-pro"></i>
+                            <span>Pro Business Assistant <span class="text-xs text-white/50 block">(Executes tasks, doesn't just advise)</span></span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-brands fa-whatsapp mt-1 check-pro"></i>
+                            <span>WhatsApp Business API</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-check mt-1 check-pro"></i>
+                            <span>Automated Daily Follow Ups</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-check mt-1 check-pro"></i>
+                            <span>Auto Drip Campaigns & Broadcasts</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-check mt-1 check-pro"></i>
+                            <span>Handles up to 1,000 Leads/mo</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-coins mt-1 check-pro"></i>
+                            <span>Higher Ad Budgets (up to 300k)</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-store mt-1 check-pro"></i>
+                            <span>Ecommerce Website Builder</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-check mt-1 check-pro"></i>
+                            <span>More Curated Learning Materials</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="p-6 border-t border-white/5 mt-auto bg-[#14161a]">
+                    <a href="#" class="block w-full py-3 px-4 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-white text-center rounded-xl font-bold shadow-lg shadow-yellow-900/30 transition-colors">
+                        Go Pro
+                    </a>
+                </div>
+            </div>
+
+            <!-- PREMIUM PLAN -->
+            <div class="bg-[#1a1d23] rounded-2xl border border-purple-400/30 card-animate flex flex-col h-full relative overflow-hidden group glow-purple">
+                <div class="absolute top-0 left-0 w-full h-1 bg-purple-400"></div>
+                <div class="p-6 md:p-8 flex-1">
+                    <div class="mb-6">
+                        <h3 class="text-2xl font-bold text-purple-400 mb-2">Premium</h3>
+
+                        <!-- Price Section -->
+                        <div class="price-transition">
+                            <div class="flex items-baseline gap-1">
+                                <span class="text-sm text-purple-400 font-bold mr-1">KES</span>
+                                <span class="text-3xl font-bold text-white" id="price-prem-val">30,000</span>
+                                <span class="text-white/50 text-sm">/mo</span>
+                            </div>
+                            <div class="text-xs text-purple-400/60 mt-1 h-4" id="price-prem-detail">
+                                Billed monthly
+                            </div>
+                        </div>
+
+                        <p class="text-sm text-purple-400/70 italic mb-4 mt-2">Scale Further with Systems</p>
+                        <div class="h-px w-full bg-purple-500/20 my-4"></div>
+                    </div>
+                    
+                    <ul class="space-y-4 text-sm text-white/80">
+                        <li class="flex items-start gap-3 text-purple-400/60 text-xs uppercase tracking-wider font-semibold">
+                            <span>Everything in Pro +</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-users mt-1 text-purple-400"></i>
+                            <span>Teams (Up to 30 Users)</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-check mt-1 check-premium"></i>
+                            <span>Top Level Marketing Strategy Sessions</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-check mt-1 check-premium"></i>
+                            <span>Dedicated Ad Execution Support</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-infinity mt-1 check-premium"></i>
+                            <span>Unlimited AI Copywriter Credits</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-check mt-1 check-premium"></i>
+                            <span>Complex Sales Journeys</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-check mt-1 check-premium"></i>
+                            <span>1,000+ Leads Tracking</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-check mt-1 check-premium"></i>
+                            <span>One-on-One Support</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fa-solid fa-check mt-1 check-premium"></i>
+                            <span>Ad Budgets > 300K/mo</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="p-6 border-t border-white/5 mt-auto bg-[#14161a]">
+                    <a href="#" class="block w-full py-3 px-4 bg-purple-600 hover:bg-purple-500 text-white text-center rounded-xl font-bold shadow-lg shadow-purple-900/30 transition-colors">
+                        Contact Sales
+                    </a>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- FAQ Section / Bottom Info -->
+        <div class="mt-20 border-t border-white/10 pt-10 text-center text-white/40 text-sm">
+            <p class="mb-2">Need help deciding?</p>
+            <p>Contact our support team for a personalized audit of your business needs.</p>
+        </div>
+    </main>
+
+    <script>
+        // Pricing Data
+        const basePrices = {
+            growth: 6000,
+            pro: 12000,
+            prem: 30000
+        };
+
+        const discounts = {
+            1: { multiplier: 1, label: 'Billed monthly' },
+            3: { multiplier: 0.85, label: 'Billed quarterly' },
+            6: { multiplier: 0.70, label: 'Billed semi-annually' }
+        };
+
+        function fmtNum(n) {
+            return n.toLocaleString();
+        }
+
+        function setBilling(months) {
+            // Update Buttons
+            document.querySelectorAll('.billing-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${months}`).classList.add('active');
+
+            const d = discounts[months];
+            
+            // Function to update a specific card
+            const updateCard = (key) => {
+                const base = basePrices[key];
+                const monthlyPrice = Math.round(base * d.multiplier);
+                const totalBilled = monthlyPrice * months;
+
+                // Animate change
+                const valEl = document.getElementById(`price-${key}-val`);
+                const detEl = document.getElementById(`price-${key}-detail`);
+                
+                // Fade out slightly
+                valEl.style.opacity = '0.5';
+                
+                setTimeout(() => {
+                    valEl.innerText = fmtNum(monthlyPrice);
+                    valEl.style.opacity = '1';
+
+                    if (months === 1) {
+                        detEl.innerHTML = d.label;
+                        detEl.classList.remove('text-green-400'); // Remove savings highlight
+                    } else {
+                        // Calculate total savings
+                        const savings = (base * months) - totalBilled;
+                        detEl.innerHTML = `${d.label} (Save KES ${fmtNum(savings)})`;
+                    }
+                }, 150);
+            };
+
+            updateCard('growth');
+            updateCard('pro');
+            updateCard('prem');
+        }
+    </script>
+    <script>
+        // Wire plan selection buttons to a local payment flow.
+        document.addEventListener('DOMContentLoaded', () => {
+            // Ensure billing initialized
+            if (!window.currentBillingMonths) window.currentBillingMonths = 1;
+
+            // Helper: compute total based on plan key and current billing months
+            function computeTotal(planKey) {
+                const months = window.currentBillingMonths || 1;
+                const base = (planKey === 'growth') ? basePrices.growth : (planKey === 'pro' ? basePrices.pro : basePrices.prem);
+                const disc = discounts[months] || { multiplier: 1 };
+                const monthly = Math.round(base * disc.multiplier);
+                return { monthly, months, total: monthly * months };
+            }
+
+            // Update billing setter to remember current selection (wrap existing)
+            const origSetBilling = window.setBilling;
+            window.setBilling = function(months) {
+                window.currentBillingMonths = months;
+                if (typeof origSetBilling === 'function') origSetBilling(months);
+            };
+
+            // Create payment modal (simple till-style + Paid button)
+            function openPaymentModal(planName, amount) {
+                const popup = document.createElement('div');
+                popup.className = 'fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50';
+                popup.innerHTML = `
+                    <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4 relative">
+                        <button id="pm-back" class="absolute top-4 left-4 text-gray-400 hover:text-white text-xl">&larr;</button>
+                        <button id="pm-close" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">&times;</button>
+                        <h3 class="text-xl font-bold text-white mb-4 text-center">Purchase: ${planName}</h3>
+                        <p class="text-white/80 mb-4 text-center">Total Amount: <span class="text-orange-400 font-bold">KES ${fmtNum(amount)}</span></p>
+                        <div class="mb-4">
+                            <div class="flex gap-3">
+                                <button id="pm-mpesa" class="flex-1 bg-[#111316] border border-[#2b2f3a] rounded-xl py-3 text-white">Pay with M-Pesa</button>
+                                <button id="pm-card" class="flex-1 bg-[#111316] border border-[#2b2f3a] rounded-xl py-3 text-white">Card</button>
+                            </div>
+                        </div>
+                        <div id="pm-step" class="mt-2"></div>
+                    </div>
+                `;
+
+                document.body.appendChild(popup);
+
+                popup.querySelector('#pm-close').addEventListener('click', () => popup.remove());
+
+                const stepEl = popup.querySelector('#pm-step');
+
+                // Visual selection helper
+                function setSelection(method) {
+                    const mp = popup.querySelector('#pm-mpesa');
+                    const cd = popup.querySelector('#pm-card');
+                    if (!mp || !cd) return;
+                    if (method === 'MPESA') {
+                        mp.classList.remove('bg-[#111316]'); mp.classList.add('bg-green-600');
+                        cd.classList.remove('bg-green-600'); cd.classList.remove('bg-blue-600'); cd.classList.add('bg-[#111316]');
+                    } else if (method === 'CARD') {
+                        cd.classList.remove('bg-[#111316]'); cd.classList.add('bg-blue-600');
+                        mp.classList.remove('bg-blue-600'); mp.classList.remove('bg-green-600'); mp.classList.add('bg-[#111316]');
+                    }
+                }
+
+                popup.querySelector('#pm-mpesa').addEventListener('click', () => {
+                    setSelection('MPESA');
+                    stepEl.innerHTML = `
+                        <p class="text-white/80 mb-4 text-center">PAY VIA MPESA — Buy Goods and Services Till Number <strong>3790912</strong>.<br/>Amount: <strong>KES ${fmtNum(amount)}</strong>.<br/><strong>Once you pay, Click "Paid" below for confirmation.</strong></p>
+                        <div class="flex"><button id="pm-paid" class="w-full bg-green-600 text-white py-2 px-4 rounded-xl">Paid</button></div>
+                    `;
+
+                    setTimeout(() => {
+                        const paid = popup.querySelector('#pm-paid');
+                        if (paid) paid.addEventListener('click', () => {
+                            stepEl.innerHTML = `
+                                <p class="text-white/80 mb-4 text-center">Thank you. Payment will be confirmed shortly.</p>
+                                <div class="flex"><button id="pm-done" class="w-full bg-blue-600 text-white py-2 px-4 rounded-xl">Continue</button></div>
+                            `;
+                            popup.querySelector('#pm-done').addEventListener('click', () => {
+                                try { localStorage.setItem('purchasePlan', JSON.stringify({ plan: planName, amount, method: 'MPESA' })); } catch (e) {}
+                                popup.remove();
+                                window.location.href = 'index.html';
+                            });
+                        });
+                    }, 40);
+                });
+
+                // Card flow: show coming soon message and offer Contact Sales + Pay Via Mpesa
+                popup.querySelector('#pm-card').addEventListener('click', () => {
+                    setSelection('CARD');
+                    stepEl.innerHTML = `
+                        <p class="text-white/80 mb-4 text-center"><strong>Card payments are coming soon.</strong><br/>If you can only pay by card, contact support below.</p>
+                        <div class="flex gap-3 mb-3">
+                            <button id="card-contact" class="flex-1 bg-[#111316] border border-[#2b2f3a] rounded-xl py-3 text-white">Contact Sales</button>
+                            <button id="card-mpesa" class="flex-1 bg-green-600 border border-[#2b2f3a] rounded-xl py-3 text-white">Pay Via M-Pesa</button>
+                        </div>
+                        <p class="text-xs text-white/60 text-center">(Contact Sales opens WhatsApp)</p>
+                    `;
+
+                    // Contact Sales -> open whatsapp link
+                    setTimeout(() => {
+                        const contactBtn = popup.querySelector('#card-contact');
+                        const mpesaBtn = popup.querySelector('#card-mpesa');
+                        if (contactBtn) contactBtn.addEventListener('click', () => {
+                            // open whatsapp deep link
+                            try { window.location.href = 'whatsapp://send?phone=254789254864'; } catch (e) {
+                                // fallback to web.whatsapp
+                                window.location.href = 'https://wa.me/254789254864';
+                            }
+                        });
+                        if (mpesaBtn) mpesaBtn.addEventListener('click', () => {
+                            // re-use MPESA flow
+                            stepEl.innerHTML = `
+                                <p class="text-white/80 mb-4 text-center">PAY VIA MPESA — Buy Goods and Services Till Number <strong>3790912</strong>.<br/>Amount: <strong>KES ${fmtNum(amount)}</strong>.<br/><strong>Once you pay, Click "Paid" below for confirmation.</strong></p>
+                                <div class="flex"><button id="pm-paid2" class="w-full bg-green-600 text-white py-2 px-4 rounded-xl">Paid</button></div>
+                            `;
+                            setTimeout(()=>{
+                                const paid2 = popup.querySelector('#pm-paid2');
+                                if (paid2) paid2.addEventListener('click', () => {
+                                    try { localStorage.setItem('purchasePlan', JSON.stringify({ plan: planName, amount, method: 'MPESA' })); } catch (e) {}
+                                    popup.remove();
+                                    window.location.href = 'index.html';
+                                });
+                            }, 40);
+                        });
+                    }, 40);
+                });
+
+                // Back button: only present on the initial purchase modal
+                const backBtn = popup.querySelector('#pm-back');
+                if (backBtn) backBtn.addEventListener('click', () => popup.remove());
+            }
+
+            // Attach click handlers to CTA anchors
+            document.querySelectorAll('a').forEach(a => {
+                const txt = (a.textContent || '').trim().toLowerCase();
+                if (txt.includes('select growth') || txt.includes('select growth'.toLowerCase())) {
+                    a.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const c = computeTotal('growth');
+                        openPaymentModal('Growth', c.total);
+                    });
+                }
+                if (txt.includes('go pro') || txt.includes('go pro'.toLowerCase())) {
+                    a.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const c = computeTotal('pro');
+                        openPaymentModal('Pro', c.total);
+                    });
+                }
+                if (txt.includes('contact sales')) {
+                    a.addEventListener('click', (e) => {
+                        // contact sales: open mailto or show contact info
+                        // fallback: navigate to contact/support page
+                        // We'll route to mailto for simplicity
+                        e.preventDefault();
+                        window.location.href = 'mailto:support@vvstudios.example?subject=Interested%20in%20Premium%20Plan';
+                    });
+                }
+                if (txt.includes('start free')) {
+                    a.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        // Start free: redirect to dashboard (user can sign up)
+                        window.location.href = 'index.html';
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

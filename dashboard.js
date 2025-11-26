@@ -46,44 +46,12 @@ export function normalizePhoneNumber(phone) {
 // Global package selector -> opens payment flow after selection
 window.openUpgradeFlow = function(userData) {
     try {
-        const popup = document.createElement('div');
-        popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-        popup.innerHTML = `
-            <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-lg w-full mx-4 relative">
-                <button id="upgrade-cancel" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">&times;</button>
-                <h3 class="text-xl font-bold text-white mb-4 text-center">Select a Plan</h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <button class="select-plan bg-[#0f1720] border border-[#2b2f3a] p-4 rounded-xl text-left" data-plan="Growth" data-price="6000">
-                                <h4 class="font-semibold text-green-400">Growth</h4>
-                                <p class="text-white/60 text-sm">KES <span class="font-bold">6,000</span> / month</p>
-                            </button>
-                            <button class="select-plan bg-[#0f1720] border border-[#2b2f3a] p-4 rounded-xl text-left" data-plan="Pro" data-price="12000">
-                                <h4 class="font-semibold text-amber-400">Pro</h4>
-                                <p class="text-white/60 text-sm">KES <span class="font-bold">12,000</span> / month</p>
-                            </button>
-                            <button class="select-plan bg-[#0f1720] border border-[#2b2f3a] p-4 rounded-xl text-left" data-plan="Premium" data-price="30000">
-                                <h4 class="font-semibold text-purple-400">Premium</h4>
-                                <p class="text-white/60 text-sm">KES <span class="font-bold">30,000</span> / month</p>
-                            </button>
-                        </div>
-            </div>
-        `;
-        document.body.appendChild(popup);
-        popup.querySelector('#upgrade-cancel').addEventListener('click', () => popup.remove());
-
-        // Use event delegation to reliably catch clicks on dynamically-created plan buttons
-        popup.addEventListener('click', (ev) => {
-            const btn = ev.target.closest && ev.target.closest('.select-plan');
-            if (!btn) return;
-            ev.preventDefault();
-            const price = parseInt(btn.getAttribute('data-price') || '0', 10) || 0;
-            const plan = btn.getAttribute('data-plan') || '';
-            try { popup.remove(); } catch (e) { console.warn('Could not remove plan popup', e); }
-            setTimeout(() => {
-                showRenewalPopup(userData, 'Proceed to Pay', 0, price, true, plan);
-            }, 50);
-        });
-    } catch (e) { console.warn('openUpgradeFlow error', e); }
+        // For this task, route all upgrade flows to the Plans page.
+        // This keeps behavior consistent across dynamically-invoked upgrade handlers.
+        window.location.href = 'plans.html';
+    } catch (e) {
+        console.warn('openUpgradeFlow redirect error', e);
+    }
 }
 
 // Payment iframe helper: load a payment gateway URL in a hidden iframe
@@ -200,6 +168,19 @@ function proceedToDashboard(userData, rawPhone) {
     fullUserData.firstName = fullUserData.admin_first_name || adminFirstName || '';
     localStorage.setItem('vvUser', JSON.stringify(fullUserData));
     console.log('[DEBUG] Final complete user data saved to localStorage.');
+
+    // If the user's package is Free, send them to the Free experience page.
+    try {
+        const pkgName = (fullUserData.package || '').toString().toLowerCase();
+        if (pkgName === 'free') {
+            // If we're already on the free page, continue to initialize it.
+            const current = (window.location && window.location.pathname) ? window.location.pathname.split('/').pop() : '';
+            if (current !== 'free.html') {
+                window.location.href = 'free.html';
+                return;
+            }
+        }
+    } catch (e) { /* non-fatal */ }
 
     // Subscription/Service logic
     if (loggedInUser['joined date'] || loggedInUser.joined_date) {

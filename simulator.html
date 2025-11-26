@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta id="dynamic-viewport" name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Business Growth Projections | VV Studios</title>
+    
+    <!-- Core Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.5.1/chart.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f1115; color: white; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background-color: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.1); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.2); }
+
+        /* Animations */
+        .card-animate { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .card-animate:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        
+        .fade-in { animation: fadeIn 0.6s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Inputs */
+        input[type=range] { appearance: none; -webkit-appearance: none; -moz-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            height: 20px; width: 20px; border-radius: 50%;
+            background: #3b82f6; cursor: pointer; margin-top: -8px; box-shadow: 0 0 10px rgba(59,130,246,0.5);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px; cursor: pointer; background: #2b2f3a; border-radius: 2px;
+        }
+
+        /* Highlight Colors */
+        .text-gold { color: #FFD700; }
+        .border-gold { border-color: #FFD700; }
+        .text-purple-400 { color: #a78bfa; }
+        .border-purple-400 { border-color: #a78bfa; }
+        
+        /* Glass effect for Vision Board */
+        .glass-panel {
+            background: rgba(26, 29, 35, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-[#0f1115] text-white min-h-screen flex flex-col">
+
+    <!-- Simple Header (No Sidebar) -->
+    <header class="p-6 flex justify-between items-center max-w-7xl mx-auto w-full">
+        <div class="flex items-center gap-3">
+            <img src="assets/logo.png" onerror="this.src='https://via.placeholder.com/40'" class="w-10 h-10 rounded-full bg-gray-800" alt="Logo">
+            <span class="font-bold text-xl tracking-tight">VV Studios <span class="text-white/40 font-normal">| Projections</span></span>
+        </div>
+        <a href="index.html" class="text-sm text-white/60 hover:text-white transition-colors">
+            <i class="fa-solid fa-arrow-left mr-1"></i> Back to Dashboard
+        </a>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 w-full max-w-4xl mx-auto p-4 md:p-6 mb-12">
+
+        <!-- STEP 1: WELCOME / INPUTS -->
+        <div id="step-inputs" class="fade-in">
+            <div class="text-center mb-10">
+                <h1 class="text-3xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-green-400">
+                    See What Your Business Can Earn
+                </h1>
+                <p class="text-white/60 text-lg max-w-2xl mx-auto">
+                    Fill in a few details to see your 3-month growth potential based on industry benchmarks.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Product Data -->
+                <div class="space-y-6">
+                    <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] card-animate">
+                        <h3 class="font-semibold text-lg mb-4 text-blue-400"><i class="fa-solid fa-tag mr-2"></i>Product Details</h3>
+                        
+                        <div class="mb-5">
+                            <label class="block text-sm text-white/70 mb-2">Price per Sale (KES)</label>
+                            <input type="number" id="inputPrice" value="3000" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white focus:ring-1 focus:ring-blue-500 outline-none transition-all">
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <label class="block text-sm text-white/70">Profit Margin (%)</label>
+                                <span id="marginDisplay" class="text-blue-400 font-bold">40%</span>
+                            </div>
+                            <input type="range" id="inputMargin" min="10" max="90" value="40" oninput="document.getElementById('marginDisplay').innerText = this.value + '%'">
+                        </div>
+                    </div>
+
+                    <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] card-animate">
+                        <h3 class="font-semibold text-lg mb-4 text-purple-400"><i class="fa-solid fa-layer-group mr-2"></i>Business Sector</h3>
+                        <div class="mb-4">
+                            <label class="block text-sm text-white/70 mb-2">Industry</label>
+                            <select id="inputIndustry" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white focus:ring-1 focus:ring-purple-500 outline-none">
+                                <option value="retail">Retail / E-commerce (Fashion, Electronics)</option>
+                                <option value="service">Professional Services</option>
+                                <option value="beauty">Health & Beauty (Salon, Spa)</option>
+                                <option value="food">Food & Beverage</option>
+                                <option value="realestate">Real Estate / High Ticket</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-white/70 mb-2">Simulate Package</label>
+                            <select id="inputPackage" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white focus:ring-1 focus:ring-purple-500 outline-none">
+                                <option value="free">Free Tools (Manual Follow-up)</option>
+                                <option value="growth">Growth (Basic Automation)</option>
+                                <option value="pro">Pro (AI Sales Assistant)</option>
+                                <option value="premium">Premium (High Volume Scaling)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Marketing Budget -->
+                <div class="space-y-6 flex flex-col">
+                    <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] flex-1 flex flex-col justify-center card-animate">
+                        <h3 class="font-semibold text-lg mb-4 text-green-400"><i class="fa-solid fa-coins mr-2"></i>Marketing Budget</h3>
+                        
+                        <div class="mb-6">
+                            <label class="block text-sm text-white/70 mb-2">Monthly Ad Spend (KES)</label>
+                            <input type="number" id="inputBudget" value="10000" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl py-4 px-4 text-white text-2xl font-bold focus:ring-1 focus:ring-green-500 outline-none">
+                            <p class="text-sm text-white/50 mt-2"><i class="fa-solid fa-circle-info mr-1"></i> Recommended start: 5,000 - 50,000.</p>
+                        </div>
+
+                        <div class="mt-auto">
+                            <button onclick="runProjections()" class="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white font-bold py-4 px-4 rounded-xl shadow-lg transition-all transform hover:scale-[1.02] flex items-center justify-center text-lg">
+                                Calculate Projections <i class="fa-solid fa-calculator ml-2"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 2: LOADING -->
+        <div id="step-loading" class="hidden text-center py-32 fade-in">
+            <div class="relative w-24 h-24 mx-auto mb-8">
+                <div class="absolute inset-0 border-4 border-[#2b2f3a] rounded-full"></div>
+                <div class="absolute inset-0 border-4 border-t-green-500 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin"></div>
+                <i class="fa-solid fa-chart-line absolute inset-0 flex items-center justify-center text-green-500 text-2xl animate-pulse"></i>
+            </div>
+            <h2 class="text-2xl font-bold mb-2">Analyzing Industry Data...</h2>
+            <p class="text-white/50" id="loadingText">Checking cost per lead...</p>
+        </div>
+
+        <!-- STEP 3: RESULTS DASHBOARD -->
+        <div id="step-results" class="hidden fade-in">
+            
+            <!-- Header Result -->
+            <div class="bg-gradient-to-br from-[#1a1d23] to-[#14161a] border border-green-500/30 rounded-3xl p-8 mb-8 relative overflow-hidden text-center">
+                <!-- Background Glow -->
+                <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-full h-32 bg-green-500/5 blur-3xl pointer-events-none"></div>
+                
+                <h2 class="text-white/60 text-sm font-semibold uppercase tracking-widest mb-2">Projected Monthly Sales</h2>
+                <div class="text-5xl md:text-7xl font-bold text-green-400 mb-2 drop-shadow-lg" id="resSales">KES 0</div>
+                <div class="flex flex-wrap justify-center gap-4 text-sm mt-4">
+                    <span class="px-3 py-1 bg-white/5 rounded-full text-white/80 border border-white/10">
+                        <i class="fa-solid fa-piggy-bank text-blue-400 mr-2"></i>Net Profit: <strong id="resProfit" class="text-white">KES 0</strong>
+                    </span>
+                    <span class="px-3 py-1 bg-white/5 rounded-full text-white/80 border border-white/10">
+                        <i class="fa-solid fa-user-plus text-orange-400 mr-2"></i>Est. CAC: <strong id="resCac">KES 0</strong>
+                    </span>
+                </div>
+                
+                <div class="mt-6 p-3 bg-yellow-500/10 border border-yellow-500/10 rounded-lg inline-block max-w-2xl">
+                    <p class="text-xs text-yellow-200/80 italic">
+                        <i class="fa-solid fa-triangle-exclamation mr-1"></i> 
+                        Note: These figures are estimates based on industry benchmarks, and our data from similar businesses. Upgrade to track your actual data for pinpoint accuracy.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Half-Performance Upsell Check -->
+            <div id="halfPerformanceMessage" class="mb-8">
+                <!-- Message inserted here by JS -->
+            </div>
+
+            <!-- Breakdown Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-[#1a1d23] p-5 rounded-xl border border-[#2b2f3a] text-center">
+                    <div class="text-white/40 text-xs uppercase mb-1">Leads</div>
+                    <div class="text-2xl font-bold text-white" id="resLeads">0</div>
+                    <div class="text-[10px] text-white/30">Potential Inquiries</div>
+                </div>
+                <div class="bg-[#1a1d23] p-5 rounded-xl border border-[#2b2f3a] text-center">
+                    <div class="text-white/40 text-xs uppercase mb-1">Conv. Rate</div>
+                    <div class="text-2xl font-bold text-blue-400" id="resConv">0%</div>
+                    <div class="text-[10px] text-white/30">Based on Plan</div>
+                </div>
+                <div class="bg-[#1a1d23] p-5 rounded-xl border border-[#2b2f3a] text-center">
+                    <div class="text-white/40 text-xs uppercase mb-1">Customers</div>
+                    <div class="text-2xl font-bold text-green-400" id="resCustomers">0</div>
+                    <div class="text-[10px] text-white/30">New Sales/Mo</div>
+                </div>
+                <div class="bg-[#1a1d23] p-5 rounded-xl border border-[#2b2f3a] text-center">
+                    <div class="text-white/40 text-xs uppercase mb-1">Spend</div>
+                    <div class="text-2xl font-bold text-white" id="resSpend">0</div>
+                    <div class="text-[10px] text-white/30">Ad Budget + Fees</div>
+                </div>
+            </div>
+
+            <!-- 3 Month Projection Chart -->
+            <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] mb-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-semibold text-white">3-Month Revenue & Cost Visualized</h3>
+                    <span class="text-xs px-2 py-1 bg-blue-500/20 text-blue-300 rounded">Cumulative Projection</span>
+                </div>
+                <div class="h-64 w-full">
+                    <canvas id="growthChart"></canvas>
+                </div>
+            </div>
+
+            <!-- COMPARISON SECTION (The Upsell) -->
+            <div class="mb-10">
+                <h3 class="font-semibold text-xl text-white mb-4 text-center">How You Could Scale With Better Systems</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="text-xs text-white/50 border-b border-white/10">
+                                <th class="p-4 font-normal">Plan</th>
+                                <th class="p-4 font-normal">Conversion</th>
+                                <th class="p-4 font-normal">Est. Monthly Profit</th>
+                                <th class="p-4 font-normal">3-Month Revenue</th>
+                                <th class="p-4 font-normal">Features</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-sm">
+                            <!-- Free -->
+                            <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                <td class="p-4 text-white font-medium">Free Tools</td>
+                                <td class="p-4 text-white/70">~2%</td>
+                                <td class="p-4 font-bold text-white" id="compFreeProfit">-</td>
+                                <td class="p-4 text-white/70" id="compFreeRev">-</td>
+                                <td class="p-4 text-xs text-white/50">Manual Follow-ups</td>
+                            </tr>
+                            <!-- Growth -->
+                            <tr class="border-b border-white/5 hover:bg-white/5 transition-colors bg-green-500/5">
+                                <td class="p-4 text-green-400 font-bold">Growth</td>
+                                <td class="p-4 text-white">~10%</td>
+                                <td class="p-4 font-bold text-green-400" id="compGrowthProfit">-</td>
+                                <td class="p-4 text-white font-medium" id="compGrowthRev">-</td>
+                                <td class="p-4 text-xs text-white/70">Basic Automation</td>
+                            </tr>
+                            <!-- Pro -->
+                            <tr class="border-b border-white/5 hover:bg-white/5 transition-colors bg-yellow-500/5">
+                                <td class="p-4 text-gold font-bold">Pro AI</td>
+                                <td class="p-4 text-white">~25%</td>
+                                <td class="p-4 font-bold text-gold" id="compProProfit">-</td>
+                                <td class="p-4 text-white font-medium" id="compProRev">-</td>
+                                <td class="p-4 text-xs text-white/70">AI Sales Assistant (Max 1k leads)</td>
+                            </tr>
+                            <!-- Premium -->
+                            <tr class="hover:bg-white/5 transition-colors bg-purple-500/5">
+                                <td class="p-4 text-purple-400 font-bold">Premium</td>
+                                <td class="p-4 text-white">~35%</td>
+                                <td class="p-4 font-bold text-purple-400" id="compPremProfit">-</td>
+                                <td class="p-4 text-white font-medium" id="compPremRev">-</td>
+                                <td class="p-4 text-xs text-white/70">High Volume Scaling (1k+ Leads)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row justify-center gap-4 mb-16">
+                <button onclick="saveToVisionBoard()" class="px-8 py-4 bg-[#2b2f3a] hover:bg-[#374151] rounded-xl text-white font-semibold transition-colors flex items-center justify-center">
+                    <i class="fa-solid fa-eye mr-2"></i> Visualize This Goal
+                </button>
+                <a href="plans.html" class="px-8 py-4 bg-blue-600 hover:bg-blue-500 rounded-xl text-white font-bold shadow-lg shadow-blue-900/50 transition-colors flex items-center justify-center">
+                    Upgrade to Automate <i class="fa-solid fa-rocket ml-2"></i>
+                </a>
+            </div>
+            
+            <div class="text-center">
+                 <p class="text-sm text-white/40 mb-2">Not ready to upgrade?</p>
+                 <button onclick="goToStep('inputs')" class="text-green-500 hover:text-green-400 text-sm font-medium underline">
+                    Adjust Numbers
+                </button>
+            </div>
+
+        </div>
+
+        <!-- STEP 4: VISION BOARD -->
+        <div id="step-vision" class="hidden fade-in">
+            
+            <div class="max-w-3xl mx-auto">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold text-gold mb-2">Your 90-Day Vision</h2>
+                    <p class="text-white/60">Compare growth across different plans.</p>
+                </div>
+
+                <!-- Vision Card -->
+                <div class="glass-panel rounded-3xl p-8 relative overflow-hidden mb-8">
+                    
+                    <!-- Tabs for Comparison -->
+                    <div class="flex justify-center flex-wrap gap-2 mb-6 p-1 rounded-xl bg-[#0f1115]">
+                        <button id="tab-free" onclick="setActiveTab('free')" class="vision-tab px-4 py-2 rounded-lg text-xs transition-colors bg-[#1a1d23] text-white/60">Free</button>
+                        <button id="tab-growth" onclick="setActiveTab('growth')" class="vision-tab px-4 py-2 rounded-lg text-xs transition-colors bg-[#1a1d23] text-white/60">Growth</button>
+                        <button id="tab-pro" onclick="setActiveTab('pro')" class="vision-tab px-4 py-2 rounded-lg text-xs transition-colors bg-[#1a1d23] text-white/60">Pro AI</button>
+                        <button id="tab-premium" onclick="setActiveTab('premium')" class="vision-tab px-4 py-2 rounded-lg text-xs transition-colors bg-[#1a1d23] text-white/60">Premium</button>
+                    </div>
+
+                    <!-- Top Summary Bar (Projected Monthly Sales + small KPIs) -->
+                    <div class="mb-6 text-center">
+                        <div class="bg-gradient-to-br from-[#0b1220] to-[#07101a] border border-green-500/20 rounded-2xl p-6 mb-4">
+                            <div class="text-xs text-white/60 uppercase tracking-widest mb-2">Projected Monthly Sales</div>
+                            <div class="text-4xl md:text-5xl font-bold text-green-400 mb-1" id="visionResSales">KES 0</div>
+                            <div class="flex flex-wrap justify-center gap-4 text-sm mt-3">
+                                <span class="px-3 py-1 bg-white/5 rounded-full text-white/80 border border-white/10">
+                                    Net Profit: <strong id="visionResProfit" class="text-white">KES 0</strong>
+                                </span>
+                                <span class="px-3 py-1 bg-white/5 rounded-full text-white/80 border border-white/10">
+                                    Est. CAC: <strong id="visionResCac" class="text-green-400">KES 0</strong>
+                                </span>
+                                <span class="px-3 py-1 bg-white/5 rounded-full text-white/80 border border-white/10">
+                                    Ad Spend: <strong id="visionResSpend">KES 0</strong>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- KPI Cards -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                            <div class="bg-[#0f1115] p-4 rounded-xl border border-[#2b2f3a] text-center">
+                                <div class="text-white/40 text-xs uppercase mb-1">Leads</div>
+                                <div class="text-2xl font-bold text-white" id="visionLeads">0</div>
+                                <div class="text-[10px] text-white/30">Potential Inquiries</div>
+                            </div>
+                            <div class="bg-[#0f1115] p-4 rounded-xl border border-[#2b2f3a] text-center">
+                                <div class="text-white/40 text-xs uppercase mb-1">Conv. Rate</div>
+                                <div class="text-2xl font-bold text-blue-400" id="visionConv">0%</div>
+                                <div class="text-[10px] text-white/30">Based on Plan</div>
+                            </div>
+                            <div class="bg-[#0f1115] p-4 rounded-xl border border-[#2b2f3a] text-center">
+                                <div class="text-white/40 text-xs uppercase mb-1">Customers</div>
+                                <div class="text-2xl font-bold text-green-400" id="visionCustomers">0</div>
+                                <div class="text-[10px] text-white/30">New Sales/Mo</div>
+                            </div>
+                            <div class="bg-[#0f1115] p-4 rounded-xl border border-[#2b2f3a] text-center">
+                                <div class="text-white/40 text-xs uppercase mb-1">Spend</div>
+                                <div class="text-2xl font-bold text-white" id="visionSpend">0</div>
+                                <div class="text-[10px] text-white/30">Ad Budget + Fees</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chart Clone -->
+                    <div class="h-64 w-full mb-8 opacity-90">
+                        <canvas id="visionChart"></canvas>
+                    </div>
+
+                    <!-- Assumptions / Changing Variables (replaces quote) -->
+                    <div class="text-center border-t border-white/10 pt-6">
+                        <h4 class="text-white font-semibold mb-3">Assumptions & Key Variables</h4>
+                        <div class="flex flex-wrap justify-center gap-4 text-sm">
+                            <div class="px-4 py-2 bg-[#1a1d23] rounded-lg border border-[#2b2f3a] text-white/70">
+                                <div class="text-[11px] text-white/50">Conversion Rate</div>
+                                <div id="visionAssConv" class="font-bold text-white">0%</div>
+                            </div>
+                            <div class="px-4 py-2 bg-[#1a1d23] rounded-lg border border-[#2b2f3a] text-white/70">
+                                <div class="text-[11px] text-white/50">CAC</div>
+                                <div id="visionAssCac" class="font-bold text-green-400">KES 0</div>
+                            </div>
+                            <div class="px-4 py-2 bg-[#1a1d23] rounded-lg border border-[#2b2f3a] text-white/70">
+                                <div class="text-[11px] text-white/50">Ad Spend (mo.)</div>
+                                <div id="visionAssSpend" class="font-bold text-white">KES 0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comparison Upsell Hook -->
+                <div class="bg-gradient-to-r from-blue-900/40 to-purple-900/40 border border-blue-500/30 rounded-2xl p-6 text-center mb-8">
+                    <h3 class="font-bold text-white text-lg mb-2">Want a Vision Board calculated by your actual Business Data?</h3>
+                    <p class="text-sm text-white/70 mb-4">Benchmarks are good, but your actual data is better. Upgrade to track leads accurately and generate precise forecasts.</p>
+                    <a href="plans.html" class="inline-block bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded-lg transition-colors text-sm">
+                        Upgrade Here
+                    </a>
+                </div>
+
+                <!-- Free Tools Soft CTA -->
+                <div class="text-center border-t border-white/10 pt-8">
+                    <h4 class="text-white font-semibold mb-4">Ready to Start Small? Use our Free Tools:</h4>
+                    <div class="flex flex-wrap justify-center gap-3 mb-6">
+                        <span class="px-4 py-2 bg-[#1a1d23] rounded-lg border border-[#2b2f3a] text-sm text-white/70">Business Audits</span>
+                        <span class="px-4 py-2 bg-[#1a1d23] rounded-lg border border-[#2b2f3a] text-sm text-white/70">Content Ideas</span>
+                        <span class="px-4 py-2 bg-[#1a1d23] rounded-lg border border-[#2b2f3a] text-sm text-white/70">Quick Copywriter</span>
+                        <span class="px-4 py-2 bg-[#1a1d23] rounded-lg border border-[#2b2f3a] text-sm text-white/70">Offers Maker</span>
+                    </div>
+                    <a href="index.html" class="text-green-500 hover:text-green-400 font-medium underline">
+                        Go to Dashboard &rarr;
+                    </a>
+                </div>
+
+                <div class="text-center mt-6">
+                    <button onclick="goToStep('results')" class="text-white/40 hover:text-white text-xs">
+                        <i class="fa-solid fa-arrow-left mr-1"></i> Back to Projections
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- LOGIC -->
+    <script>
+        // --- DATA CONFIGURATION ---
+        
+        const industryCPL = {
+            retail: 25,
+            service: 50,
+            beauty: 45,
+            food: 100,
+            realestate: 600
+        };
+
+        const packages = {
+            // Updated colors: Premium (Purple), Pro (Gold), Growth (Green), Free (White)
+            free:   { name: 'Free Tools', rate: 0.02, cost: 0, color: '#ffffff', cssText: 'text-white' }, // White
+            growth: { name: 'Growth', rate: 0.10, cost: 6000, color: '#4ade80', cssText: 'text-green-400' }, // Green
+            pro:    { name: 'Pro AI', rate: 0.25, cost: 12000, color: '#FFD700', cssText: 'text-gold' }, // Gold
+            premium:{ name: 'Premium', rate: 0.35, cost: 30000, color: '#a78bfa', cssText: 'text-purple-400' } // Purple
+        };
+
+        const quotes = [
+            "The secret of getting ahead is getting started.",
+            "Small daily improvements are the key to staggering long-term results.",
+            "Your future is created by what you do today, not tomorrow.",
+            "Don't wait for opportunity. Create it."
+        ];
+
+        let growthChartInstance = null;
+        let visionChartInstance = null;
+        let lastCalculation = null; // Store data for vision board
+
+        // Helper to format KES
+        function fmtKES(n) { return 'KES ' + Number(n || 0).toLocaleString(); }
+
+        // Update vision board DOM elements from a metrics object
+        function updateVisionFromMetrics(m) {
+            if (!m) return;
+            // expected fields: customers, revenue, netProfit, totalCost, cac, pkgName, pkgKey, rate, leads, budget
+            const leads = m.leads !== undefined ? m.leads : 0;
+            const customers = m.customers !== undefined ? m.customers : 0;
+            const revenue = m.revenue !== undefined ? m.revenue : 0;
+            const netProfit = m.netProfit !== undefined ? m.netProfit : 0;
+            const totalCost = m.totalCost !== undefined ? m.totalCost : (m.budget || 0) + (m.pkgCost || 0);
+            const cac = m.cac !== undefined ? m.cac : (customers > 0 ? Math.round(totalCost / customers) : 0);
+            const rate = m.rate !== undefined ? m.rate : 0;
+
+            const setText = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+
+            setText('visionResSales', fmtKES(revenue));
+            setText('visionResProfit', fmtKES(Math.round(netProfit)));
+            setText('visionResCac', fmtKES(cac));
+            setText('visionResSpend', fmtKES(totalCost));
+
+            setText('visionLeads', leads.toLocaleString());
+            setText('visionConv', (rate * 100).toFixed(0) + '%');
+            setText('visionCustomers', customers);
+            setText('visionSpend', fmtKES(totalCost));
+
+            // Assumptions
+            setText('visionAssConv', (rate * 100).toFixed(0) + '%');
+            setText('visionAssCac', fmtKES(cac));
+            setText('visionAssSpend', fmtKES(m.budget || 0));
+        }
+
+        // --- NAVIGATION ---
+        function goToStep(stepId) {
+            document.querySelectorAll('[id^="step-"]').forEach(el => el.classList.add('hidden'));
+            document.getElementById('step-' + stepId).classList.remove('hidden');
+            window.scrollTo(0,0);
+        }
+
+        // --- CORE LOGIC ---
+        function runProjections() {
+            // Loading Animation text cycle
+            const loadTexts = ["Checking industry benchmarks...", "Calculating cost per lead...", "Generating 3-month forecast...", "Almost done..."];
+            let tIdx = 0;
+            const tInterval = setInterval(() => {
+                const loadingTextEl = document.getElementById('loadingText');
+                if (loadingTextEl) {
+                    loadingTextEl.innerText = loadTexts[tIdx % loadTexts.length];
+                }
+                tIdx++;
+            }, 600);
+
+            goToStep('loading');
+
+            setTimeout(() => {
+                clearInterval(tInterval);
+                calculate();
+                goToStep('results');
+            }, 2000);
+        }
+
+        function calculate() {
+            // Inputs
+            const price = parseFloat(document.getElementById('inputPrice').value) || 0;
+            const marginPct = parseFloat(document.getElementById('inputMargin').value) || 0;
+            const budget = parseFloat(document.getElementById('inputBudget').value) || 0;
+            const industry = document.getElementById('inputIndustry').value;
+            const userPkgKey = document.getElementById('inputPackage').value;
+
+            // Derived
+            const cpl = industryCPL[industry] || 100;
+            const leads = Math.floor(budget / cpl);
+
+            // Calculation Helper
+            function getMetrics(pkgKey, conversionMultiplier = 1) {
+                const pkg = packages[pkgKey];
+                
+                const customers = Math.floor(leads * pkg.rate * conversionMultiplier);
+                const revenue = customers * price;
+                
+                // Profit = (Revenue * Margin) - (AdBudget + PkgCost)
+                const grossProfit = revenue * (marginPct / 100);
+                const totalCost = budget + pkg.cost;
+                const netProfit = grossProfit - totalCost;
+                
+                // CAC = Total Spend / Customers
+                const cac = customers > 0 ? Math.round(totalCost / customers) : 0;
+
+                return { 
+                    customers, 
+                    revenue, 
+                    netProfit, 
+                    cac, 
+                    totalCost, 
+                    pkgName: pkg.name, 
+                    pkgKey, 
+                    rate: pkg.rate,
+                    color: pkg.color
+                };
+            }
+
+            // 1. Current Selected Scenario
+            const current = getMetrics(userPkgKey, 1);
+            lastCalculation = current; // Save for vision board
+            lastCalculation.budget = budget; // append budget for chart
+
+            // 2. Half-Performance Scenario Check
+            const halfScenario = getMetrics(userPkgKey, 0.5);
+            updateHalfPerformanceMessage(halfScenario);
+
+
+            // Update Main UI
+            const fmt = (n) => 'KES ' + n.toLocaleString();
+            
+            document.getElementById('resSales').innerText = fmt(current.revenue);
+            document.getElementById('resProfit').innerText = fmt(Math.round(current.netProfit));
+            document.getElementById('resCac').innerText = fmt(current.cac);
+            
+            document.getElementById('resLeads').innerText = leads.toLocaleString();
+            document.getElementById('resConv').innerText = (packages[userPkgKey].rate * 100).toFixed(0) + '%';
+            document.getElementById('resCustomers').innerText = current.customers;
+            document.getElementById('resSpend').innerText = fmt(current.totalCost);
+
+            // 3. Comparison Table (recalculates all)
+            ['free', 'growth', 'pro', 'premium'].forEach(key => {
+                const m = getMetrics(key, 1);
+                
+                // Profit Cell
+                const profEl = document.getElementById(`comp${capitalize(key)}Profit`);
+                if (profEl) { // CHECK ADDED HERE TO PREVENT ERROR
+                    profEl.innerText = fmt(Math.round(m.netProfit));
+                    profEl.classList.remove('text-red-400', 'text-green-400', 'text-white', 'text-gold', 'text-purple-400');
+                    if (m.netProfit < 0) {
+                        profEl.classList.add('text-red-400');
+                    } else if (key === 'free') {
+                        profEl.classList.add('text-white');
+                    } else {
+                        // Apply package color for profit
+                        profEl.classList.add(packages[key].cssText);
+                    }
+                }
+                
+                // Revenue 3-Months Cell (Cumulative)
+                const revEl = document.getElementById(`comp${capitalize(key)}Rev`);
+                if (revEl) { // CHECK ADDED HERE TO PREVENT ERROR
+                    revEl.innerText = fmt(m.revenue * 3);
+                }
+            });
+
+            // 4. Render Growth Chart (Selected Package)
+            renderChart(current.revenue, current.totalCost, current.netProfit);
+        }
+
+        function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+        function updateHalfPerformanceMessage(halfScenario) {
+            const messageEl = document.getElementById('halfPerformanceMessage');
+            if (!messageEl) return; // Safety check
+
+            const fmt = (n) => 'KES ' + Math.abs(Math.round(n)).toLocaleString();
+            
+            if (halfScenario.netProfit > 0) {
+                messageEl.className = 'p-4 bg-green-900/40 text-green-300 rounded-xl text-center fade-in';
+                messageEl.innerHTML = `<i class="fa-solid fa-check-circle mr-2"></i> **Even if things go HALF as well**, you still make **${fmt(halfScenario.netProfit)}** in monthly profit!`;
+            } else {
+                // Suggest upgrade if they are losing money
+                let suggestionPackage = 'Growth';
+                if (halfScenario.pkgKey === 'growth') suggestionPackage = 'Pro AI';
+                if (halfScenario.pkgKey === 'pro') suggestionPackage = 'Premium';
+                if (halfScenario.pkgKey === 'premium') suggestionPackage = 'a specialized High-Volume Plan';
+
+                messageEl.className = 'p-4 bg-red-900/40 text-red-300 rounded-xl text-center fade-in';
+                messageEl.innerHTML = `<i class="fa-solid fa-fire-flame-curved mr-2"></i> Warning: If performance is halved, you may face a **monthly loss of ${fmt(halfScenario.netProfit)}**. Consider upgrading to **${suggestionPackage}** to increase your conversion chance and secure profitability.`;
+            }
+        }
+
+
+        function renderChart(monthlyRevenue, monthlyCost, monthlyProfit) {
+            const ctx = document.getElementById('growthChart').getContext('2d');
+            
+            if (growthChartInstance) growthChartInstance.destroy();
+
+            // Cumulative data for 3 months
+            const revenueData = [monthlyRevenue, monthlyRevenue * 2, monthlyRevenue * 3];
+            const costData = [monthlyCost, monthlyCost * 2, monthlyCost * 3];
+            const profitData = [monthlyProfit, monthlyProfit * 2, monthlyProfit * 3];
+
+            // Area fill logic: Profit Area (between Revenue and Cost)
+            const profitColor = monthlyProfit >= 0 ? 'rgba(74, 222, 128, 0.4)' : 'rgba(239, 68, 68, 0.4)'; // Green for profit, Red for loss
+
+            growthChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Month 1', 'Month 2', 'Month 3'],
+                    datasets: [
+                        {
+                            label: 'Cumulative Revenue',
+                            data: revenueData,
+                            borderColor: packages.growth.color, // Green
+                            backgroundColor: 'transparent',
+                            borderWidth: 3,
+                            pointBackgroundColor: packages.growth.color,
+                            tension: 0.4,
+                            fill: '+1', // Fill the area between this dataset (Revenue) and the next one (Total Costs)
+                            backgroundColor: profitColor, // Color for the profit/loss area
+                            order: 1 // Draw revenue on top
+                        },
+                        {
+                            label: 'Cumulative Total Costs (Ad Spend + Fees)',
+                            data: costData,
+                            borderColor: packages.premium.color, // Purple
+                            backgroundColor: 'transparent',
+                            borderWidth: 3,
+                            pointBackgroundColor: packages.premium.color,
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            order: 2 // Draw cost below
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: true, labels: { color: 'white', usePointStyle: true } } },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: 'rgba(255,255,255,0.5)' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: 'white' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Renders the chart and updates text based on the selected package key
+        function renderVisionChart(pkgKey) {
+            // Recalculate metrics for the selected package 
+            const price = parseFloat(document.getElementById('inputPrice').value) || 0;
+            const marginPct = parseFloat(document.getElementById('inputMargin').value) || 0;
+            const budget = parseFloat(document.getElementById('inputBudget').value) || 0;
+            const industry = document.getElementById('inputIndustry').value;
+            const cpl = industryCPL[industry] || 100;
+            const leads = Math.floor(budget / cpl);
+
+            const pkg = packages[pkgKey];
+            const customers = Math.floor(leads * pkg.rate);
+            const revenue = customers * price;
+            const totalCost = budget + pkg.cost;
+            const netProfit = (revenue * (marginPct / 100)) - totalCost;
+
+            // Cumulative data for 3 months
+            const revenueData = [revenue, revenue * 2, revenue * 3];
+            const costData = [totalCost, totalCost * 2, totalCost * 3];
+            
+            // (visionGoal and visionProfit elements were removed; values updated via updateVisionFromMetrics below)
+
+
+            const ctx = document.getElementById('visionChart').getContext('2d');
+            if (visionChartInstance) visionChartInstance.destroy();
+
+            const profitColor = netProfit >= 0 ? 'rgba(74, 222, 128, 0.4)' : 'rgba(239, 68, 68, 0.4)';
+
+            visionChartInstance = new Chart(ctx, {
+                type: 'line', 
+                data: {
+                    labels: ['Month 1', 'Month 2', 'Month 3'],
+                    datasets: [
+                        {
+                            label: 'Cumulative Revenue',
+                            data: revenueData,
+                            borderColor: packages.growth.color,
+                            backgroundColor: 'transparent',
+                            borderWidth: 3,
+                            pointBackgroundColor: packages.growth.color,
+                            tension: 0.4,
+                            fill: '+1',
+                            backgroundColor: profitColor,
+                        },
+                        {
+                            label: 'Cumulative Costs',
+                            data: costData,
+                            borderColor: packages.premium.color,
+                            backgroundColor: 'transparent',
+                            borderWidth: 3,
+                            pointBackgroundColor: packages.premium.color,
+                            borderDash: [5, 5],
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: true, labels: { color: 'white', usePointStyle: true } } },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: 'rgba(255,255,255,0.5)' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: 'white' }
+                        }
+                    }
+                }
+            });
+
+            // Update vision header, cards and assumptions using freshly calculated metrics
+            const cac = customers > 0 ? Math.round(totalCost / customers) : 0;
+            const metrics = {
+                customers, revenue, netProfit, totalCost, cac, pkgName: pkg.name, pkgKey, rate: pkg.rate, leads, budget, pkgCost: pkg.cost
+            };
+            updateVisionFromMetrics(metrics);
+        }
+
+
+        function saveToVisionBoard() {
+            if (!lastCalculation) {
+                // If calculation hasn't run, go to inputs
+                goToStep('inputs'); 
+                return;
+            }
+
+            // Show Vision board and populate it from the last calculation
+            goToStep('vision');
+
+            // Initial populate from the last calculation (then setActiveTab will re-render for the selected package)
+            updateVisionFromMetrics(lastCalculation);
+
+            // Render default chart (user's selected package)
+            setTimeout(() => {
+                setActiveTab(lastCalculation.pkgKey);
+            }, 100);
+        }
+
+        function setActiveTab(pkgKey) {
+            // Remove active classes from all tabs
+            document.querySelectorAll('.vision-tab').forEach(tab => {
+                tab.classList.remove('bg-blue-600', 'text-white', 'font-bold');
+                tab.classList.add('bg-[#1a1d23]', 'text-white/60');
+            });
+            
+            // Add active classes to the selected tab
+            const activeTab = document.getElementById(`tab-${pkgKey}`);
+            if (activeTab) {
+                activeTab.classList.remove('bg-[#1a1d23]', 'text-white/60');
+                activeTab.classList.add('bg-blue-600', 'text-white', 'font-bold');
+                
+                // Rerender the chart for the selected package
+                renderVisionChart(pkgKey);
+            }
+        }
+    </script>
+</body>
+</html>

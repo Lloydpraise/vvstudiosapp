@@ -24,28 +24,6 @@
     color: #0f1720 !important; /* slightly lighter than previous black */
 }
 
-/* Emergency visibility fallback: ensure sidebar is visible in light theme
-   (covers index.html and ads pages where utility classes may be overridden). */
-[data-theme="light"] #sidebar {
-    display: block !important;
-    visibility: visible !important;
-    transform: translateX(0) !important;
-    left: 0 !important;
-}
-
-/* Ensure dashboard container is visible when light theme is active (some pages
-   hide it until login; this ensures the sidebar area appears for desktop testing). */
-[data-theme="light"] #dashboard-container {
-    display: flex !important;
-}
-
-/* Desktop layout: reserve space for sidebar so main content doesn't overlap. */
-@media (min-width: 1025px) {
-    [data-theme="light"] main {
-        margin-left: 16rem !important; /* match sidebar width (w-64) */
-    }
-}
-
 /* Convert white-ish text to dark on light theme. Include common Tailwind utility variants. */
 [data-theme="light"] .text-white,
 [data-theme="light"] .text-white\/60,
@@ -262,43 +240,13 @@
 [data-theme="light"] .bg-gray-700 { background-color: #e5e7eb !important; color: #0f1720 !important; }
 [data-theme="light"] .bg-gray-700:hover { background-color: #dbe2ea !important; }
 
-/* Sidebar background should remain off-white when opened (avoid transparent) */
-[data-theme="light"] #sidebar { background-color: #ffffff !important; border-right: 1px solid #e6e9ee !important; }
 
-/* Stronger sidebar container for mobile/overlay: ensure it looks like a card and sits above content */
+/* Sidebar: only color/border adjustments in light theme. Avoid structural/layout changes
+   so desktop and grid layouts remain controlled by the original utility classes. */
 [data-theme="light"] #sidebar {
     background-color: #ffffff !important;
     color: #0f1720 !important;
     border-right: 1px solid #e6e9ee !important;
-    box-shadow: 0 8px 24px rgba(15,23,42,0.06) !important;
-    min-height: 100vh !important;
-    z-index: 90 !important;
-    -webkit-backface-visibility: hidden; /* avoid rendering artifacts when translating */
-    backface-visibility: hidden;
-}
-
-/* Ensure sidebar content can scroll if it grows taller than the viewport, and
-   reserve space at the bottom so the settings button doesn't overlap links. */
-[data-theme="light"] #sidebar {
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-    padding-bottom: 5.5rem !important; /* leave space for settings button */
-}
-
-/* Desktop: ensure sidebar remains in-flow and fully visible on larger screens */
-@media (min-width: 1025px) {
-    [data-theme="light"] #sidebar {
-        position: relative !important;
-        transform: translateX(0) !important;
-        left: auto !important;
-        top: auto !important;
-        bottom: auto !important;
-        width: 16rem !important; /* match w-64 */
-        box-sizing: border-box !important;
-        z-index: 90 !important;
-    }
-    /* Make sure the main area doesn't get hidden behind sidebar due to z-index or positioning */
-    [data-theme="light"] main { z-index: 1 !important; }
 }
 
 /* Make sure links, icons and tooltip contrast inside sidebar */
@@ -431,6 +379,33 @@
     outline: none !important;
     box-shadow: 0 0 0 4px rgba(11,95,255,0.10) !important;
     border-color: rgba(11,95,255,0.12) !important;
+}
+
+/* Desktop-only: restore sidebar flow for light theme without altering dark theme.
+   This ensures the sidebar is visible on desktop and doesn't get translated away
+   when switching themes. Kept narrowly scoped to min-width:1024px. */
+@media (min-width: 1024px) {
+    [data-theme="light"] #sidebar {
+        position: relative !important;
+        transform: translateX(0) !important;
+        left: 0 !important;
+        top: auto !important;
+        bottom: auto !important;
+        width: 16rem !important; /* match w-64 */
+        display: block !important;
+        visibility: visible !important;
+        transition: none !important; /* prevent flicker when toggling */
+    }
+}
+
+/* Desktop: ensure dashboard area and sidebar are visible for light theme pages
+   (covers pages that hide dashboard until login). This is narrowly scoped to
+   desktop and light theme only and uses !important to override inline styles. */
+@media (min-width: 1024px) {
+    html[data-theme="light"] #dashboard-container { display: flex !important; }
+    html[data-theme="light"] #sidebar { position: relative !important; transform: none !important; left: 0 !important; display: block !important; visibility: visible !important; width: 16rem !important; }
+    /* If utility classes left a -translate-x-full class, neutralize it on desktop light */
+    html[data-theme="light"] #sidebar.-translate-x-full { transform: none !important; }
 }
 
 
