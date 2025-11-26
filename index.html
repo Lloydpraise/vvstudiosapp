@@ -1,6 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="loading.js"></script>
+    <script>
+        // Early free-user redirect: run as soon as possible to avoid loading other flows.
+        (function(){
+            try {
+                // Only redirect if we're not already on the free page.
+                if (location.pathname && location.pathname.toLowerCase().endsWith('free.html')) return;
+
+                var raw = null;
+                try { raw = localStorage.getItem('vvUser'); } catch(e) { raw = null; }
+                if (!raw) return;
+                var user = null;
+                try { user = JSON.parse(raw); } catch(e) { user = null; }
+                if (!user) return;
+
+                // Accept package values like 'Free' or 'free' or missing package but package_expiry_date present
+                var pkg = (user.package || user.package_name || user.packageType || '') + '';
+                pkg = pkg.toLowerCase();
+
+                if (pkg === 'free'){
+                    // Perform an immediate replace so history doesn't accumulate and other scripts don't run.
+                    window.location.replace('free.html');
+                }
+            } catch (e) { /* silently ignore */ }
+        })();
+    </script>
     <meta charset="UTF-8">
     <!-- Dynamic viewport: keep mobile at 0.8 (user preference) but use 1.0 on desktop to avoid zoomed-in layout -->
     <meta id="dynamic-viewport" name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">

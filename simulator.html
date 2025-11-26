@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="loading.js"></script>
     <meta charset="UTF-8">
     <meta id="dynamic-viewport" name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>Business Growth Projections | VV Studios</title>
+    <title>See how many leads you need, your potential growth in sales, and your path to expanding</title>
     
     <!-- Core Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -37,9 +38,17 @@
             height: 20px; width: 20px; border-radius: 50%;
             background: #3b82f6; cursor: pointer; margin-top: -8px; box-shadow: 0 0 10px rgba(59,130,246,0.5);
         }
+        /* Blue track for the profit margin slider */
         input[type=range]::-webkit-slider-runnable-track {
-            width: 100%; height: 4px; cursor: pointer; background: #2b2f3a; border-radius: 2px;
+            width: 100%; height: 6px; cursor: pointer; background: linear-gradient(90deg,#3b82f6,#2563eb); border-radius: 4px;
         }
+        /* Firefox track */
+        input[type=range]::-moz-range-track {
+            width: 100%; height: 6px; cursor: pointer; background: linear-gradient(90deg,#3b82f6,#2563eb); border-radius: 4px;
+        }
+        /* IE/Edge fill (best-effort) */
+        input[type=range]::-ms-fill-lower { background: #3b82f6; border-radius: 4px; }
+        input[type=range]::-ms-fill-upper { background: #2563eb; border-radius: 4px; }
 
         /* Highlight Colors */
         .text-gold { color: #FFD700; }
@@ -75,10 +84,10 @@
         <div id="step-inputs" class="fade-in">
             <div class="text-center mb-10">
                 <h1 class="text-3xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-green-400">
-                    See What Your Business Can Earn
+                    See Your Potential Growth in Sales
                 </h1>
                 <p class="text-white/60 text-lg max-w-2xl mx-auto">
-                    Fill in a few details to see your 3-month growth potential based on industry benchmarks.
+                    Answer a few simple questions to see estimated growth over 3 months.
                 </p>
             </div>
 
@@ -89,7 +98,7 @@
                         <h3 class="font-semibold text-lg mb-4 text-blue-400"><i class="fa-solid fa-tag mr-2"></i>Product Details</h3>
                         
                         <div class="mb-5">
-                            <label class="block text-sm text-white/70 mb-2">Price per Sale (KES)</label>
+                            <label class="block text-sm text-white/70 mb-2">What is the average price of your best products?</label>
                             <input type="number" id="inputPrice" value="3000" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white focus:ring-1 focus:ring-blue-500 outline-none transition-all">
                         </div>
 
@@ -99,28 +108,34 @@
                                 <span id="marginDisplay" class="text-blue-400 font-bold">40%</span>
                             </div>
                             <input type="range" id="inputMargin" min="10" max="90" value="40" oninput="document.getElementById('marginDisplay').innerText = this.value + '%'">
+                            <p class="text-xs text-white/50 mt-2 flex items-center gap-2"><i class="fa-solid fa-hand-pointer text-blue-400"></i> Slide to adjust</p>
                         </div>
                     </div>
 
                     <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] card-animate">
                         <h3 class="font-semibold text-lg mb-4 text-purple-400"><i class="fa-solid fa-layer-group mr-2"></i>Business Sector</h3>
                         <div class="mb-4">
-                            <label class="block text-sm text-white/70 mb-2">Industry</label>
+                            <label class="block text-sm text-white/70 mb-2">Select your business type</label>
                             <select id="inputIndustry" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white focus:ring-1 focus:ring-purple-500 outline-none">
-                                <option value="retail">Retail / E-commerce (Fashion, Electronics)</option>
+                                <option value="retail">Retail</option>
+                                <option value="ecommerce">E-commerce</option>
+                                <option value="clothes">Clothes & Apparel</option>
+                                <option value="shoes">Shoes & Footwear</option>
+                                <option value="beauty_products">Beauty Products</option>
+                                <option value="salons">Salons & Hair</option>
                                 <option value="service">Professional Services</option>
-                                <option value="beauty">Health & Beauty (Salon, Spa)</option>
                                 <option value="food">Food & Beverage</option>
+                                <option value="electronics">Electronics</option>
                                 <option value="realestate">Real Estate / High Ticket</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm text-white/70 mb-2">Simulate Package</label>
+                            <label class="block text-sm text-white/70 mb-2">Choose Package</label>
                             <select id="inputPackage" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white focus:ring-1 focus:ring-purple-500 outline-none">
-                                <option value="free">Free Tools (Manual Follow-up)</option>
-                                <option value="growth">Growth (Basic Automation)</option>
-                                <option value="pro">Pro (AI Sales Assistant)</option>
-                                <option value="premium">Premium (High Volume Scaling)</option>
+                                <option value="free">Free (0 Ksh)</option>
+                                <option value="growth">Growth (6,000sh)</option>
+                                <option value="pro">Pro (12,000sh)</option>
+                                <option value="premium">Premium (30,000sh)</option>
                             </select>
                         </div>
                     </div>
@@ -132,14 +147,14 @@
                         <h3 class="font-semibold text-lg mb-4 text-green-400"><i class="fa-solid fa-coins mr-2"></i>Marketing Budget</h3>
                         
                         <div class="mb-6">
-                            <label class="block text-sm text-white/70 mb-2">Monthly Ad Spend (KES)</label>
-                            <input type="number" id="inputBudget" value="10000" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl py-4 px-4 text-white text-2xl font-bold focus:ring-1 focus:ring-green-500 outline-none">
-                            <p class="text-sm text-white/50 mt-2"><i class="fa-solid fa-circle-info mr-1"></i> Recommended start: 5,000 - 50,000.</p>
+                            <label class="block text-sm text-white/70 mb-2">How much would you spend on ads in a month?</label>
+                            <input type="number" id="inputBudget" min="1000" value="10000" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl py-4 px-4 text-white text-2xl font-bold focus:ring-1 focus:ring-green-500 outline-none">
+                            <p class="text-sm text-white/50 mt-2"><i class="fa-solid fa-circle-info mr-1"></i> Recommended start: 1,000sh.</p>
                         </div>
 
                         <div class="mt-auto">
                             <button onclick="runProjections()" class="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white font-bold py-4 px-4 rounded-xl shadow-lg transition-all transform hover:scale-[1.02] flex items-center justify-center text-lg">
-                                Calculate Projections <i class="fa-solid fa-calculator ml-2"></i>
+                                Calculate Estimates <i class="fa-solid fa-calculator ml-2"></i>
                             </button>
                         </div>
                     </div>
@@ -162,18 +177,18 @@
         <div id="step-results" class="hidden fade-in">
             
             <!-- Header Result -->
-            <div class="bg-gradient-to-br from-[#1a1d23] to-[#14161a] border border-green-500/30 rounded-3xl p-8 mb-8 relative overflow-hidden text-center">
+                <div class="bg-gradient-to-br from-[#1a1d23] to-[#14161a] border border-green-500/30 rounded-3xl p-8 mb-8 relative overflow-hidden text-center">
                 <!-- Background Glow -->
                 <div class="absolute top-0 left-1/2 transform -translate-x-1/2 w-full h-32 bg-green-500/5 blur-3xl pointer-events-none"></div>
                 
-                <h2 class="text-white/60 text-sm font-semibold uppercase tracking-widest mb-2">Projected Monthly Sales</h2>
+                <h2 class="text-white/60 text-sm font-semibold uppercase tracking-widest mb-2">Possible Monthly Sales</h2>
                 <div class="text-5xl md:text-7xl font-bold text-green-400 mb-2 drop-shadow-lg" id="resSales">KES 0</div>
                 <div class="flex flex-wrap justify-center gap-4 text-sm mt-4">
                     <span class="px-3 py-1 bg-white/5 rounded-full text-white/80 border border-white/10">
                         <i class="fa-solid fa-piggy-bank text-blue-400 mr-2"></i>Net Profit: <strong id="resProfit" class="text-white">KES 0</strong>
                     </span>
                     <span class="px-3 py-1 bg-white/5 rounded-full text-white/80 border border-white/10">
-                        <i class="fa-solid fa-user-plus text-orange-400 mr-2"></i>Est. CAC: <strong id="resCac">KES 0</strong>
+                        <i class="fa-solid fa-user-plus text-orange-400 mr-2"></i>Avg Cost of Getting One Customer: <strong id="resCac">KES 0</strong>
                     </span>
                 </div>
                 
@@ -217,8 +232,7 @@
             <!-- 3 Month Projection Chart -->
             <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] mb-8">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="font-semibold text-white">3-Month Revenue & Cost Visualized</h3>
-                    <span class="text-xs px-2 py-1 bg-blue-500/20 text-blue-300 rounded">Cumulative Projection</span>
+                    <h3 class="font-semibold text-white">3-Month Total Sales & Marketing Spend</h3>
                 </div>
                 <div class="h-64 w-full">
                     <canvas id="growthChart"></canvas>
@@ -309,24 +323,29 @@
                 <div class="glass-panel rounded-3xl p-8 relative overflow-hidden mb-8">
                     
                     <!-- Tabs for Comparison -->
-                    <div class="flex justify-center flex-wrap gap-2 mb-6 p-1 rounded-xl bg-[#0f1115]">
-                        <button id="tab-free" onclick="setActiveTab('free')" class="vision-tab px-4 py-2 rounded-lg text-xs transition-colors bg-[#1a1d23] text-white/60">Free</button>
-                        <button id="tab-growth" onclick="setActiveTab('growth')" class="vision-tab px-4 py-2 rounded-lg text-xs transition-colors bg-[#1a1d23] text-white/60">Growth</button>
-                        <button id="tab-pro" onclick="setActiveTab('pro')" class="vision-tab px-4 py-2 rounded-lg text-xs transition-colors bg-[#1a1d23] text-white/60">Pro AI</button>
-                        <button id="tab-premium" onclick="setActiveTab('premium')" class="vision-tab px-4 py-2 rounded-lg text-xs transition-colors bg-[#1a1d23] text-white/60">Premium</button>
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="flex justify-center flex-wrap gap-2 p-1 rounded-xl bg-[#0f1115]">
+                            <button id="tab-free" onclick="setActiveTab('free')" class="vision-tab px-4 py-2 rounded-lg text-xs transition-colors bg-[#1a1d23] text-white/60">Free</button>
+                            <button id="tab-growth" onclick="setActiveTab('growth')" class="vision-tab px-4 py-2 rounded-lg text-xs transition-colors bg-[#1a1d23] text-white/60">Growth</button>
+                            <button id="tab-pro" onclick="setActiveTab('pro')" class="vision-tab px-4 py-2 rounded-lg text-xs transition-colors bg-[#1a1d23] text-white/60">Pro AI</button>
+                            <button id="tab-premium" onclick="setActiveTab('premium')" class="vision-tab px-4 py-2 rounded-lg text-xs transition-colors bg-[#1a1d23] text-white/60">Premium</button>
+                        </div>
+                        <div class="flex-shrink-0">
+                            <button id="saveVisionBoardBtn" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm">Save Vision Board</button>
+                        </div>
                     </div>
 
                     <!-- Top Summary Bar (Projected Monthly Sales + small KPIs) -->
                     <div class="mb-6 text-center">
                         <div class="bg-gradient-to-br from-[#0b1220] to-[#07101a] border border-green-500/20 rounded-2xl p-6 mb-4">
-                            <div class="text-xs text-white/60 uppercase tracking-widest mb-2">Projected Monthly Sales</div>
+                            <div class="text-xs text-white/60 uppercase tracking-widest mb-2">Possible Monthly Sales</div>
                             <div class="text-4xl md:text-5xl font-bold text-green-400 mb-1" id="visionResSales">KES 0</div>
                             <div class="flex flex-wrap justify-center gap-4 text-sm mt-3">
                                 <span class="px-3 py-1 bg-white/5 rounded-full text-white/80 border border-white/10">
                                     Net Profit: <strong id="visionResProfit" class="text-white">KES 0</strong>
                                 </span>
                                 <span class="px-3 py-1 bg-white/5 rounded-full text-white/80 border border-white/10">
-                                    Est. CAC: <strong id="visionResCac" class="text-green-400">KES 0</strong>
+                                    Avg Cost of Getting One Customer: <strong id="visionResCac" class="text-green-400">KES 0</strong>
                                 </span>
                                 <span class="px-3 py-1 bg-white/5 rounded-full text-white/80 border border-white/10">
                                     Ad Spend: <strong id="visionResSpend">KES 0</strong>
@@ -373,7 +392,7 @@
                                 <div id="visionAssConv" class="font-bold text-white">0%</div>
                             </div>
                             <div class="px-4 py-2 bg-[#1a1d23] rounded-lg border border-[#2b2f3a] text-white/70">
-                                <div class="text-[11px] text-white/50">CAC</div>
+                                <div class="text-[11px] text-white/50">Avg Cost/Customer</div>
                                 <div id="visionAssCac" class="font-bold text-green-400">KES 0</div>
                             </div>
                             <div class="px-4 py-2 bg-[#1a1d23] rounded-lg border border-[#2b2f3a] text-white/70">
@@ -423,9 +442,14 @@
         
         const industryCPL = {
             retail: 25,
+            ecommerce: 25,
+            clothes: 25,
+            shoes: 30,
+            beauty_products: 45,
+            salons: 45,
             service: 50,
-            beauty: 45,
             food: 100,
+            electronics: 50,
             realestate: 600
         };
 
@@ -612,7 +636,7 @@
             
             if (halfScenario.netProfit > 0) {
                 messageEl.className = 'p-4 bg-green-900/40 text-green-300 rounded-xl text-center fade-in';
-                messageEl.innerHTML = `<i class="fa-solid fa-check-circle mr-2"></i> **Even if things go HALF as well**, you still make **${fmt(halfScenario.netProfit)}** in monthly profit!`;
+                messageEl.innerHTML = `<i class="fa-solid fa-check-circle mr-2"></i> <strong>Even if things go HALF as well</strong>, you still make <strong>${fmt(halfScenario.netProfit)}</strong> in monthly profit!`;
             } else {
                 // Suggest upgrade if they are losing money
                 let suggestionPackage = 'Growth';
@@ -621,7 +645,7 @@
                 if (halfScenario.pkgKey === 'premium') suggestionPackage = 'a specialized High-Volume Plan';
 
                 messageEl.className = 'p-4 bg-red-900/40 text-red-300 rounded-xl text-center fade-in';
-                messageEl.innerHTML = `<i class="fa-solid fa-fire-flame-curved mr-2"></i> Warning: If performance is halved, you may face a **monthly loss of ${fmt(halfScenario.netProfit)}**. Consider upgrading to **${suggestionPackage}** to increase your conversion chance and secure profitability.`;
+                messageEl.innerHTML = `<i class="fa-solid fa-fire-flame-curved mr-2"></i> Warning: If performance is halved, you may face a <strong>monthly loss of ${fmt(halfScenario.netProfit)}</strong>. Consider upgrading to <strong>${suggestionPackage}</strong> to increase your conversion chance and secure profitability.`;
             }
         }
 
@@ -631,13 +655,10 @@
             
             if (growthChartInstance) growthChartInstance.destroy();
 
-            // Cumulative data for 3 months
-            const revenueData = [monthlyRevenue, monthlyRevenue * 2, monthlyRevenue * 3];
-            const costData = [monthlyCost, monthlyCost * 2, monthlyCost * 3];
-            const profitData = [monthlyProfit, monthlyProfit * 2, monthlyProfit * 3];
-
-            // Area fill logic: Profit Area (between Revenue and Cost)
-            const profitColor = monthlyProfit >= 0 ? 'rgba(74, 222, 128, 0.4)' : 'rgba(239, 68, 68, 0.4)'; // Green for profit, Red for loss
+            // Monthly data for 3 months (non-cumulative) with small growth multipliers
+            const monthMultipliers = [1, 1.05, 1.1]; // 5% then 10% growth over baseline
+            const revenueData = monthMultipliers.map(m => Math.round(monthlyRevenue * m));
+            const costData = [monthlyCost, monthlyCost, monthlyCost]; // assume ad spend stays the same each month
 
             growthChartInstance = new Chart(ctx, {
                 type: 'line',
@@ -645,27 +666,25 @@
                     labels: ['Month 1', 'Month 2', 'Month 3'],
                     datasets: [
                         {
-                            label: 'Cumulative Revenue',
+                            label: 'Total Sales',
                             data: revenueData,
-                            borderColor: packages.growth.color, // Green
+                            borderColor: packages.growth.color,
                             backgroundColor: 'transparent',
                             borderWidth: 3,
                             pointBackgroundColor: packages.growth.color,
                             tension: 0.4,
-                            fill: '+1', // Fill the area between this dataset (Revenue) and the next one (Total Costs)
-                            backgroundColor: profitColor, // Color for the profit/loss area
-                            order: 1 // Draw revenue on top
+                            order: 1
                         },
                         {
-                            label: 'Cumulative Total Costs (Ad Spend + Fees)',
+                            label: 'Total Marketing Spend',
                             data: costData,
-                            borderColor: packages.premium.color, // Purple
+                            borderColor: packages.premium.color,
                             backgroundColor: 'transparent',
                             borderWidth: 3,
                             pointBackgroundColor: packages.premium.color,
                             borderDash: [5, 5],
                             tension: 0.4,
-                            order: 2 // Draw cost below
+                            order: 2
                         }
                     ]
                 },
@@ -704,9 +723,10 @@
             const totalCost = budget + pkg.cost;
             const netProfit = (revenue * (marginPct / 100)) - totalCost;
 
-            // Cumulative data for 3 months
-            const revenueData = [revenue, revenue * 2, revenue * 3];
-            const costData = [totalCost, totalCost * 2, totalCost * 3];
+            // Monthly data for 3 months (non-cumulative) with small growth multipliers
+            const monthMultipliers = [1, 1.05, 1.1];
+            const revenueData = monthMultipliers.map(m => Math.round(revenue * m));
+            const costData = [totalCost, totalCost, totalCost];
             
             // (visionGoal and visionProfit elements were removed; values updated via updateVisionFromMetrics below)
 
@@ -722,18 +742,16 @@
                     labels: ['Month 1', 'Month 2', 'Month 3'],
                     datasets: [
                         {
-                            label: 'Cumulative Revenue',
+                            label: 'Total Sales',
                             data: revenueData,
                             borderColor: packages.growth.color,
                             backgroundColor: 'transparent',
                             borderWidth: 3,
                             pointBackgroundColor: packages.growth.color,
-                            tension: 0.4,
-                            fill: '+1',
-                            backgroundColor: profitColor,
+                            tension: 0.4
                         },
                         {
-                            label: 'Cumulative Costs',
+                            label: 'Total Marketing Spend',
                             data: costData,
                             borderColor: packages.premium.color,
                             backgroundColor: 'transparent',
@@ -807,6 +825,66 @@
                 renderVisionChart(pkgKey);
             }
         }
+
+        // Save vision board data and open a small modal offering download/share
+        function saveVisionBoardAndOpenModal() {
+            if (!lastCalculation) {
+                goToStep('inputs');
+                return;
+            }
+
+            // Save to localStorage for safekeeping
+            try {
+                localStorage.setItem('vision_board_saved', JSON.stringify(lastCalculation));
+            } catch (e) { console.warn('Could not save vision board', e); }
+
+            // Open modal
+            const modal = document.getElementById('vision-save-modal');
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function closeVisionSaveModal() {
+            const modal = document.getElementById('vision-save-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        // Placeholder that will trigger html2canvas flow later
+        function triggerHtml2CanvasDownload() {
+            // This is a placeholder. The html2canvas logic will be wired later.
+            console.log('html2canvas download flow placeholder');
+            // You can implement html2canvas(document.querySelector('.glass-panel')) then handle download
+        }
+
+        // Wire the Save Vision Board button (exists in the vision panel) and modal buttons
+        document.addEventListener('DOMContentLoaded', () => {
+            const saveBtn = document.getElementById('saveVisionBoardBtn');
+            if (saveBtn) saveBtn.addEventListener('click', saveVisionBoardAndOpenModal);
+
+            // Modal buttons
+            const closeBtns = document.querySelectorAll('[data-close-vision-modal]');
+            closeBtns.forEach(b => b.addEventListener('click', closeVisionSaveModal));
+
+            const dl = document.getElementById('visionDownloadBtn');
+            if (dl) dl.addEventListener('click', () => {
+                // Trigger the download flow (placeholder)
+                triggerHtml2CanvasDownload();
+            });
+        });
     </script>
+
+    <!-- Save Vision Board Modal -->
+    <div id="vision-save-modal" class="hidden fixed inset-0 z-60 flex items-center justify-center bg-black bg-opacity-50">
+        <div class="bg-[#14161a] rounded-2xl border border-[#2b2f3a] p-6 max-w-md w-full">
+            <div class="flex justify-between items-start mb-4">
+                <h3 class="text-lg font-bold">Save Vision Board</h3>
+                <button data-close-vision-modal class="text-white/60 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <p class="text-white/70 mb-6">Like your Vision Board? Save it on your device for safekeeping and inspiration. You can also share it with your team!</p>
+            <div class="flex gap-3 justify-end">
+                <button data-close-vision-modal class="px-4 py-2 bg-transparent border border-white/10 text-white/70 rounded-lg">Close</button>
+                <button id="visionDownloadBtn" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg">Download</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

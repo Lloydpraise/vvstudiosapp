@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="loading.js"></script>
     <meta charset="UTF-8">
     <meta id="dynamic-viewport" name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Welcome | VV Studios</title>
@@ -27,7 +28,6 @@
             } catch (e) { }
         })();
     </script>
-
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0f1115; color: white; }
         
@@ -44,10 +44,48 @@
         .fade-in { animation: fadeIn 0.6s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Sidebar & Navigation */
-        .sidebar-link { position: relative; transition: all 0.2s ease; }
-        .sidebar-link:hover { background-color: rgba(255, 255, 255, 0.05); }
-        .sidebar-link.active { color: #FFD700; background-color: rgba(255, 215, 0, 0.1); }
+        /* Sidebar & Navigation (Matched to Index) */
+        .sidebar-link {
+            position: relative;
+            transition: all 0.2s ease;
+        }
+        .sidebar-link:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        .tooltip {
+            position: absolute;
+            left: calc(100% + 15px);
+            top: 50%;
+            transform: translateY(-50%);
+            visibility: hidden;
+            opacity: 0;
+            background-color: #2b2f3a;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            white-space: nowrap;
+            font-size: 0.875rem;
+            z-index: 10;
+            transition: opacity 0.3s ease;
+        }
+        .tooltip::after {
+            content: '';
+            position: absolute;
+            right: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+            border-width: 5px;
+            border-style: solid;
+            border-color: transparent #2b2f3a transparent transparent;
+        }
+        .sidebar-link.active {
+            color: #FFD700;
+            background-color: rgba(255, 215, 0, 0.1);
+        }
+        @media (max-width: 1024px) {
+            .sidebar-link .tooltip { display: none !important; }
+        }
 
         /* Task List Styles */
         .task-card {
@@ -66,24 +104,6 @@
             color: rgba(255,255,255,0.5);
             font-weight: 600;
         }
-        .task-done .task-number {
-            background: #10B981;
-            color: #000;
-        }
-
-        /* Progress Bar */
-        .completion-bar-bg {
-            background-color: #2b2f3a;
-            height: 6px;
-            border-radius: 99px;
-            overflow: hidden;
-        }
-        .completion-bar-fill {
-            background-color: #10B981;
-            height: 100%;
-            width: 15%; /* Initial small fill */
-            transition: width 0.5s ease;
-        }
 
         /* Upgrade Button Pulse */
         @keyframes pulse-blue {
@@ -98,361 +118,676 @@
         /* Text Gradients */
         .text-gradient-welcome {
             background: linear-gradient(to right, #60a5fa, #4ade80);
-            background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             color: transparent;
+            background-clip: text;
         }
-
-        /* Blur Overlay for Locked Items */
-        .locked-overlay {
-            position: absolute;
-            inset: 0;
-            background: rgba(15, 17, 21, 0.7);
-            backdrop-filter: blur(2px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: inherit;
-            z-index: 10;
+        
+        #top-header { position: relative; }
+        #header-controls { position: absolute; right: 1rem; top: 0.75rem; z-index: 50; display: flex; gap: 0.5rem; }
+        @media (max-width: 768px) {
+            #top-header { padding-right: 6.5rem; }
+            #header-controls { top: 0.5rem; right: 0.75rem; }
+            #mobile-menu-button { margin-bottom: 0.25rem; }
         }
     </style>
-    <script>
-        // Inject shared sidebar HTML early so deferred scripts (auth.js) can bind to it on DOMContentLoaded
-        (function(){
-            try {
-                fetch('sidebar.html').then(r => r.text()).then(html => {
-                    function insertSidebar(){
-                        const flex = document.querySelector('.flex.h-screen');
-                        if (!flex) return setTimeout(insertSidebar, 40);
-                        try {
-                            const temp = document.createElement('div');
-                            temp.innerHTML = html;
-                            const aside = temp.querySelector('aside');
-                            if (aside && !document.getElementById('sidebar')) {
-                                flex.insertBefore(aside, flex.firstChild);
-                            }
-                        } catch (e) { /* ignore */ }
-                    }
-                    insertSidebar();
-                }).catch(() => {});
-            } catch (e) {}
-        })();
-    </script>
-    <script src="auth.js" defer></script>
 </head>
-<body class="bg-[#0f1115] text-white overflow-hidden">
+<body class="bg-[#0f1115] text-white">
 
-    <div class="flex h-screen">
-        <!-- Sidebar will be injected from sidebar.html -->
+    <div id="dashboard-container">
+        <div class="flex min-h-screen">
+            <!-- Mobile Menu Backdrop -->
+            <div id="mobile-menu-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-300 lg:hidden hidden"></div>
 
-        <!-- Main Content -->
-        <main class="flex-1 overflow-y-auto relative" id="main-scroll">
-            
-            <!-- Mobile Header -->
-            <div class="lg:hidden flex items-center justify-between p-4 bg-[#14161a] border-b border-white/5 sticky top-0 z-30">
-                <div class="flex items-center gap-3">
-                    <img src="assets/logo.png" onerror="this.src='https://via.placeholder.com/32'" class="w-8 h-8 rounded-full" alt="Logo">
-                    <span class="font-bold">VV Studios</span>
+            <!-- Sidebar (Replicated from index.html with Free State adjustments) -->
+            <aside id="sidebar" class="w-64 bg-[#14161a] p-6 flex-shrink-0 fixed inset-y-0 left-0 transform -translate-x-full transition-transform duration-300 z-50 lg:relative lg:translate-x-0 border-r border-[#2b2f3a]/30">
+                <div class="flex flex-col items-center space-y-2 mb-8">
+                    <img src="assets/logo.png" onerror="this.src='https://via.placeholder.com/64'" alt="VV Studios Logo" class="w-16 h-16">
+                    <span class="text-xl font-bold">VV Studios</span>
+                    <span class="text-sm text-white/60">Client Portal</span>
                 </div>
-                <button class="text-white/70">
-                    <i class="fa-solid fa-bars text-xl"></i>
-                </button>
-            </div>
+                <nav>
+                    <ul class="space-y-2">
+                        <!-- My Business (Active) -->
+                        <li class="mb-4">
+                            <a href="index.html" class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors active">
+                                <i class="fa-solid fa-briefcase w-5 h-5"></i>
+                                <span>My Business</span>
+                                <span class="tooltip">View your business overview and key insights</span>
+                            </a>
+                        </li>
 
-            <div class="p-6 md:p-10 max-w-7xl mx-auto pb-32">
+                        <!-- Ads (Locked) -->
+                        <li class="mb-4">
+                            <a href="#" class="flex items-center space-x-3 text-white/30 hover:text-white sidebar-link p-3 rounded-xl transition-colors cursor-not-allowed">
+                                <i class="fa-solid fa-bullhorn w-5 h-5"></i>
+                                <span>Ads</span>
+                                <span class="tooltip">Optimize your ad campaigns for maximum ROI!</span>
+                                <i class="fa-solid fa-lock w-3 h-3 text-white/30 ml-auto"></i>
+                            </a>
+                        </li>
+
+                        <!-- Sales & Follow-Ups (Locked) -->
+                        <li class="mb-4">
+                            <a href="#" class="flex items-center space-x-3 text-white/30 hover:text-white sidebar-link p-3 rounded-xl transition-colors cursor-not-allowed">
+                                <i class="fa-solid fa-handshake w-5 h-5"></i>
+                                <span>Sales & Follow-Ups</span>
+                                <span class="tooltip">Track and manage your customers easily</span>
+                                <i class="fa-solid fa-lock w-3 h-3 text-white/30 ml-auto"></i>
+                            </a>
+                        </li>
+
+                        <!-- Business Assistant (Locked) -->
+                        <li class="mb-4">
+                            <a href="#" class="flex items-center space-x-3 text-white/30 hover:text-white sidebar-link p-3 rounded-xl transition-colors cursor-not-allowed">
+                                <i class="fa-solid fa-robot w-5 h-5"></i>
+                                <span>Business Assistant</span>
+                                <span class="tooltip">Your AI Copilot that helps you run the business</span>
+                                <i class="fa-solid fa-lock w-3 h-3 text-white/30 ml-auto"></i>
+                            </a>
+                        </li>
+
+                        <!-- AI Sales Assistant (Locked) -->
+                        <li class="mb-4">
+                            <a href="#" class="flex items-center space-x-3 text-white/30 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                                <i class="fa-solid fa-robot w-5 h-5"></i>
+                                <span>AI Sales Assistant</span>
+                                <span class="tooltip">Unlock our smartest AI to blow up your sales!</span>
+                                <i class="fa-solid fa-lock w-3 h-3 text-white/30 ml-auto"></i>
+                            </a>
+                        </li>
+
+                        <!-- Automations (Locked) -->
+                        <li class="mb-4">
+                            <a href="#" class="flex items-center space-x-3 text-white/30 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                                <i class="fa-solid fa-arrows-spin w-5 h-5"></i>
+                                <span>Automations</span>
+                                <span class="tooltip">Automate your business and save 10+ hours a week!</span>
+                                <i class="fa-solid fa-lock w-3 h-3 text-white/30 ml-auto"></i>
+                            </a>
+                        </li>
+
+                        <!-- Marketing Systems (Locked) -->
+                        <li class="mb-4">
+                            <a href="#" class="flex items-center space-x-3 text-white/30 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                                <i class="fa-solid fa-gear w-5 h-5"></i>
+                                <span>Marketing Systems</span>
+                                <span class="tooltip">Sales and marketing on autopilot!</span>
+                                <i class="fa-solid fa-lock w-3 h-3 text-white/30 ml-auto"></i>
+                            </a>
+                        </li>
+
+                        <!-- Content Creation (Unlocked) -->
+                        <li class="mb-4">
+                            <a href="blog/content-creation.html" class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                                <i class="fa-solid fa-pen-nib w-5 h-5"></i>
+                                <span>Content Creation</span>
+                            </a>
+                        </li>
+
+                        <!-- Live Chat (Locked) -->
+                        <li class="mb-4">
+                            <a href="#" class="flex items-center space-x-3 text-white/30 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                                <i class="fa-solid fa-comments w-5 h-5"></i>
+                                <span>Live Chat</span>
+                                <span class="tooltip">Engage with customers in real-time!</span>
+                                <i class="fa-solid fa-lock w-3 h-3 text-white/30 ml-auto"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </aside>
+
+            <!-- Main Content Area -->
+            <main class="flex-1 overflow-y-auto p-8 lg:p-12 relative" id="main-scroll">
                 
-                <!-- Header Section -->
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4 relative">
-                    <div class="w-full">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <h1 class="text-3xl md:text-5xl font-bold mb-2 text-gradient-welcome">
-                                    Welcome to VV Studios!
-                                </h1>
-                                <p class="text-white/60 text-lg">
-                                    Get Ready to show more, sell more and scale faster!
-                                </p>
-                            </div>
-                            
-                            <!-- Upgrade Button (Top Right) -->
-                            <a id="upgrade-button" href="plans.html" class="hidden md:flex w-auto bg-blue-600 text-white font-semibold py-3 px-4 rounded-xl hover:bg-blue-700 transition-colors items-center gap-2 shadow-lg shadow-blue-900/40">
-                                <span>Upgrade Now</span>
-                                <i class="fa-solid fa-arrow-right"></i>
-                            </a>
+                <!-- Standard Header from index.html -->
+                <div id="top-header" class="flex justify-between items-center mb-10 flex-wrap">
+                    <div class="flex items-center w-full md:w-auto">
+                        <!-- Mobile Menu Button (Left) -->
+                        <button id="mobile-menu-button" class="lg:hidden mr-4 text-white focus:outline-none">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+                            </svg>
+                        </button>
+                        <div class="flex-1 min-w-[200px]">
+                            <h1 id="businessName" class="text-3xl lg:text-4xl font-bold mb-1">Business Name</h1>
+                            <p class="text-white/60 text-sm">Good to see you <span id="welcomeName" class="font-bold">Admin</span>.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Right Side Controls (Alerts + Profile) -->
+                    <div id="header-controls" class="absolute right-4 top-4 z-50 flex items-center space-x-4 md:relative md:right-0 md:top-0 md:mt-0 mt-4 lg:mt-0">
+                        <!-- Bell Icon -->
+                        <button class="w-10 h-10 rounded-xl bg-[#1a1d23] flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-white/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 01-3.46 0"></path></svg>
+                        </button>
+                        
+                        <!-- Profile Menu -->
+                        <div id="profile-menu-button" class="flex items-center space-x-2 p-2 bg-[#1a1d23] rounded-xl cursor-pointer">
+                            <div id="profile-avatar" class="rounded-full w-8 h-8 bg-blue-500 flex items-center justify-center text-white font-bold text-sm">A</div>
+                            <p id="profileName" class="font-medium text-sm hidden sm:block">Admin</p>
+                        </div>
+                        
+                        <!-- Dropdown -->
+                        <div id="profile-dropdown" class="absolute top-14 right-0 z-50 w-48 bg-[#1a1d23] rounded-xl border border-[#2b2f3a] p-2 shadow-lg hidden transition-opacity duration-200">
+                            <a href="#" class="block p-2 text-sm text-white/80 hover:bg-[#2b2f3a] rounded-lg transition-colors">Change Password</a>
+                            <a href="#" id="logoutButton" class="block p-2 text-sm text-red-400 hover:bg-[#2b2f3a] rounded-lg transition-colors">Logout</a>
                         </div>
                     </div>
                 </div>
 
-                <!-- Mobile Upgrade Button (Visible only on mobile) -->
-                <div class="md:hidden mb-8">
-                    <a id="upgrade-button-mobile" href="plans.html" class="w-full flex justify-center bg-blue-600 text-white font-semibold py-3 px-4 rounded-xl items-center gap-2 transition-colors shadow-lg shadow-blue-900/40">
-                        <span>Upgrade Now</span>
-                        <i class="fa-solid fa-arrow-right"></i>
-                    </a>
-                </div>
-
-                <!-- Get Started Section -->
-                <section class="mb-12 fade-in">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
-                            <i class="fa-solid fa-list-check text-orange-400"></i> Get Started
-                        </h2>
-                        <div class="flex items-center gap-3 text-sm text-white/40">
-                            <span>15% Completed</span>
-                            <div class="w-24 h-2 bg-white/10 rounded-full overflow-hidden">
-                                <div class="h-full bg-green-500 w-[15%]"></div>
-                            </div>
+                <!-- Free Plan Content Section -->
+                <div class="fade-in">
+                    
+                    <!-- Welcome Headline & Upgrade Button -->
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-4">
+                        <div>
+                            <h2 class="text-3xl md:text-5xl font-bold mb-2 text-gradient-welcome">
+                                Welcome to VV Studios!
+                            </h2>
+                            <p class="text-white/60 text-lg">
+                                Get Ready to show more, sell more and scale faster!
+                            </p>
                         </div>
-                    </div>
-
-                    <div class="space-y-3">
-                        <!-- Task 1 -->
-                        <div class="task-card p-4 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4 group hover:border-white/20 transition-colors">
-                            <div class="flex items-center gap-4 w-full md:w-auto">
-                                <span class="task-number">1</span>
-                                <div>
-                                    <h3 class="font-medium text-white group-hover:text-orange-400 transition-colors">Get your Projections & Vision Board</h3>
-                                    <p class="text-xs text-white/40">See your potential revenue and growth path.</p>
-                                </div>
-                            </div>
-                            <a href="simulator.html" class="w-full md:w-auto px-5 py-2 bg-orange-600 hover:bg-orange-500 text-white text-sm font-semibold rounded-lg transition-colors text-center shadow-lg shadow-orange-900/20">
-                                Start Now
-                            </a>
-                        </div>
-
-                        <!-- Task 2 -->
-                        <div class="task-card p-4 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4 group hover:border-white/20 transition-colors">
-                            <div class="flex items-center gap-4 w-full md:w-auto">
-                                <span class="task-number">2</span>
-                                <div>
-                                    <h3 class="font-medium text-white group-hover:text-orange-400 transition-colors">Set Up Business Profile</h3>
-                                    <p class="text-xs text-white/40">Complete your details for better AI suggestions.</p>
-                                </div>
-                            </div>
-                            <button class="w-full md:w-auto px-5 py-2 bg-[#2b2f3a] hover:bg-[#374151] text-white/80 hover:text-white text-sm font-semibold rounded-lg transition-colors border border-white/5">
-                                Set Up
-                            </button>
-                        </div>
-
-                        <!-- Task 3 -->
-                        <div class="task-card p-4 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4 group hover:border-white/20 transition-colors">
-                            <div class="flex items-center gap-4 w-full md:w-auto">
-                                <span class="task-number">3</span>
-                                <div>
-                                    <h3 class="font-medium text-white group-hover:text-orange-400 transition-colors">Create One Offer</h3>
-                                    <p class="text-xs text-white/40">Define what you're selling to generate leads.</p>
-                                </div>
-                            </div>
-                            <button class="w-full md:w-auto px-5 py-2 bg-[#2b2f3a] hover:bg-[#374151] text-white/80 hover:text-white text-sm font-semibold rounded-lg transition-colors border border-white/5">
-                                Create Offer
-                            </button>
-                        </div>
-
-                        <!-- Task 4 -->
-                        <div class="task-card p-4 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4 group hover:border-white/20 transition-colors">
-                            <div class="flex items-center gap-4 w-full md:w-auto">
-                                <span class="task-number">4</span>
-                                <div>
-                                    <h3 class="font-medium text-white group-hover:text-orange-400 transition-colors">Run a free Business Audit</h3>
-                                    <p class="text-xs text-white/40">Check your online presence health score.</p>
-                                </div>
-                            </div>
-                            <button class="w-full md:w-auto px-5 py-2 bg-[#2b2f3a] hover:bg-[#374151] text-white/80 hover:text-white text-sm font-semibold rounded-lg transition-colors border border-white/5">
-                                Run Audit
-                            </button>
-                        </div>
-
-                        <!-- Task 5 (Locked Logic Visualized) -->
-                        <div class="task-card p-4 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4 opacity-50 relative overflow-hidden">
-                            <!-- Locked Overlay inside the card logic -->
-                            <div class="flex items-center gap-4 w-full md:w-auto">
-                                <span class="task-number"><i class="fa-solid fa-lock text-[10px]"></i></span>
-                                <div>
-                                    <h3 class="font-medium text-white">Book a Free Strategy Call</h3>
-                                    <p class="text-xs text-white/40">Unlock this by completing the tasks above.</p>
-                                </div>
-                            </div>
-                            <button disabled class="w-full md:w-auto px-5 py-2 bg-gray-700 text-white/30 text-sm font-semibold rounded-lg cursor-not-allowed border border-white/5">
-                                Book Call
-                            </button>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Vision Board Section -->
-                <section class="mb-12 fade-in" style="animation-delay: 0.1s;">
-                    <div class="mb-4">
-                        <h2 class="text-xl font-bold text-white">Your Vision Board</h2>
-                        <p class="text-sm text-white/60">Your roadmap to success.</p>
-                    </div>
-
-                    <!-- Empty State (Default for Free User initially) -->
-                    <div id="vision-board-empty" class="bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] p-8 text-center">
-                        <div class="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <i class="fa-solid fa-chart-line text-blue-400 text-2xl"></i>
-                        </div>
-                        <h3 class="text-lg font-bold text-white mb-2">No Projections Yet</h3>
-                        <p class="text-white/50 text-sm max-w-md mx-auto mb-6">
-                            Use our simulator to create a vision board. See how many leads you need, your potential revenue, and your path to scaling.
-                        </p>
-                        <a href="simulator.html" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-colors shadow-lg shadow-blue-900/30">
-                            <i class="fa-solid fa-wand-magic-sparkles"></i>
-                            Get Vision Board
+                        
+                        <a href="plans.html" class="hidden md:flex bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-xl items-center gap-2 transition-all transform hover:scale-105 shadow-lg shadow-blue-900/40 btn-upgrade">
+                            <span>Upgrade Now</span>
+                            <i class="fa-solid fa-arrow-right"></i>
                         </a>
                     </div>
 
-                    <!-- Populated State (Hidden by default, can be toggled via JS for demo) -->
-                    <div id="vision-board-data" class="hidden bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] p-6 card-animate">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div class="p-4 bg-white/5 rounded-xl border border-white/5">
-                                <p class="text-xs text-white/40 uppercase tracking-wide font-bold mb-1">Projected Monthly Sales</p>
-                                <p class="text-2xl font-bold text-green-400">KES 1,200,000</p>
-                            </div>
-                            <div class="p-4 bg-white/5 rounded-xl border border-white/5">
-                                <p class="text-xs text-white/40 uppercase tracking-wide font-bold mb-1">Target CAC</p>
-                                <p class="text-2xl font-bold text-blue-400">KES 450</p>
-                            </div>
-                            <div class="p-4 bg-white/5 rounded-xl border border-white/5">
-                                <p class="text-xs text-white/40 uppercase tracking-wide font-bold mb-1">Monthly Customers</p>
-                                <p class="text-2xl font-bold text-purple-400">145</p>
+                    <!-- Mobile Upgrade Button -->
+                    <div class="md:hidden mb-10">
+                        <a href="plans.html" class="w-full flex justify-center bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-xl items-center gap-2 transition-all shadow-lg shadow-blue-900/40 btn-upgrade">
+                            <span>Upgrade Now</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </a>
+                    </div>
+
+                    <!-- Get Started Section -->
+                    <section class="mb-12">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-list-check text-orange-400"></i> Get Started
+                            </h2>
+                            <div class="flex items-center gap-3">
+                                <!-- No Text, Just Bar -->
+                                <div class="w-32 h-2 bg-[#2b2f3a] rounded-full overflow-hidden">
+                                    <div class="h-full bg-green-500 w-[15%]"></div>
+                                </div>
                             </div>
                         </div>
-                        <div class="mt-6 flex justify-end">
-                            <a href="simulator.html" class="text-sm text-white/50 hover:text-white flex items-center gap-2 transition-colors">
-                                <i class="fa-solid fa-sliders"></i> Adjust numbers
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                             <!-- Task 1 -->
+                            <div class="task-card p-4 rounded-xl flex flex-col justify-between h-full group hover:border-white/20 transition-colors relative">
+                                <div class="flex items-start justify-between mb-3">
+                                    <span class="task-number">1</span>
+                                    <a href="simulator.html" class="text-xs bg-orange-600 hover:bg-orange-500 text-white py-1 px-3 rounded-md transition-colors shadow-lg shadow-orange-900/20">Start</a>
+                                </div>
+                                <div>
+                                    <h3 class="font-medium text-white mb-1 group-hover:text-orange-400 transition-colors text-sm">Get your Estimates & Vision Board</h3>
+                                    <p class="text-xs text-white/40">See your possible total sales and growth path.</p>
+                                </div>
+                            </div>
+
+                            <!-- Task 2 -->
+                            <div class="task-card p-4 rounded-xl flex flex-col justify-between h-full group hover:border-white/20 transition-colors">
+                                <div class="flex items-start justify-between mb-3">
+                                    <span class="task-number">2</span>
+                                    <button id="setup-business-profile-btn" class="text-xs bg-[#2b2f3a] hover:bg-[#374151] border border-white/10 text-white py-1 px-3 rounded-md transition-colors">Set Up</button>
+                                </div>
+                                <div>
+                                    <h3 class="font-medium text-white mb-1 group-hover:text-orange-400 transition-colors text-sm">Set Up Business Profile</h3>
+                                    <p class="text-xs text-white/40">Complete your details for better AI suggestions.</p>
+                                </div>
+                            </div>
+
+                            <!-- Task 3 -->
+                            <div class="task-card p-4 rounded-xl flex flex-col justify-between h-full group hover:border-white/20 transition-colors">
+                                <div class="flex items-start justify-between mb-3">
+                                    <span class="task-number">3</span>
+                                    <button class="text-xs bg-[#2b2f3a] hover:bg-[#374151] border border-white/10 text-white py-1 px-3 rounded-md transition-colors">Create</button>
+                                </div>
+                                <div>
+                                    <h3 class="font-medium text-white mb-1 group-hover:text-orange-400 transition-colors text-sm">Create One Offer</h3>
+                                    <p class="text-xs text-white/40">Define what you're selling to generate leads.</p>
+                                </div>
+                            </div>
+
+                            <!-- Task 4 -->
+                            <div class="task-card p-4 rounded-xl flex flex-col justify-between h-full group hover:border-white/20 transition-colors">
+                                <div class="flex items-start justify-between mb-3">
+                                    <span class="task-number">4</span>
+                                    <button class="text-xs bg-[#2b2f3a] hover:bg-[#374151] border border-white/10 text-white py-1 px-3 rounded-md transition-colors">Run Audit</button>
+                                </div>
+                                <div>
+                                    <h3 class="font-medium text-white mb-1 group-hover:text-orange-400 transition-colors text-sm">Run a free Business Audit</h3>
+                                    <p class="text-xs text-white/40">Check your online presence health score.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Book Call (Full Width Below) -->
+                        <div class="task-card p-4 rounded-xl flex items-center justify-between gap-4 opacity-50 relative overflow-hidden">
+                             <div class="flex items-center gap-4">
+                                <span class="task-number"><i class="fa-solid fa-lock text-[10px]"></i></span>
+                                <div>
+                                    <h3 class="font-medium text-white text-sm">Book a Free Strategy Call</h3>
+                                    <p class="text-xs text-white/40">Unlock this by completing the tasks above.</p>
+                                </div>
+                            </div>
+                            <button disabled class="px-4 py-2 bg-gray-700 text-white/30 text-xs font-semibold rounded-lg cursor-not-allowed border border-white/5">
+                                Book Call
+                            </button>
+                        </div>
+                    </section>
+
+                    <!-- Vision Board Section -->
+                    <section class="mb-12">
+                        <div class="mb-4">
+                            <h2 class="text-xl font-bold text-white">Your Vision Board</h2>
+                            <p class="text-sm text-white/60">Your roadmap to success.</p>
+                        </div>
+
+                        <!-- Empty State -->
+                        <div id="vision-board-empty" class="bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] p-8 text-center">
+                            <div class="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fa-solid fa-chart-line text-blue-400 text-2xl"></i>
+                            </div>
+                            <h3 class="text-lg font-bold text-white mb-2">No Estimates Yet</h3>
+                            <p class="text-white/50 text-sm max-w-md mx-auto mb-6">
+                                Create a vision board to picture your business goals. See how many leads you need, your possible total sales, and your path to growing.
+                            </p>
+                            <a href="simulator.html" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-colors shadow-lg shadow-blue-900/30">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                Get Vision Board
                             </a>
                         </div>
-                    </div>
-                </section>
 
-                <!-- Two Column Layout for Services & Learning -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 fade-in" style="animation-delay: 0.2s;">
-                    
-                    <!-- About Services -->
-                    <section>
-                        <h2 class="text-xl font-bold text-white mb-4">About Our Services</h2>
+                        <!-- Populated State (Hidden) -->
+                        <div id="vision-board-data" class="hidden bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] p-6 card-animate">
+                            <div class="mb-4 text-center">
+                                <div class="text-xs text-white/60 uppercase tracking-widest mb-2">Possible Monthly Sales</div>
+                                <div class="text-2xl font-bold text-green-400 mb-2" id="visionResSales">KES 0</div>
+                                <div class="flex flex-wrap justify-center gap-4 text-sm mt-2">
+                                    <span class="px-3 py-1 bg-white/5 rounded-full text-white/80 border border-white/10">Net Profit: <strong id="visionResProfit" class="text-white">KES 0</strong></span>
+                                    <span class="px-3 py-1 bg-white/5 rounded-full text-white/80 border border-white/10">Avg Cost of Getting One Customer: <strong id="visionResCac" class="text-green-400">KES 0</strong></span>
+                                    <span class="px-3 py-1 bg-white/5 rounded-full text-white/80 border border-white/10">Ad Spend: <strong id="visionResSpend">KES 0</strong></span>
+                                </div>
+                            </div>
+
+                            <!-- KPI Cards (minimal, no chart) -->
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div class="bg-[#0f1115] p-4 rounded-xl border border-[#2b2f3a] text-center">
+                                    <div class="text-white/40 text-xs uppercase mb-1">Leads</div>
+                                    <div class="text-2xl font-bold text-white" id="visionLeads">0</div>
+                                    <div class="text-[10px] text-white/30">Potential Inquiries</div>
+                                </div>
+                                <div class="bg-[#0f1115] p-4 rounded-xl border border-[#2b2f3a] text-center">
+                                    <div class="text-white/40 text-xs uppercase mb-1">Conv. Rate</div>
+                                    <div class="text-2xl font-bold text-blue-400" id="visionConv">0%</div>
+                                    <div class="text-[10px] text-white/30">Based on Plan</div>
+                                </div>
+                                <div class="bg-[#0f1115] p-4 rounded-xl border border-[#2b2f3a] text-center">
+                                    <div class="text-white/40 text-xs uppercase mb-1">Customers</div>
+                                    <div class="text-2xl font-bold text-green-400" id="visionCustomers">0</div>
+                                    <div class="text-[10px] text-white/30">New Sales/Mo</div>
+                                </div>
+                                <div class="bg-[#0f1115] p-4 rounded-xl border border-[#2b2f3a] text-center">
+                                    <div class="text-white/40 text-xs uppercase mb-1">Spend</div>
+                                    <div class="text-2xl font-bold text-white" id="visionSpend">0</div>
+                                    <div class="text-[10px] text-white/30">Ad Budget + Fees</div>
+                                </div>
+                            </div>
+
+                            <!-- Assumptions & Key Variables (minimal) -->
+                            <div class="text-center border-t border-white/10 pt-6 mt-6">
+                                <h4 class="text-white font-semibold mb-3">Assumptions & Key Variables</h4>
+                                <div class="flex flex-wrap justify-center gap-4 text-sm">
+                                    <div class="px-4 py-2 bg-[#1a1d23] rounded-lg border border-[#2b2f3a] text-white/70">
+                                        <div class="text-[11px] text-white/50">Conversion Rate</div>
+                                        <div id="visionAssConv" class="font-bold text-white">0%</div>
+                                    </div>
+                                    <div class="px-4 py-2 bg-[#1a1d23] rounded-lg border border-[#2b2f3a] text-white/70">
+                                        <div class="text-[11px] text-white/50">Avg Cost/Customer</div>
+                                        <div id="visionAssCac" class="font-bold text-green-400">KES 0</div>
+                                    </div>
+                                    <div class="px-4 py-2 bg-[#1a1d23] rounded-lg border border-[#2b2f3a] text-white/70">
+                                        <div class="text-[11px] text-white/50">Ad Spend (mo.)</div>
+                                        <div id="visionAssSpend" class="font-bold text-white">KES 0</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-6 flex justify-end">
+                                <a href="simulator.html" class="text-sm text-white/50 hover:text-white flex items-center gap-2 transition-colors">
+                                    <i class="fa-solid fa-sliders"></i> Adjust numbers
+                                </a>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Two Column Layout for Services & Learning -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-20">
+                        
+                        <!-- About Services -->
                         <div class="bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] p-6 md:p-8 card-animate flex flex-col h-full justify-between">
                             <div>
                                 <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mb-4">
                                     <i class="fa-solid fa-layer-group text-purple-400 text-xl"></i>
                                 </div>
-                                <h3 class="text-xl font-bold text-white mb-3">Explore What We Do</h3>
+                                <h3 class="text-xl font-bold text-white mb-3">Learn More about our services</h3>
                                 <p class="text-white/60 text-sm leading-relaxed mb-6">
-                                    Learn more about our comprehensive suite of services. From AI-driven analytics to expert ad management, discover how our tools work together to grow your business.
+                                    Discover how our tools and strategies work together to help you build a scalable business ecosystem.
                                 </p>
                             </div>
                             <button class="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-colors shadow-lg shadow-purple-900/30">
                                 About Services
                             </button>
                         </div>
-                    </section>
 
-                    <!-- Learning Materials -->
-                    <section>
-                        <h2 class="text-xl font-bold text-white mb-4">Learning Materials</h2>
+                        <!-- Learning Materials -->
                         <div class="bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] p-6 md:p-8 card-animate flex flex-col h-full justify-between">
                             <div>
                                 <div class="w-12 h-12 bg-orange-500/20 rounded-lg flex items-center justify-center mb-4">
                                     <i class="fa-solid fa-graduation-cap text-orange-400 text-xl"></i>
                                 </div>
-                                <h3 class="text-xl font-bold text-white mb-3">Learn Digital Marketing</h3>
+                                <h3 class="text-xl font-bold text-white mb-3">Learn Digital Marketing with VVStudios</h3>
                                 <p class="text-white/60 text-sm leading-relaxed mb-6">
-                                    Access our library of free resources designed to help you master digital marketing. Learn strategies that you can apply immediately to start seeing results.
+                                    For Free. Master the fundamentals of digital growth and customer acquisition.
                                 </p>
                             </div>
                             <button class="w-full py-3 bg-[#1a1d23] border border-white/20 hover:bg-white/5 text-white font-bold rounded-xl transition-colors">
                                 Start Learning
                             </button>
                         </div>
-                    </section>
+                    </div>
 
                 </div>
-
-                <!-- Footer / Support -->
-                <div class="mt-16 border-t border-white/5 pt-8 text-center">
-                    <p class="text-white/30 text-sm">Need help with your plan? <a href="#" class="text-blue-400 hover:underline">Contact Support</a></p>
-                </div>
-            </div>
-        </main>
+            </main>
+        </div>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // Check for simulated login state
-            const user = localStorage.getItem('vvUser');
-            // If strictly needed, we could redirect if no user, but for "Free Experience" preview we keep it open
-            
-            // Logout logic
-            document.getElementById('logout-btn').addEventListener('click', () => {
-                localStorage.removeItem('vvUser');
-                window.location.href = 'index.html';
-            });
+        // Sidebar & Menu Logic
+        document.addEventListener("DOMContentLoaded", () => {
+            const menuBtn = document.getElementById("mobile-menu-button");
+            const sidebar = document.getElementById("sidebar");
+            const backdrop = document.getElementById("mobile-menu-backdrop");
 
+            if (menuBtn && sidebar) {
+                menuBtn.addEventListener("click", () => {
+                    sidebar.classList.toggle("-translate-x-full");
+                    if (backdrop) backdrop.classList.toggle("hidden");
+                });
+            }
+
+            if (backdrop) {
+                backdrop.addEventListener("click", () => {
+                    sidebar.classList.add("-translate-x-full");
+                    backdrop.classList.add("hidden");
+                });
+            }
+
+            // Profile Dropdown
+            const profileBtn = document.getElementById('profile-menu-button');
+            const profileDropdown = document.getElementById('profile-dropdown');
+            const logoutBtn = document.getElementById('logoutButton');
+
+            if (profileBtn && profileDropdown) {
+                profileBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    profileDropdown.classList.toggle('hidden');
+                });
+
+                document.addEventListener('click', (e) => {
+                    if (!profileBtn.contains(e.target) && !profileDropdown.contains(e.target)) {
+                        profileDropdown.classList.add('hidden');
+                    }
+                });
+            }
+
+            // Logout
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    localStorage.removeItem('vvUser');
+                    window.location.href = 'index.html';
+                });
+            }
+
+            // User Info Population
+            const userStr = localStorage.getItem('vvUser');
+            if (userStr) {
+                try {
+                    const user = JSON.parse(userStr);
+                    const bName = user.business_name || "My Business";
+                    const uName = user.firstName || user.admin_name || "Admin";
+                    
+                    document.getElementById('businessName').textContent = bName;
+                    document.getElementById('welcomeName').textContent = uName;
+                    document.getElementById('profileName').textContent = uName;
+                    
+                    const initial = uName.charAt(0).toUpperCase();
+                    document.getElementById('profile-avatar').textContent = initial;
+                } catch(e) {}
+            }
+            
             // Simulate Vision Board Data Check (Prototype logic)
-            // If simulator data exists in local storage, show the populated card instead of empty state
-            const simData = localStorage.getItem('sim_projections');
+            const simData = localStorage.getItem('sim_projections') || localStorage.getItem('vision_board_saved');
             if (simData) {
                 try {
                     const data = JSON.parse(simData);
                     document.getElementById('vision-board-empty').classList.add('hidden');
                     document.getElementById('vision-board-data').classList.remove('hidden');
-                    // We could populate the numbers here if we knew the structure, 
-                    // but static layout is fine for now.
-                } catch(e) {}
+
+                    // Populate minimal vision snapshot fields (same IDs as full Vision Board)
+                    const fmtKES = n => 'KES ' + Number(n || 0).toLocaleString();
+                    const setText = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+
+                    setText('visionResSales', fmtKES(data.revenue));
+                    setText('visionResProfit', fmtKES(Math.round(data.netProfit || 0)));
+                    setText('visionResCac', fmtKES(data.cac || 0));
+                    setText('visionResSpend', fmtKES(data.totalCost || (data.budget || 0)));
+
+                    setText('visionLeads', (data.leads || 0).toLocaleString());
+                    setText('visionConv', ((data.rate || 0) * 100).toFixed(0) + '%');
+                    setText('visionCustomers', (data.customers || 0));
+                    setText('visionSpend', fmtKES(data.totalCost || (data.budget || 0)));
+
+                    // Assumptions
+                    setText('visionAssConv', ((data.rate || 0) * 100).toFixed(0) + '%');
+                    setText('visionAssCac', fmtKES(data.cac || 0));
+                    setText('visionAssSpend', fmtKES(data.budget || 0));
+                } catch(e) { console.warn('Invalid sim_projections:', e); }
             }
         });
     </script>
+    
+    <!-- Free Business profile modal (dark theme copy, namespaced to avoid conflicts) -->
+    <div id="free-business-profile-modal" class="modal-backdrop hidden">
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-bg-card rounded-2xl border border-border-dark max-w-4xl w-full p-6 card-animate max-h-[calc(100vh-4rem)] overflow-hidden flex flex-col" style="box-sizing: border-box;">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-3xl font-bold">Free Business profile modal</h2>
+                    <button class="text-white/50 hover:text-white" data-modal-close="free-business-profile-modal"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <style>
+                    /* Backdrop + dark-theme overrides scoped to the Free modal to match CRM dark styles */
+
+                    /* Do NOT force display here — respect the `hidden` utility. Only show when not hidden. */
+                    #free-business-profile-modal.modal-backdrop{ position: fixed; inset: 0; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); z-index: 60; }
+                    #free-business-profile-modal.modal-backdrop:not(.hidden){ display: flex; }
+                    #free-business-profile-modal .overflow-y-auto{ scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.14) transparent; }
+                    #free-business-profile-modal .overflow-y-auto::-webkit-scrollbar{ width:8px; }
+                    #free-business-profile-modal .overflow-y-auto::-webkit-scrollbar-thumb{ background: rgba(255,255,255,0.12); border-radius:8px; }
+                    #free-business-profile-modal .overflow-y-auto::-webkit-scrollbar-track{ background: transparent; }
+
+                    /* Provide dark fallbacks for utility classes that may be missing on this page */
+                    #free-business-profile-modal .bg-bg-card { background-color: #14161a !important; }
+                    #free-business-profile-modal .bg-bg-dark { background-color: #0f1115 !important; }
+                    #free-business-profile-modal .border-border-dark { border-color: #2b2f3a !important; }
+                    #free-business-profile-modal .text-white\/60 { color: rgba(255,255,255,0.6) !important; }
+                    #free-business-profile-modal .bg-main-purple { background-color: #7c3aed !important; }
+                </style>
+
+                <div class="flex-1 overflow-y-auto py-1 pr-4" style="max-height: calc(100vh - 8rem); box-sizing: border-box;">
+                    <form id="free-business-profile-form" class="space-y-4 text-lg">
+                        <div>
+                            <label class="block text-base font-medium text-white">Business name</label>
+                            <p class="text-sm text-white/60 mb-2">What’s the name of your business?</p>
+                            <input id="free-bp-business-name" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-base font-medium text-white">Industry</label>
+                                <p class="text-sm text-white/60 mb-2">What type of business do you run? (e.g., salon, electronics, real estate)</p>
+                                <input id="free-bp-industry" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                            </div>
+                            <div>
+                                <label class="block text-base font-medium text-white">Location</label>
+                                <p class="text-sm text-white/60 mb-2">Where are you based?</p>
+                                <input id="free-bp-location" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-base font-medium text-white">Tagline</label>
+                            <p class="text-sm text-white/60 mb-2">What’s your slogan or short tagline?</p>
+                            <input id="free-bp-tagline" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                        </div>
+
+                        <div>
+                            <label class="block text-base font-medium text-white">Short description</label>
+                            <p class="text-sm text-white/60 mb-2">Describe your business in one short sentence.</p>
+                            <input id="free-bp-short-desc" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                        </div>
+
+                        <div>
+                            <label class="block text-base font-medium text-white">Long description</label>
+                            <p class="text-sm text-white/60 mb-2">Describe the problem you're solving and how your product or service is positioned as the solution.</p>
+                            <textarea id="free-bp-long-desc" rows="5" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-base font-medium text-white">Target audience</label>
+                            <p class="text-sm text-white/60 mb-2">Who are your typical customers?</p>
+                            <input id="free-bp-target-audience" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                        </div>
+
+                        <div>
+                            <label class="block text-base font-medium text-white">Unique value</label>
+                            <p class="text-sm text-white/60 mb-2">What makes your business different or special?</p>
+                            <input id="free-bp-unique-value" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-base font-medium text-white">Main offer</label>
+                                <p class="text-sm text-white/60 mb-2">What’s your main product or service?</p>
+                                <input id="free-bp-main-offer" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                            </div>
+                            <div>
+                                <label class="block text-base font-medium text-white">Secondary offers</label>
+                                <p class="text-sm text-white/60 mb-2">What other related products or services do you offer?</p>
+                                <input id="free-bp-secondary-offers" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-base font-medium text-white">Tone of voice</label>
+                                <p class="text-sm text-white/60 mb-2">How should your messages sound? (e.g., friendly, expert)</p>
+                                <select id="free-bp-tone-of-voice" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg">
+                                    <option value="friendly">Friendly</option>
+                                    <option value="expert">Expert</option>
+                                    <option value="casual">Casual</option>
+                                    <option value="playful">Playful</option>
+                                    <option value="formal">Formal</option>
+                                    <option value="energetic">Energetic</option>
+                                    <option value="conversational">Conversational</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-base font-medium text-white">Website & socials</label>
+                            <p class="text-sm text-white/60 mb-2">Share your website or social media links.</p>
+                            <input id="free-bp-website" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg mb-3" />
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div>
+                                    <label class="block text-sm text-white/70">Facebook</label>
+                                    <input id="free-bp-facebook" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-white/70">Instagram</label>
+                                    <input id="free-bp-instagram" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-white/70">X (formerly Twitter)</label>
+                                    <input id="free-bp-twitter" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <button type="submit" id="free-bp-save-btn" class="w-full bg-main-purple hover:bg-purple-700 text-white font-semibold py-3 rounded-xl mb-3">Save Business Profile</button>
+                            <button type="button" id="free-bp-cancel-btn" class="w-full text-white/60 hover:text-white py-3" data-modal-close="free-business-profile-modal">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Register service worker and show update tip when a new SW activates
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('service-worker.js')
-                .then(() => console.log('ServiceWorker registered (free page)'))
-                .catch(err => console.error('SW registration failed (free page):', err));
-        }
+        // Minimal modal helper for the Free Business profile modal
+        (function(){
+            function openModal(id){
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.classList.remove('hidden');
+                document.body.classList.add('overflow-hidden');
+            }
+            function closeModal(id){
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+            }
 
-        if (navigator.serviceWorker) {
-            navigator.serviceWorker.addEventListener('message', (event) => {
-                try {
-                    const data = event.data;
-                    if (!data) return;
-                    if (data.type === 'SW_UPDATED') {
-                        const bannerId = 'sw-update-tip';
-                        if (!document.getElementById(bannerId)) {
-                            const banner = document.createElement('div');
-                            banner.id = bannerId;
-                            banner.textContent = 'new updates applied';
-                            banner.style.position = 'fixed';
-                            banner.style.top = '0';
-                            banner.style.left = '0';
-                            banner.style.right = '0';
-                            banner.style.zIndex = '9999';
-                            banner.style.background = 'linear-gradient(90deg,#10b981,#06b6d4)';
-                            banner.style.color = '#fff';
-                            banner.style.padding = '10px 12px';
-                            banner.style.textAlign = 'center';
-                            banner.style.fontWeight = '600';
-                            banner.style.fontFamily = 'Inter, sans-serif';
-                            banner.style.boxShadow = '0 2px 8px rgba(0,0,0,0.16)';
-                            banner.style.pointerEvents = 'none';
-                            document.body.appendChild(banner);
-                        }
+            // Wire data-modal-close buttons inside the free modal (explicit so inner icons/buttons close reliably)
+            const freeModal = document.getElementById('free-business-profile-modal');
+            if (freeModal) {
+                // Close buttons
+                freeModal.querySelectorAll('[data-modal-close]').forEach(el => el.addEventListener('click', (ev) => {
+                    const id = el.getAttribute('data-modal-close');
+                    if (id) closeModal(id);
+                }));
 
-                        // Ask the SW to activate now
-                        if (navigator.serviceWorker.controller) {
-                            navigator.serviceWorker.controller.postMessage('SKIP_WAITING');
-                        }
+                // Clicking the backdrop (outside modal card) closes the modal
+                freeModal.addEventListener('click', (ev) => {
+                    if (ev.target === freeModal) closeModal('free-business-profile-modal');
+                });
 
-                        // Remove tip after a few seconds and reload to pick up new assets
-                        setTimeout(() => {
-                            const el = document.getElementById('sw-update-tip');
-                            if (el) el.remove();
-                            window.location.reload();
-                        }, 3000);
-                    }
-                } catch (e) { console.warn('SW message handler (free page) error', e); }
-            });
-        }
+                // Allow ESC to close the modal when open
+                document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') closeModal('free-business-profile-modal'); });
+            }
+
+            // Open handler for the Free page button
+            const btn = document.getElementById('setup-business-profile-btn');
+            if (btn) btn.addEventListener('click', (e) => { e.preventDefault(); openModal('free-business-profile-modal'); });
+
+            // Prevent form submit default (no backend wiring in free preview)
+            const f = document.getElementById('free-business-profile-form');
+            if (f) f.addEventListener('submit', (ev) => { ev.preventDefault(); closeModal('free-business-profile-modal'); });
+        })();
     </script>
 </body>
 </html>
