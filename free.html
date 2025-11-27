@@ -360,9 +360,9 @@
                             <!-- Task 4 -->
                             <div class="task-card p-4 rounded-xl flex flex-col justify-between h-full group hover:border-white/20 transition-colors">
                                 <div class="flex items-start justify-between mb-3">
-                                    <span class="task-number">4</span>
-                                    <button class="text-xs bg-[#2b2f3a] hover:bg-[#374151] border border-white/10 text-white py-1 px-3 rounded-md transition-colors">Run Audit</button>
-                                </div>
+                                        <span class="task-number">4</span>
+                                        <button id="run-audit-btn" class="text-xs bg-[#2b2f3a] hover:bg-[#374151] border border-white/10 text-white py-1 px-3 rounded-md transition-colors">Run Audit</button>
+                                    </div>
                                 <div>
                                     <h3 class="font-medium text-white mb-1 group-hover:text-orange-400 transition-colors text-sm">Run a free Business Audit</h3>
                                     <p class="text-xs text-white/40">Check your online presence health score.</p>
@@ -783,6 +783,13 @@
             // Open handler for the Free page button
             const btn = document.getElementById('setup-business-profile-btn');
             if (btn) btn.addEventListener('click', (e) => { e.preventDefault(); openModal('free-business-profile-modal'); });
+
+            // Wire Run Audit button to open the full audit page
+            const runAuditBtn = document.getElementById('run-audit-btn');
+            if (runAuditBtn) runAuditBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.location.href = 'audit.html';
+            });
 
             // Prevent form submit default (no backend wiring in free preview)
             const f = document.getElementById('free-business-profile-form');

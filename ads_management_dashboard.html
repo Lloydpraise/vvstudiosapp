@@ -101,6 +101,25 @@
   100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
 }
 
+                /* Floating, subtle upgrade button (bottom-center) used on Ads page */
+                .upgrade-floating {
+                        position: fixed;
+                        bottom: 18px;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        background-color: #6b7280; /* gray */
+                        color: #7c3aed; /* purple text */
+                        padding: 6px 10px;
+                        font-size: 0.85rem;
+                        border-radius: 9999px;
+                        border: 1px solid rgba(255,255,255,0.03);
+                        box-shadow: none;
+                        z-index: 70;
+                        min-width: 88px;
+                        text-align: center;
+                }
+                .upgrade-floating:hover { background-color: #585b62; }
+
     </style>
 
     <script>
@@ -276,7 +295,7 @@
                             <p id="countdown-text" class="text-sm text-white/60 mt-2"></p>
                         </div>
                         <div class="w-full md:w-auto">
-                            <button id="upgrade-button" class="w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-xl hover:bg-blue-700">Renew Subscription</button>
+                            <button id="upgrade-button" class="upgrade-floating">Renew</button>
                         </div>
                     </div>
                 </section>

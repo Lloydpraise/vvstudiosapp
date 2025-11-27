@@ -89,6 +89,23 @@ function showDashboard(userData, rawPhone) {
     
     // Load ads data
     fetchAdResults(businessId);
+
+    // Wait for essential UI elements (admin, business, package) to appear before hiding global loader
+    (function waitForEssentials(timeoutMs = 3000){
+      const start = Date.now();
+      function check(){
+        const welcome = document.getElementById('welcomeName')?.textContent?.trim();
+        const business = document.getElementById('businessName')?.textContent?.trim();
+        const packageText = document.getElementById('packageName')?.textContent?.trim();
+        if (welcome && business && packageText) {
+          try{ if (window && typeof window.vvAppReady === 'function') { window.vvAppReady(); } else { document.dispatchEvent(new Event('vv-app-ready')); } }catch(e){}
+          return;
+        }
+        if (Date.now() - start < timeoutMs) requestAnimationFrame(check);
+        else { try{ if (window && typeof window.vvAppReady === 'function') { window.vvAppReady(); } else { document.dispatchEvent(new Event('vv-app-ready')); } }catch(e){} }
+      }
+      check();
+    })();
 }
 
 // --- Login Logic (Unified Supabase) ---
@@ -460,7 +477,6 @@ function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount, peri
 
     popup.innerHTML = `
       <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4 relative">
-      ${showLeft ? '<button id="modal-upgrade-btn-left" class="absolute top-4 left-4 text-blue-400 hover:text-blue-500 text-sm font-medium">Upgrade</button>' : ''}
       <button id="close-popup" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">&times;</button>
       <h3 class="text-xl font-bold text-white mb-4 text-center">${popupTitle}</h3>
       ${popupBodyHTML}
@@ -473,8 +489,15 @@ function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount, peri
     document.body.appendChild(popup);
 
     popup.querySelector('#close-popup')?.addEventListener('click', () => popup.remove());
-    const upgradeBtnLeft = popup.querySelector('#modal-upgrade-btn-left');
-    if (upgradeBtnLeft) upgradeBtnLeft.addEventListener('click', () => { try { popup.remove(); } catch(e){}; if (window.openUpgradeFlow) window.openUpgradeFlow(userData); });
+    if (showLeft) {
+      const floater = document.createElement('button');
+      floater.id = 'modal-upgrade-btn';
+      floater.className = 'upgrade-floating';
+      floater.textContent = 'Upgrade';
+      document.body.appendChild(floater);
+      floater.addEventListener('click', () => { try { popup.remove(); } catch(e){}; try { floater.remove(); } catch(e){}; if (window.openUpgradeFlow) window.openUpgradeFlow(userData); });
+      popup.querySelector('#close-popup')?.addEventListener('click', () => { try { floater.remove(); } catch(e){} });
+    }
     popup.querySelector('#confirm-renewal')?.addEventListener('click', () => {
       // Determine payment amount: prefer explicit totalAmount, otherwise derive from package
       let paymentAmountNum = Number(totalAmount) || 0;

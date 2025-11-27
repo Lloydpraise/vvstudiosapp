@@ -41,6 +41,23 @@ if (!BUSINESS_ID) {
   console.warn('⚠️ No BUSINESS_ID found in localStorage. Please login to access business-specific data.');
 }
 
+// Wait for essentials (business name / admin / package) to appear in DOM, then signal app-ready
+(function waitForCrmEssentials(timeoutMs = 3500){
+  const start = Date.now();
+  function check(){
+    const welcome = document.getElementById('welcomeName')?.textContent?.trim();
+    const business = document.getElementById('businessName')?.textContent?.trim() || BUSINESS_NAME;
+    const packageText = document.getElementById('packageName')?.textContent?.trim();
+    if (welcome && business && packageText) {
+      try{ if (window && typeof window.vvAppReady === 'function') { window.vvAppReady(); } else { document.dispatchEvent(new Event('vv-app-ready')); } }catch(e){}
+      return;
+    }
+    if (Date.now() - start < timeoutMs) requestAnimationFrame(check);
+    else { try{ if (window && typeof window.vvAppReady === 'function') { window.vvAppReady(); } else { document.dispatchEvent(new Event('vv-app-ready')); } }catch(e){} }
+  }
+  check();
+})();
+
 // Quick connection test
 client.from('contacts').select('*').limit(1).then(({ data, error }) => {
   if (error) console.error('❌ Test query failed:', error);

@@ -73,10 +73,26 @@
     const pending = new Set();
     let hideTimer = null;
     let finished = false;
+    // By default we auto-hide once scripts finish. For paid packages (growth/pro/premium)
+    // we prefer to wait for an explicit app-ready signal so data can finish loading.
+    let holdUntilAppReady = false;
+    try{
+      const raw = localStorage.getItem && localStorage.getItem('vvUser');
+      if (raw){
+        try{
+          const u = JSON.parse(raw);
+          const pkg = (u && (u.package || u.package_name || u.packageType) || '') + '';
+          const p = pkg.toLowerCase();
+          if (p === 'growth' || p === 'pro' || p === 'premium') holdUntilAppReady = true;
+        }catch(e){}
+      }
+    }catch(e){}
 
     function checkAndHide(){
       if (finished) return;
       if (pending.size === 0){
+        // If we're holding for an explicit app-ready (paid packages), do not auto-hide here.
+        if (holdUntilAppReady) return;
         clearTimeout(hideTimer);
         hideTimer = setTimeout(()=>{ finished = true; window.hideGlobalLoading(0); }, loadingDebounce);
       }
@@ -116,6 +132,19 @@
       }
     });
     mo.observe(document.documentElement || document, { childList: true, subtree: true });
+
+    // Fast-hide for known static/empty pages: keep loader for only 500ms maximum
+    try {
+      const fastPages = ['simulator.html','plans.html','install.html','offline.html'];
+      const path = (location.pathname || '').split('/').pop().toLowerCase();
+      const isFastPage = fastPages.includes(path);
+      if (isFastPage) {
+        // ensure we don't hold for paid packages on these pages
+        holdUntilAppReady = false;
+        // quick hide in 500ms unless finished already
+        setTimeout(()=>{ if (!finished) { finished = true; mo.disconnect(); window.hideGlobalLoading(0); } }, 500);
+      }
+    } catch(e){}
 
     // Expose a manual ready signal for app code that also needs to wait for data
     window.vvAppReady = function(){ finished = true; mo.disconnect(); window.hideGlobalLoading(80); };

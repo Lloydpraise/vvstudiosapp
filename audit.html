@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Online Presence Audit | VV Studios</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f1115; color: white; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background-color: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.1); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.2); }
+
+        /* Animations */
+        .card-animate { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .card-animate:hover { transform: translateY(-3px); box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.3); }
+        
+        .fade-in { animation: fadeIn 0.6s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .progress-bar-fill { transition: width 5s linear; }
+
+        /* Score Badge Circles */
+        .score-circle {
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            font-weight: bold;
+            position: relative;
+        }
+        .score-circle::before {
+            content: ''; position: absolute; inset: -4px;
+            border-radius: 50%; opacity: 0.3;
+        }
+        /* Color variants */
+        .score-good { background: rgba(34, 197, 94, 0.1); color: #4ade80; }
+        .score-good::before { border: 2px solid #4ade80; }
+        
+        .score-mid { background: rgba(250, 204, 21, 0.1); color: #facc15; }
+        .score-mid::before { border: 2px solid #facc15; }
+
+        .score-low { background: rgba(248, 113, 113, 0.1); color: #f87171; }
+        .score-low::before { border: 2px solid #f87171; }
+    </style>
+</head>
+<body class="bg-[#0f1115] text-white min-h-screen flex flex-col">
+
+    <header class="p-6 flex justify-between items-center max-w-7xl mx-auto w-full">
+        <div class="flex items-center gap-3">
+            <img src="assets/logo.png" onerror="this.src='https://via.placeholder.com/40/3b82f6/ffffff?text=VV'" class="w-10 h-10 rounded-full bg-gray-800" alt="Logo">
+            <span class="font-bold text-xl tracking-tight">VV Studios <span class="text-white/40 font-normal">| Audit</span></span>
+        </div>
+        <a href="index.html" class="text-sm text-white/60 hover:text-white transition-colors group">
+            <i class="fa-solid fa-arrow-left mr-1 group-hover:-translate-x-1 transition-transform"></i> Back to Dashboard
+        </a>
+    </header>
+
+    <main class="flex-1 w-full max-w-7xl mx-auto p-4 md:p-6 mb-12 flex flex-col justify-center min-h-[60vh]">
+
+        <div id="screen-input" class="fade-in max-w-2xl mx-auto w-full">
+            <div class="bg-[#1a1d23] border border-[#2b2f3a] rounded-2xl p-6 md:p-10 shadow-2xl">
+                <div class="text-center mb-8">
+                    <div class="w-16 h-16 bg-purple-600/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <i class="fa-solid fa-magnifying-glass-chart text-purple-400 text-2xl"></i>
+                    </div>
+                    <h1 class="text-3xl md:text-4xl font-bold mb-3 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">
+                        Start Your Audit
+                    </h1>
+                    <p class="text-white/60 text-base">
+                        Add your online profiles and let your AI Copilot check your online presence.
+                    </p>
+                </div>
+
+                <div class="space-y-5">
+                    <div class="relative group">
+                        <label class="block text-xs font-medium text-white/50 mb-1.5 ml-1 uppercase tracking-wider">Website URL</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <i class="fa-solid fa-globe text-white/40 group-focus-within:text-purple-400 transition-colors"></i>
+                            </div>
+                            <input type="url" id="inputUrl" placeholder="https://yourbusiness.com" 
+                                class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 transition-all">
+                        </div>
+                    </div>
+                    <div class="relative group">
+                        <label class="block text-xs font-medium text-white/50 mb-1.5 ml-1 uppercase tracking-wider">Instagram Username</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <i class="fa-brands fa-instagram text-white/40 group-focus-within:text-pink-500 transition-colors"></i>
+                            </div>
+                            <input type="text" id="inputIg" placeholder="@yourhandle" 
+                                class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 transition-all">
+                        </div>
+                    </div>
+                    <div class="relative group">
+                        <label class="block text-xs font-medium text-white/50 mb-1.5 ml-1 uppercase tracking-wider">Facebook Page Link</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <i class="fa-brands fa-facebook-f text-white/40 group-focus-within:text-blue-500 transition-colors"></i>
+                            </div>
+                            <input type="text" id="inputFb" placeholder="facebook.com/yourpage" 
+                                class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 transition-all">
+                        </div>
+                    </div>
+
+                    <div class="pt-4">
+                        <button onclick="startAudit()" class="w-full bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-purple-900/20 transition-all transform hover:scale-[1.01] flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-bolt mr-2"></i> Start Audit
+                        </button>
+                        <p class="text-center text-xs text-white/30 mt-4">
+                            This quick scan checks the basics of your online presence.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="screen-loading" class="hidden fade-in text-center py-10 max-w-2xl mx-auto w-full">
+            <div class="relative w-24 h-24 mx-auto mb-10">
+                <div class="absolute inset-0 border-4 border-[#2b2f3a] rounded-full"></div>
+                <div class="absolute inset-0 border-4 border-t-purple-500 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin"></div>
+                <i class="fa-solid fa-robot absolute inset-0 flex items-center justify-center text-purple-400 text-3xl animate-pulse"></i>
+            </div>
+            <h2 class="text-2xl md:text-3xl font-bold text-white mb-4">Running your audit...</h2>
+            <div class="h-8 mb-8 flex items-center justify-center">
+                <p id="loading-text" class="text-white/60 text-lg font-medium transition-opacity duration-300">Initializing...</p>
+            </div>
+            <div class="max-w-xs mx-auto w-full bg-[#1a1d23] h-2 rounded-full overflow-hidden border border-[#2b2f3a]">
+                <div id="progress-bar" class="h-full bg-gradient-to-r from-purple-600 to-blue-500 w-0 rounded-full"></div>
+            </div>
+        </div>
+
+        <div id="screen-results" class="hidden fade-in w-full">
+            
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                <div>
+                    <h1 class="text-3xl font-bold text-white mb-1">Your Business Snapshot</h1>
+                    <p class="text-white/60">Here is your online presence snapshot. These scores show how your business appears online today.</p>
+                </div>
+                <button class="bg-[#1a1d23] hover:bg-[#2b2f3a] border border-[#2b2f3a] text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
+                    <i class="fa-solid fa-file-pdf text-red-400"></i> Download PDF
+                </button>
+            </div>
+
+            <hr class="border-white/10 mb-10">
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
+                
+                <div class="bg-[#1a1d23] border border-[#2b2f3a] rounded-2xl p-6 card-animate flex flex-col h-full">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                                <i class="fa-solid fa-globe text-blue-400"></i>
+                            </div>
+                            <h3 class="font-bold text-lg">Website</h3>
+                        </div>
+                        <div class="score-circle score-mid">
+                            <span class="text-xl">65</span>
+                            <span class="text-[9px] uppercase tracking-wide opacity-70">Score</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <h4 class="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">What we found</h4>
+                        <ul class="space-y-2 text-sm text-white/80">
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-green-400 mt-1"></i> Loads quickly on mobile</li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-green-400 mt-1"></i> SSL Security active</li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-xmark text-red-400 mt-1"></i> Meta descriptions missing</li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-triangle-exclamation text-yellow-400 mt-1"></i> Low Keyword density</li>
+                        </ul>
+                    </div>
+
+                    <div class="mb-6 flex-1">
+                        <h4 class="text-xs font-bold text-blue-400 uppercase tracking-widest mb-3"><i class="fa-solid fa-wrench mr-1"></i> What you can do now</h4>
+                        <ul class="space-y-2 text-sm text-white/60">
+                            <li class="pl-2 border-l-2 border-blue-500/30">Add keywords to your homepage title.</li>
+                            <li class="pl-2 border-l-2 border-blue-500/30">Compress your header images.</li>
+                        </ul>
+                    </div>
+
+                    <a href="#" class="block text-center bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/20 rounded-xl py-3 text-xs text-blue-300 transition-colors">
+                        <i class="fa-solid fa-lock mr-1"></i> Unlock full SEO audit & keyword report
+                    </a>
+                </div>
+
+                <div class="bg-[#1a1d23] border border-[#2b2f3a] rounded-2xl p-6 card-animate flex flex-col h-full">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-pink-500/10 flex items-center justify-center">
+                                <i class="fa-brands fa-instagram text-pink-500"></i>
+                            </div>
+                            <h3 class="font-bold text-lg">Instagram</h3>
+                        </div>
+                        <div class="score-circle score-good">
+                            <span class="text-xl">82</span>
+                            <span class="text-[9px] uppercase tracking-wide opacity-70">Score</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <h4 class="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">What we found</h4>
+                        <ul class="space-y-2 text-sm text-white/80">
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-green-400 mt-1"></i> Bio is clear & concise</li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-green-400 mt-1"></i> High quality profile pic</li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-triangle-exclamation text-yellow-400 mt-1"></i> Inconsistent posting times</li>
+                        </ul>
+                    </div>
+
+                    <div class="mb-6 flex-1">
+                        <h4 class="text-xs font-bold text-pink-400 uppercase tracking-widest mb-3"><i class="fa-solid fa-wrench mr-1"></i> What you can do now</h4>
+                        <ul class="space-y-2 text-sm text-white/60">
+                            <li class="pl-2 border-l-2 border-pink-500/30">Add a "Link in Bio" tool.</li>
+                            <li class="pl-2 border-l-2 border-pink-500/30">Post 2 stories per day.</li>
+                        </ul>
+                    </div>
+
+                    <a href="#" class="block text-center bg-pink-500/5 hover:bg-pink-500/10 border border-pink-500/20 rounded-xl py-3 text-xs text-pink-300 transition-colors">
+                        <i class="fa-solid fa-lock mr-1"></i> Get full audit & competitor insights
+                    </a>
+                </div>
+
+                <div class="bg-[#1a1d23] border border-[#2b2f3a] rounded-2xl p-6 card-animate flex flex-col h-full">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-blue-600/10 flex items-center justify-center">
+                                <i class="fa-brands fa-facebook-f text-blue-500"></i>
+                            </div>
+                            <h3 class="font-bold text-lg">Facebook</h3>
+                        </div>
+                        <div class="score-circle score-low">
+                            <span class="text-xl">40</span>
+                            <span class="text-[9px] uppercase tracking-wide opacity-70">Score</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <h4 class="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">What we found</h4>
+                        <ul class="space-y-2 text-sm text-white/80">
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-green-400 mt-1"></i> Page details filled out</li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-xmark text-red-400 mt-1"></i> Low engagement rate</li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-xmark text-red-400 mt-1"></i> No recent reviews</li>
+                        </ul>
+                    </div>
+
+                    <div class="mb-6 flex-1">
+                        <h4 class="text-xs font-bold text-blue-500 uppercase tracking-widest mb-3"><i class="fa-solid fa-wrench mr-1"></i> What you can do now</h4>
+                        <ul class="space-y-2 text-sm text-white/60">
+                            <li class="pl-2 border-l-2 border-blue-600/30">Ask 3 loyal clients for a review.</li>
+                            <li class="pl-2 border-l-2 border-blue-600/30">Update your pinned post.</li>
+                        </ul>
+                    </div>
+
+                    <a href="#" class="block text-center bg-blue-600/5 hover:bg-blue-600/10 border border-blue-600/20 rounded-xl py-3 text-xs text-blue-300 transition-colors">
+                        <i class="fa-solid fa-lock mr-1"></i> Unlock advanced Facebook analysis
+                    </a>
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-r from-purple-900/40 to-blue-900/40 border border-purple-500/30 rounded-2xl p-8 text-center mb-12 relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-blue-500"></div>
+                <h2 class="text-2xl font-bold text-white mb-2">Want a deeper look?</h2>
+                <p class="text-white/70 max-w-2xl mx-auto mb-6">Get your full audit, see exactly what your competitors are doing, and unlock advanced AI insights to fix these issues automatically.</p>
+                <button class="bg-white text-black hover:bg-gray-200 font-bold py-3 px-8 rounded-xl shadow-lg transition-all transform hover:scale-105">
+                    Run Full Audit <i class="fa-solid fa-rocket ml-2"></i>
+                </button>
+            </div>
+
+            <div class="flex flex-col items-center gap-8 mb-8">
+                <button class="px-8 py-3 bg-[#2b2f3a] hover:bg-[#374151] rounded-xl text-white font-semibold transition-colors flex items-center gap-2">
+                    <i class="fa-solid fa-floppy-disk"></i> Save Audit
+                </button>
+
+                <div class="w-full border-t border-white/10 pt-10">
+                    <h3 class="text-center text-lg font-semibold text-white mb-2">Not Ready for Packages Yet?</h3>
+                    <p class="text-center text-sm text-white/50 mb-6">Here are powerful tools to help improve your online presence!</p>
+                    
+                    <div class="flex flex-wrap justify-center gap-4">
+                        <a href="#" class="px-5 py-3 bg-[#1a1d23] border border-[#2b2f3a] hover:border-green-500/50 hover:text-green-400 rounded-xl text-sm font-medium transition-all">
+                            <i class="fa-regular fa-calendar-check mr-2"></i>Content Calendars (Free)
+                        </a>
+                        <a href="#" class="px-5 py-3 bg-[#1a1d23] border border-[#2b2f3a] hover:border-blue-500/50 hover:text-blue-400 rounded-xl text-sm font-medium transition-all">
+                            <i class="fa-solid fa-laptop-code mr-2"></i>Website Design
+                        </a>
+                        <a href="#" class="px-5 py-3 bg-[#1a1d23] border border-[#2b2f3a] hover:border-purple-500/50 hover:text-purple-400 rounded-xl text-sm font-medium transition-all">
+                            <i class="fa-solid fa-paintbrush mr-2"></i>Graphic Designs
+                        </a>
+                        <a href="#" class="px-5 py-3 bg-[#1a1d23] border border-[#2b2f3a] hover:border-red-500/50 hover:text-red-400 rounded-xl text-sm font-medium transition-all">
+                            <i class="fa-solid fa-video mr-2"></i>Video Content
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center pt-8 pb-4">
+                <p class="text-xs text-white/30 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-robot"></i> Generated by your AI Copilot
+                </p>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        function startAudit() {
+            // 1. Get Elements
+            const screenInput = document.getElementById('screen-input');
+            const screenLoading = document.getElementById('screen-loading');
+            const screenResults = document.getElementById('screen-results');
+            const statusText = document.getElementById('loading-text');
+            const progressBar = document.getElementById('progress-bar');
+
+            // 2. Switch Screens (Input -> Loading)
+            screenInput.classList.add('hidden');
+            screenLoading.classList.remove('hidden');
+            // Ensure results hidden
+            screenResults.classList.add('hidden');
+
+            // 3. Status Messages Array
+            const messages = [
+                "Checking website availability...",
+                "Scanning SEO setup...",
+                "Checking call-to-action strength...",
+                "Reviewing mobile responsiveness...",
+                "Browsing Instagram profile...",
+                "Looking at profile bio...",
+                "Scanning Facebook page...",
+                "Checking recent engagement...",
+                "Finalizing your snapshot..."
+            ];
+
+            // 4. Start Animations
+            
+            // A. Progress Bar
+            setTimeout(() => {
+                progressBar.classList.add('progress-bar-fill');
+                progressBar.style.width = '100%';
+            }, 100);
+
+            // B. Cycle Text Message
+            let msgIndex = 0;
+            statusText.textContent = messages[0];
+
+            const interval = setInterval(() => {
+                msgIndex++;
+                if (msgIndex < messages.length) {
+                    // Fade out
+                    statusText.style.opacity = '0';
+                    setTimeout(() => {
+                        statusText.textContent = messages[msgIndex];
+                        statusText.style.opacity = '1';
+                    }, 150);
+                } else {
+                    clearInterval(interval);
+                }
+            }, 550); // Speed of text cycle
+
+            // 5. Transition to Results (After ~5.2 seconds)
+            setTimeout(() => {
+                screenLoading.classList.add('hidden');
+                screenResults.classList.remove('hidden');
+                
+                // Scroll top smoothly
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 5200);
+        }
+    </script>
+</body>
+</html>

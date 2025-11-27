@@ -169,6 +169,10 @@ function proceedToDashboard(userData, rawPhone) {
     localStorage.setItem('vvUser', JSON.stringify(fullUserData));
     console.log('[DEBUG] Final complete user data saved to localStorage.');
 
+    // Defer signalling readiness until essential UI pieces (admin name, business name, package)
+    // are visible. This avoids hiding the loader too early while subscription/package UI
+    // (which may update in a rAF callback) is still painting.
+
     // If the user's package is Free, send them to the Free experience page.
     try {
         const pkgName = (fullUserData.package || '').toString().toLowerCase();
@@ -186,6 +190,27 @@ function proceedToDashboard(userData, rawPhone) {
     if (loggedInUser['joined date'] || loggedInUser.joined_date) {
         updateSubscriptionStatus(loggedInUser);
     }
+
+    // Wait for essential UI (welcomeName, businessName, packageName) to be painted
+    (function waitForEssentials(timeoutMs = 4000){
+        const start = Date.now();
+        function check(){
+            const welcome = document.getElementById('welcomeName')?.textContent?.trim();
+            const business = document.getElementById('businessName')?.textContent?.trim();
+            const packageText = document.getElementById('packageName')?.textContent?.trim();
+            if (welcome && business && packageText) {
+                try{ if (window && typeof window.vvAppReady === 'function') { window.vvAppReady(); } else { document.dispatchEvent(new Event('vv-app-ready')); } }catch(e){}
+                return;
+            }
+            if (Date.now() - start < timeoutMs) {
+                requestAnimationFrame(check);
+            } else {
+                // Timeout: still signal ready to avoid blocking UX
+                try{ if (window && typeof window.vvAppReady === 'function') { window.vvAppReady(); } else { document.dispatchEvent(new Event('vv-app-ready')); } }catch(e){}
+            }
+        }
+        check();
+    })();
 
     const services = loggedInUser.services || [];
     activateServices(services);
@@ -1208,6 +1233,8 @@ async function fetchDashboardData() {
         if (typeof Chart !== 'undefined') {
              renderSalesChart(calculatedMetrics.monthlyRevenueTrend);
         }
+           // Signal the global loader that the dashboard has finished loading data and rendering.
+           try{ if (window && typeof window.vvAppReady === 'function') { window.vvAppReady(); } else { document.dispatchEvent(new Event('vv-app-ready')); } }catch(e){}
         
     } catch (error) {
         console.error('[DEBUG] Error fetching dashboard data:', error);
@@ -1297,7 +1324,6 @@ function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount, hide
     // Default payment/renew flow
     popup.innerHTML = `
         <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4 relative">
-            ${showLeft ? '<button id="modal-upgrade-btn-left" class="absolute top-4 left-4 text-blue-400 hover:text-blue-500 text-sm font-medium">Upgrade</button>' : ''}
             ${'<button id="close-popup" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">&times;</button>'}
             <h3 class="text-xl font-bold text-white mb-2">To Continue Please Select Payment Method</h3>
             ${planName ? `<p class="text-white/70 mb-1">Plan: <span class="font-semibold text-white">${planName}</span></p>` : ''}
@@ -1349,13 +1375,21 @@ function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount, hide
     // close handler
     popup.querySelector('#close-popup')?.addEventListener('click', () => popup.remove());
 
-    // Top-left Upgrade button (when present) should open package selector
-    const upgradeBtnLeft = popup.querySelector('#modal-upgrade-btn-left');
-    if (upgradeBtnLeft) {
-        upgradeBtnLeft.addEventListener('click', () => {
+    // If requested, add a small floating upgrade button at bottom-center of the viewport.
+    if (showLeft) {
+        const floater = document.createElement('button');
+        floater.id = 'modal-upgrade-btn';
+        floater.className = 'upgrade-floating';
+        floater.textContent = 'Upgrade';
+        document.body.appendChild(floater);
+        // Wire clicks to open the upgrade/plan selector and remove popup
+        floater.addEventListener('click', () => {
             try { popup.remove(); } catch (e) {}
+            try { floater.remove(); } catch (e) {}
             if (window.openUpgradeFlow) window.openUpgradeFlow(userData);
         });
+        // ensure floater is removed if the popup is closed via close button
+        popup.querySelector('#close-popup')?.addEventListener('click', () => { try { floater.remove(); } catch (e) {} });
     }
 
     // Payment method buttons wiring

@@ -166,3 +166,20 @@ sendBtn.addEventListener("click", async () => {
 
 // --- INITIAL LOAD ---
 handleSectionSwitch("ads");
+
+// Wait for essential UI pieces (welcomeName, businessName, packageName) to appear
+(function waitForCopilotEssentials(timeoutMs = 3000){
+  const start = Date.now();
+  function check(){
+    const welcome = document.getElementById('welcomeName')?.textContent?.trim();
+    const business = document.getElementById('businessName')?.textContent?.trim();
+    const packageText = document.getElementById('packageName')?.textContent?.trim();
+    if (welcome && business && packageText) {
+      try{ if (window && typeof window.vvAppReady === 'function') { window.vvAppReady(); } else { document.dispatchEvent(new Event('vv-app-ready')); } }catch(e){}
+      return;
+    }
+    if (Date.now() - start < timeoutMs) requestAnimationFrame(check);
+    else { try{ if (window && typeof window.vvAppReady === 'function') { window.vvAppReady(); } else { document.dispatchEvent(new Event('vv-app-ready')); } }catch(e){} }
+  }
+  check();
+})();
