@@ -5847,44 +5847,72 @@ function attachEventListeners() {
     if (!selectedFollowUp) return;
     // ... original call log prep ...
   const callContactText = `${selectedFollowUp.contactName || selectedFollowUp.name || '(unknown)'} (${selectedFollowUp.contactPhone || selectedFollowUp.phone || ''})`;
-  document.getElementById('call-log-contact') && (document.getElementById('call-log-contact').textContent = `Logging call for: ${callContactText}`);
+  const typeTag = selectedFollowUp && selectedFollowUp.type ? ` — [${String(selectedFollowUp.type).charAt(0).toUpperCase() + String(selectedFollowUp.type).slice(1)}]` : '';
+  document.getElementById('call-log-contact') && (document.getElementById('call-log-contact').textContent = `Logging call for: ${callContactText}${typeTag}`);
+    // Ensure call-log modal stacks above After Sale modal when opened from follow-up
+    try {
+      const clModal = document.getElementById('call-log-modal');
+      if (clModal) {
+        const afterZ = (afterSaleModal && (parseInt(afterSaleModal.style.zIndex) || parseInt(window.getComputedStyle(afterSaleModal).zIndex))) || 11000;
+        clModal.style.zIndex = String(afterZ + 20);
+        const innerCl = clModal.querySelector('.bg-bg-card');
+        if (innerCl) innerCl.style.zIndex = String(afterZ + 21);
+      }
+    } catch (e) {}
+
     closeModal('follow-up-modal');
     openModal('call-log-modal');
   });
   document.getElementById('whatsapp-btn')?.addEventListener('click', () => {
   if (!selectedFollowUp) return;
-
-  // ✅ AI Context for Follow-Up
-  window.currentWhatsAppContext = {
-    type: "followup",
-    business_id: BUSINESS_ID || null,
-    contact_id: selectedFollowUp.contactId || selectedFollowUp.id || null,
-    contact_name: selectedFollowUp.contactName || selectedFollowUp.name || '',
-    extra: {
-      followup_id: selectedFollowUp.id,
-      related_to: selectedFollowUp.type || selectedFollowUp.source || '',
-      last_interaction: selectedFollowUp.lastUpdate || null,
-      deal_stage: selectedFollowUp.stage || null
+  // ✅ AI Context for Follow-Up (preserve referral/review if already set)
+  window.currentWhatsAppContext = window.currentWhatsAppContext || {};
+  window.currentWhatsAppContext.type = window.currentWhatsAppContext.type || selectedFollowUp.type || 'followup';
+  window.currentWhatsAppContext.business_id = BUSINESS_ID || window.currentWhatsAppContext.business_id || null;
+  window.currentWhatsAppContext.contact_id = selectedFollowUp.contactId || selectedFollowUp.id || window.currentWhatsAppContext.contact_id || null;
+  window.currentWhatsAppContext.contact_name = selectedFollowUp.contactName || selectedFollowUp.name || window.currentWhatsAppContext.contact_name || '';
+  window.currentWhatsAppContext.extra = Object.assign({}, window.currentWhatsAppContext.extra || {}, {
+    followup_id: selectedFollowUp.id,
+    related_to: selectedFollowUp.type || selectedFollowUp.source || '',
+    last_interaction: selectedFollowUp.lastUpdate || null,
+    deal_stage: selectedFollowUp.stage || null
+  });
+  
+  // Prefill WhatsApp modal subject/message depending on follow-up type
+  const waTo = document.getElementById('whatsapp-to');
+  const waMsg = document.getElementById('whatsapp-message-body');
+  const waSubject = document.getElementById('whatsapp-subject');
+  try {
+    const name = selectedFollowUp.contactName || selectedFollowUp.name || '';
+    if (waTo) waTo.value = selectedFollowUp.contactPhone || selectedFollowUp.phone || '';
+    // Default messages for referral/review flows, otherwise keep blank for user to compose
+    if (selectedFollowUp && selectedFollowUp.type === 'referral') {
+      if (waMsg) waMsg.value = waMsg.value || `Hi ${name}, we’d love if you referred a friend! Here is an offer for referrals.`;
+      if (waSubject) waSubject.value = waSubject.value || 'Get Referral Offer';
+    } else if (selectedFollowUp && selectedFollowUp.type === 'review') {
+      if (waMsg) waMsg.value = waMsg.value || `Hi ${name}, could you please leave us a short review? We appreciate your feedback.`;
+      if (waSubject) waSubject.value = waSubject.value || 'Customer Review Request';
+    } else {
+      if (waMsg) waMsg.value = '';
     }
-  };
+  } catch (e) { /* ignore UI prefilling errors */ }
 document.getElementById('ai-assist-btn')?.addEventListener('click', async () => {
   await handleAIWhatsAppAssist();
 });
-
-  // ✅ Pre-fill WhatsApp modal (existing code preserved)
-  const waTo = document.getElementById('whatsapp-to');
-  const waMsg = document.getElementById('whatsapp-message-body');
-  const modalNotes = document.getElementById('modal-notes')?.value;
-
-  if (waTo) waTo.value = selectedFollowUp.contactPhone || selectedFollowUp.phone || '';
-  // Do NOT populate the WhatsApp message body with the saved notes. The WhatsApp
-  // message box is a temporary draft the user composes; it should not overwrite
-  // or replace the persistent notes on the deal/contact. Instead show the saved
-  // notes in the WhatsApp modal notes display area and keep the message box empty
-  // (draft will be lost when the modal closes).
-  if (waMsg) waMsg.value = '';
   // Show the saved notes (read-only) inside the WhatsApp modal so user can reference them
+  const modalNotes = document.getElementById('modal-notes')?.value;
   updateWhatsAppNotesDisplay(modalNotes || '');
+
+  // Ensure WhatsApp modal stacks above After Sale modal when opened from follow-up
+  try {
+    const waModal = document.getElementById('whatsapp-modal');
+    if (waModal) {
+      const afterZ = (afterSaleModal && (parseInt(afterSaleModal.style.zIndex) || parseInt(window.getComputedStyle(afterSaleModal).zIndex))) || 11000;
+      waModal.style.zIndex = String(afterZ + 20);
+      const innerWa = waModal.querySelector('.bg-bg-card');
+      if (innerWa) innerWa.style.zIndex = String(afterZ + 21);
+    }
+  } catch (e) {}
 
   closeModal('follow-up-modal');
   openModal('whatsapp-modal');
@@ -7139,23 +7167,59 @@ function attachHistoryButtons() {
 function downloadReviewCard(customer) {
   showInAppAlert(`Downloading review card for ${customer.name}`);
 }
-
-function openAskForReviewModal(customer) {
-  showInAppAlert(`Open Ask for Review modal for ${customer.name}`);
-}
 // 🟣 Ask for Referral Modal logic
 const referralModal = document.getElementById('ask-referral-modal');
 const closeReferralModal = document.getElementById('close-referral-modal');
 
 function openAskForReferralModal(customer) {
-  if (!referralModal) return;
-  document.getElementById('referral-customer-name').textContent = customer.name || 'Customer';
-  document.getElementById('referral-customer-phone').textContent = customer.phone || '';
-  document.getElementById('referral-offer-input').value = '';
-  // store contact id on modal so handlers can read it later
-  try { referralModal.dataset.contactId = customer.id; } catch (e) {}
-  referralModal.classList.remove('hidden');
-  referralModal.classList.add('flex');
+  // Open the standard Follow-Up modal but prefill it as a "Referral" follow-up
+  try {
+    if (!customer) return;
+    // Build a lightweight selectedFollowUp object so the follow-up modal renders correctly
+    selectedFollowUp = {
+      id: null,
+      reason: `Ask for referral from ${customer.name}`,
+      title: `Ask for referral from ${customer.name}`,
+      message_prompt: `Hi ${customer.name}, we value your support. Would you refer a friend who might need our services?`,
+      due_at: new Date().toISOString(),
+      contactId: customer.id || null,
+      contactName: customer.name || '',
+      contactPhone: customer.phone || '',
+      type: 'referral'
+    };
+
+    // Prefill modal fields used by follow-up modal
+    const modalTitleEl = document.getElementById('modal-title');
+    if (modalTitleEl) modalTitleEl.textContent = selectedFollowUp.title;
+    const modalNotesEl = document.getElementById('modal-notes');
+    if (modalNotesEl) {
+      modalNotesEl.value = selectedFollowUp.message_prompt || '';
+      modalNotesEl.dataset.contactId = selectedFollowUp.contactId || '';
+      modalNotesEl.dataset.followupId = '';
+    }
+
+    // Set the shared WhatsApp/AI context so downstream flows know this is a referral
+    window.currentWhatsAppContext = window.currentWhatsAppContext || {};
+    window.currentWhatsAppContext.type = 'referral';
+    window.currentWhatsAppContext.contact_id = customer.id || null;
+    window.currentWhatsAppContext.contact_name = customer.name || '';
+    window.currentWhatsAppContext.business_id = BUSINESS_ID || null;
+
+    // Ensure follow-up modal appears above the After Sale modal (stacking)
+    try {
+      const fuModal = document.getElementById('follow-up-modal');
+      if (fuModal) {
+        const afterZ = (afterSaleModal && (parseInt(afterSaleModal.style.zIndex) || parseInt(window.getComputedStyle(afterSaleModal).zIndex))) || 11000;
+        fuModal.style.zIndex = String(afterZ + 20);
+        const inner = fuModal.querySelector('.bg-bg-card');
+        if (inner) inner.style.zIndex = String(afterZ + 21);
+      }
+    } catch (e) {}
+    // Open the follow-up modal
+    openModal('follow-up-modal');
+  } catch (e) {
+    console.warn('openAskForReferralModal (redirect to follow-up) failed', e);
+  }
 }
 
 if (closeReferralModal) {
@@ -7167,14 +7231,50 @@ const reviewModal = document.getElementById('ask-review-modal');
 const closeReviewModal = document.getElementById('close-review-modal');
 
 function openAskForReviewModal(customer) {
-  if (!reviewModal) return;
-  document.getElementById('review-customer-name').textContent = customer.name || 'Customer';
-  document.getElementById('review-customer-phone').textContent = customer.phone || '';
-  document.getElementById('review-offer-input').value = '';
-  // store contact id on modal so handlers can read it later
-  try { reviewModal.dataset.contactId = customer.id; } catch (e) {}
-  reviewModal.classList.remove('hidden');
-  reviewModal.classList.add('flex');
+  // Open the standard Follow-Up modal but prefill it as a "Review" follow-up
+  try {
+    if (!customer) return;
+    selectedFollowUp = {
+      id: null,
+      reason: `Ask for review from ${customer.name}`,
+      title: `Ask for review from ${customer.name}`,
+      message_prompt: `Hi ${customer.name}, could you please leave us a short review about your experience?`,
+      due_at: new Date().toISOString(),
+      contactId: customer.id || null,
+      contactName: customer.name || '',
+      contactPhone: customer.phone || '',
+      type: 'review'
+    };
+
+    const modalTitleEl = document.getElementById('modal-title');
+    if (modalTitleEl) modalTitleEl.textContent = selectedFollowUp.title;
+    const modalNotesEl = document.getElementById('modal-notes');
+    if (modalNotesEl) {
+      modalNotesEl.value = selectedFollowUp.message_prompt || '';
+      modalNotesEl.dataset.contactId = selectedFollowUp.contactId || '';
+      modalNotesEl.dataset.followupId = '';
+    }
+
+    window.currentWhatsAppContext = window.currentWhatsAppContext || {};
+    window.currentWhatsAppContext.type = 'review';
+    window.currentWhatsAppContext.contact_id = customer.id || null;
+    window.currentWhatsAppContext.contact_name = customer.name || '';
+    window.currentWhatsAppContext.business_id = BUSINESS_ID || null;
+
+    // Ensure follow-up modal appears above the After Sale modal (stacking)
+    try {
+      const fuModal = document.getElementById('follow-up-modal');
+      if (fuModal) {
+        const afterZ = (afterSaleModal && (parseInt(afterSaleModal.style.zIndex) || parseInt(window.getComputedStyle(afterSaleModal).zIndex))) || 11000;
+        fuModal.style.zIndex = String(afterZ + 20);
+        const inner = fuModal.querySelector('.bg-bg-card');
+        if (inner) inner.style.zIndex = String(afterZ + 21);
+      }
+    } catch (e) {}
+    openModal('follow-up-modal');
+  } catch (e) {
+    console.warn('openAskForReviewModal (redirect to follow-up) failed', e);
+  }
 }
 
 if (closeReviewModal) {
