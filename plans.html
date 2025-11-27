@@ -534,11 +534,11 @@
                         const contactBtn = popup.querySelector('#card-contact');
                         const mpesaBtn = popup.querySelector('#card-mpesa');
                         if (contactBtn) contactBtn.addEventListener('click', () => {
-                            // open whatsapp deep link
-                            try { window.location.href = 'whatsapp://send?phone=254789254864'; } catch (e) {
-                                // fallback to web.whatsapp
-                                window.location.href = 'https://wa.me/254789254864';
-                            }
+                            // open whatsapp deep link with a prefilled message including the plan name
+                            const msg = encodeURIComponent('Interested in ' + planName);
+                            const wa = `whatsapp://send?phone=254789254864&text=${msg}`;
+                            const webWa = `https://wa.me/254789254864?text=${msg}`;
+                            try { window.location.href = wa; } catch (e) { window.location.href = webWa; }
                         });
                         if (mpesaBtn) mpesaBtn.addEventListener('click', () => {
                             // re-use MPESA flow
@@ -582,11 +582,12 @@
                 }
                 if (txt.includes('contact sales')) {
                     a.addEventListener('click', (e) => {
-                        // contact sales: open mailto or show contact info
-                        // fallback: navigate to contact/support page
-                        // We'll route to mailto for simplicity
                         e.preventDefault();
-                        window.location.href = 'mailto:support@vvstudios.example?subject=Interested%20in%20Premium%20Plan';
+                        // Open WhatsApp with prefilled message for premium interest
+                        const msg = encodeURIComponent('Interested in Premium');
+                        const wa = `whatsapp://send?phone=254789254864&text=${msg}`;
+                        const webWa = `https://wa.me/254789254864?text=${msg}`;
+                        try { window.location.href = wa; } catch (err) { window.location.href = webWa; }
                     });
                 }
                 if (txt.includes('start free')) {
