@@ -4144,7 +4144,7 @@ function delegateFollowUpClick(e) {
   }
 }
 
-function handleFollowUpClick(id, type, e) {
+async function handleFollowUpClick(id, type, e) {
   // debug log to help verify click wiring
   try { console.debug && console.debug('handleFollowUpClick invoked', { id, type }); } catch (err) {}
   // If it's a deal id - prefill follow-up add modal
@@ -4180,40 +4180,76 @@ function handleFollowUpClick(id, type, e) {
   try {
     const ta = document.getElementById('modal-notes');
     if (ta) {
-      // Find the label immediately above the textarea (the Notes label in the modal)
-      const possibleLabel = ta.previousElementSibling && ta.previousElementSibling.tagName && ta.previousElementSibling.tagName.toLowerCase() === 'label' ? ta.previousElementSibling : null;
-      if (possibleLabel) {
-        // Avoid wrapping multiple times
-        if (!possibleLabel.dataset.notesHeaderWrapped) {
-          const wrapper = document.createElement('div');
-          wrapper.style.display = 'flex';
-          wrapper.style.justifyContent = 'space-between';
-          wrapper.style.alignItems = 'center';
-          wrapper.style.marginBottom = '8px';
+      // If the Follow-ups Today 'Why this follow-up?' block exists, prefer placing the button there
+      const followupWhy = document.getElementById('followup-today-why');
+      if (followupWhy) {
+        const labelInside = followupWhy.querySelector('label');
+        if (labelInside) {
+          if (!labelInside.dataset.notesHeaderWrapped) {
+            const wrapper = document.createElement('div');
+            wrapper.style.display = 'flex';
+            wrapper.style.justifyContent = 'space-between';
+            wrapper.style.alignItems = 'center';
+            wrapper.style.marginBottom = '8px';
 
-          // Replace label with wrapper and move label inside
-          possibleLabel.parentNode.replaceChild(wrapper, possibleLabel);
-          wrapper.appendChild(possibleLabel);
+            // Replace label with wrapper and move label inside the why block
+            labelInside.parentNode.replaceChild(wrapper, labelInside);
+            wrapper.appendChild(labelInside);
 
-          // Create the sleek small button and append to the right
-          const actBtn = document.createElement('button');
-          actBtn.id = 'modal-activity-log-btn';
-          actBtn.type = 'button';
-          actBtn.textContent = 'Activity Log';
-          actBtn.title = 'Activity Log';
-          // Use classes similar to after-sale referral button but grey and with a visible border
-          actBtn.className = 'bg-gray-500 hover:bg-gray-600 text-white text-sm font-medium py-1 px-3 rounded-lg transition-colors border border-gray-400';
-          actBtn.style.boxSizing = 'border-box';
-          actBtn.dataset.dealId = deal.id;
-          actBtn.onclick = (ev) => { ev.stopPropagation(); openDealLogs && openDealLogs(deal.id); };
+            // Create the sleek small button and append to the right
+            const actBtn = document.createElement('button');
+            actBtn.id = 'modal-activity-log-btn';
+            actBtn.type = 'button';
+            actBtn.textContent = 'Activity Log';
+            actBtn.title = 'Activity Log';
+            actBtn.className = 'bg-gray-500 hover:bg-gray-600 text-white text-sm font-medium py-1 px-3 rounded-lg transition-colors border border-gray-400';
+            actBtn.style.boxSizing = 'border-box';
+            actBtn.dataset.dealId = deal.id;
+            actBtn.onclick = (ev) => { ev.stopPropagation(); openDealLogs && openDealLogs(deal.id); };
 
-          wrapper.appendChild(actBtn);
-          // Mark wrapped to avoid duplicate wrappers
-          possibleLabel.dataset.notesHeaderWrapped = '1';
-        } else {
-          // If already wrapped, just ensure button has correct deal id
-          const existing = document.getElementById('modal-activity-log-btn');
-          if (existing) existing.dataset.dealId = deal.id;
+            wrapper.appendChild(actBtn);
+            labelInside.dataset.notesHeaderWrapped = '1';
+          } else {
+            const existing = document.getElementById('modal-activity-log-btn');
+            if (existing) existing.dataset.dealId = deal.id;
+          }
+        }
+      } else {
+        // Fallback: attach to the notes label as before
+        const possibleLabel = ta.previousElementSibling && ta.previousElementSibling.tagName && ta.previousElementSibling.tagName.toLowerCase() === 'label' ? ta.previousElementSibling : null;
+        if (possibleLabel) {
+          // Avoid wrapping multiple times
+          if (!possibleLabel.dataset.notesHeaderWrapped) {
+            const wrapper = document.createElement('div');
+            wrapper.style.display = 'flex';
+            wrapper.style.justifyContent = 'space-between';
+            wrapper.style.alignItems = 'center';
+            wrapper.style.marginBottom = '8px';
+
+            // Replace label with wrapper and move label inside
+            possibleLabel.parentNode.replaceChild(wrapper, possibleLabel);
+            wrapper.appendChild(possibleLabel);
+
+            // Create the sleek small button and append to the right
+            const actBtn = document.createElement('button');
+            actBtn.id = 'modal-activity-log-btn';
+            actBtn.type = 'button';
+            actBtn.textContent = 'Activity Log';
+            actBtn.title = 'Activity Log';
+            // Use classes similar to after-sale referral button but grey and with a visible border
+            actBtn.className = 'bg-gray-500 hover:bg-gray-600 text-white text-sm font-medium py-1 px-3 rounded-lg transition-colors border border-gray-400';
+            actBtn.style.boxSizing = 'border-box';
+            actBtn.dataset.dealId = deal.id;
+            actBtn.onclick = (ev) => { ev.stopPropagation(); openDealLogs && openDealLogs(deal.id); };
+
+            wrapper.appendChild(actBtn);
+            // Mark wrapped to avoid duplicate wrappers
+            possibleLabel.dataset.notesHeaderWrapped = '1';
+          } else {
+            // If already wrapped, just ensure button has correct deal id
+            const existing = document.getElementById('modal-activity-log-btn');
+            if (existing) existing.dataset.dealId = deal.id;
+          }
         }
       }
     }
@@ -4236,6 +4272,14 @@ function handleFollowUpClick(id, type, e) {
       contactPhone: deal.contactPhone
     };
 
+    // Ensure today's-only UI bits are hidden when opening from a deal
+    try { window.currentWhatsAppContext = window.currentWhatsAppContext || {}; window.currentWhatsAppContext.openedFrom = null; } catch (e) {}
+    try { document.getElementById('followup-today-why')?.classList.add('hidden'); } catch (e) {}
+    try { document.getElementById('followup-today-template')?.classList.add('hidden'); } catch (e) {}
+    // ensure notes area is visible for deal flow
+    try { document.getElementById('modal-notes')?.classList.remove('hidden'); } catch (e) {}
+    try { document.getElementById('modal-notes-label')?.classList.remove('hidden'); } catch (e) {}
+
     openModal('follow-up-modal');
 
   } else if (type === 'followUpItem') {
@@ -4250,6 +4294,13 @@ function handleFollowUpClick(id, type, e) {
       title: fu.title || fu.followup_title || '',
       message_prompt: fu.message_prompt || fu.response_notes || ''
     };
+
+    // mark that this modal was opened from the Follow-Ups Today list so
+    // UI elements that should only show for 'today' flows can be toggled
+    try {
+      window.currentWhatsAppContext = window.currentWhatsAppContext || {};
+      window.currentWhatsAppContext.openedFrom = 'followups_today';
+    } catch (e) {}
 
     // fill modal with fu info
     const displayTitle = selectedFollowUp.title || selectedFollowUp.followup_title || 'Follow up';
@@ -4279,37 +4330,145 @@ function handleFollowUpClick(id, type, e) {
       else modalNotesEl.dataset.contactId = contactIdFromFu || '';
     }
 
+    // Show today's-only UI bits inside the follow-up modal (why & template)
+    try {
+      const whyEl = document.getElementById('followup-today-why');
+      const whyText = document.getElementById('followup-today-why-text');
+      const tplEl = document.getElementById('followup-today-template');
+      const tplSelect = document.getElementById('followup-template-select');
+
+      // Load AI follow-up row from DB (if present) so we use system notes & message
+      try {
+        if (BUSINESS_ID && selectedFollowUp && (selectedFollowUp.followup_id || selectedFollowUp.id)) {
+          const fid = selectedFollowUp.followup_id || selectedFollowUp.id;
+          const { data: aiData, error: aiErr } = await client.from('ai_deal_followups')
+            .select('ai_system_note,ai_message,ai_title')
+            .eq('business_id', BUSINESS_ID)
+            .eq('followup_id', fid)
+            .maybeSingle();
+          if (!aiErr && aiData) {
+            // prefer ai_system_note if present
+            const sys = aiData.ai_system_note || selectedFollowUp.message_prompt || '';
+            if (whyEl && whyText) {
+              whyText.textContent = sys;
+              whyEl.classList.remove('hidden');
+            }
+            // hide editable notes since system note is authoritative for today's follow-ups
+            try { document.getElementById('modal-notes')?.classList.add('hidden'); } catch (e) {}
+            try { document.getElementById('modal-notes-label')?.classList.add('hidden'); } catch (e) {}
+
+            // show template and default to AI
+            if (tplEl && tplSelect) {
+              tplEl.classList.remove('hidden');
+              try { tplSelect.value = 'ai_follow_up'; } catch (e) {}
+            }
+
+            // set ephemeral AI context for WhatsApp flow
+            window.currentWhatsAppContext = window.currentWhatsAppContext || {};
+            window.currentWhatsAppContext.ai_system_note = aiData.ai_system_note || '';
+            window.currentWhatsAppContext.ai_message = aiData.ai_message || '';
+            window.currentWhatsAppContext.ai_title = aiData.ai_title || '';
+            // also populate contact_notes so old flows continue to work
+            window.currentWhatsAppContext.contact_notes = sys;
+          } else {
+            // no AI row: fall back to regular behavior
+            if (whyEl && whyText) {
+              whyText.textContent = selectedFollowUp.message_prompt || '';
+              whyEl.classList.remove('hidden');
+            }
+            if (tplEl && tplSelect) {
+              tplEl.classList.remove('hidden');
+              try { tplSelect.value = 'ai_follow_up'; } catch (e) {}
+              try { window.currentWhatsAppContext.selected_template = tplSelect.value; } catch (e) {}
+              // keep context updated when user changes template
+              try {
+                if (!tplSelect._listenerAttached) {
+                  tplSelect.addEventListener('change', (ev) => { window.currentWhatsAppContext = window.currentWhatsAppContext || {}; window.currentWhatsAppContext.selected_template = ev.target.value; });
+                  tplSelect._listenerAttached = true;
+                }
+              } catch (e) {}
+            }
+            // ensure editable notes are visible
+            try { document.getElementById('modal-notes')?.classList.remove('hidden'); } catch (e) {}
+            try { document.getElementById('modal-notes-label')?.classList.remove('hidden'); } catch (e) {}
+            // clear any stale ai fields
+            if (window.currentWhatsAppContext) { window.currentWhatsAppContext.ai_system_note = null; window.currentWhatsAppContext.ai_message = null; }
+          }
+        }
+      } catch (e) {
+        // Ensure we still reveal the UI bits even if DB fetch fails
+        if (whyEl && whyText) { whyText.textContent = selectedFollowUp.message_prompt || ''; whyEl.classList.remove('hidden'); }
+        if (tplEl && tplSelect) { tplEl.classList.remove('hidden'); try { tplSelect.value = 'ai_follow_up'; } catch (e) {} }
+      }
+    } catch (e) { /* ignore */ }
+
   // If this follow-up is tied to a deal, show a small Activity Log button in the notes header
   try {
     const dealIdForFu = fu.deal_id || fu.dealId || null;
     const ta = document.getElementById('modal-notes');
     if (ta && dealIdForFu) {
-      const possibleLabel = ta.previousElementSibling && ta.previousElementSibling.tagName && ta.previousElementSibling.tagName.toLowerCase() === 'label' ? ta.previousElementSibling : null;
-      if (possibleLabel) {
-        if (!possibleLabel.dataset.notesHeaderWrapped) {
-          const wrapper = document.createElement('div');
-          wrapper.style.display = 'flex';
-          wrapper.style.justifyContent = 'space-between';
-          wrapper.style.alignItems = 'center';
-          wrapper.style.marginBottom = '8px';
-          possibleLabel.parentNode.replaceChild(wrapper, possibleLabel);
-          wrapper.appendChild(possibleLabel);
+      // Prefer to place Activity Log button inside the Follow-ups Today 'Why' block if present
+      const followupWhy = document.getElementById('followup-today-why');
+      if (followupWhy) {
+        const labelInside = followupWhy.querySelector('label');
+        if (labelInside) {
+          if (!labelInside.dataset.notesHeaderWrapped) {
+            const wrapper = document.createElement('div');
+            wrapper.style.display = 'flex';
+            wrapper.style.justifyContent = 'space-between';
+            wrapper.style.alignItems = 'center';
+            wrapper.style.marginBottom = '8px';
+            labelInside.parentNode.replaceChild(wrapper, labelInside);
+            wrapper.appendChild(labelInside);
 
-          const actBtn = document.createElement('button');
-          actBtn.id = 'modal-activity-log-btn';
-          actBtn.type = 'button';
-          actBtn.textContent = 'Activity Log';
-          actBtn.title = 'Activity Log';
-          // Use classes similar to after-sale referral button but grey and with a visible border
-          actBtn.className = 'bg-gray-500 hover:bg-gray-600 text-white text-sm font-medium py-1 px-3 rounded-lg transition-colors border border-gray-400';
-          actBtn.style.boxSizing = 'border-box';
-          actBtn.dataset.dealId = dealIdForFu;
-          actBtn.onclick = (ev) => { ev.stopPropagation(); openDealLogs && openDealLogs(dealIdForFu); };
-          wrapper.appendChild(actBtn);
-          possibleLabel.dataset.notesHeaderWrapped = '1';
-        } else {
-          const existing = document.getElementById('modal-activity-log-btn');
-          if (existing) existing.dataset.dealId = dealIdForFu;
+            const actBtn = document.createElement('button');
+            actBtn.id = 'modal-activity-log-btn';
+            actBtn.type = 'button';
+            actBtn.textContent = 'Activity Log';
+            actBtn.title = 'Activity Log';
+            actBtn.className = 'bg-gray-500 hover:bg-gray-600 text-white text-sm font-medium py-1 px-3 rounded-lg transition-colors border border-gray-400';
+            actBtn.style.boxSizing = 'border-box';
+            actBtn.dataset.dealId = dealIdForFu;
+            actBtn.onclick = (ev) => { ev.stopPropagation(); openDealLogs && openDealLogs(dealIdForFu); };
+            wrapper.appendChild(actBtn);
+            labelInside.dataset.notesHeaderWrapped = '1';
+          } else {
+            const existing = document.getElementById('modal-activity-log-btn');
+            if (existing) existing.dataset.dealId = dealIdForFu;
+          }
+        }
+
+        // Remove any duplicate button that might exist in the notes header
+        try { const existingNotesBtn = document.querySelector('#modal-notes ~ div #modal-activity-log-btn'); if (existingNotesBtn) existingNotesBtn.remove(); } catch (e) {}
+
+      } else {
+        const possibleLabel = ta.previousElementSibling && ta.previousElementSibling.tagName && ta.previousElementSibling.tagName.toLowerCase() === 'label' ? ta.previousElementSibling : null;
+        if (possibleLabel) {
+          if (!possibleLabel.dataset.notesHeaderWrapped) {
+            const wrapper = document.createElement('div');
+            wrapper.style.display = 'flex';
+            wrapper.style.justifyContent = 'space-between';
+            wrapper.style.alignItems = 'center';
+            wrapper.style.marginBottom = '8px';
+            possibleLabel.parentNode.replaceChild(wrapper, possibleLabel);
+            wrapper.appendChild(possibleLabel);
+
+            const actBtn = document.createElement('button');
+            actBtn.id = 'modal-activity-log-btn';
+            actBtn.type = 'button';
+            actBtn.textContent = 'Activity Log';
+            actBtn.title = 'Activity Log';
+            // Use classes similar to after-sale referral button but grey and with a visible border
+            actBtn.className = 'bg-gray-500 hover:bg-gray-600 text-white text-sm font-medium py-1 px-3 rounded-lg transition-colors border border-gray-400';
+            actBtn.style.boxSizing = 'border-box';
+            actBtn.dataset.dealId = dealIdForFu;
+            actBtn.onclick = (ev) => { ev.stopPropagation(); openDealLogs && openDealLogs(dealIdForFu); };
+            wrapper.appendChild(actBtn);
+            possibleLabel.dataset.notesHeaderWrapped = '1';
+          } else {
+            const existing = document.getElementById('modal-activity-log-btn');
+            if (existing) existing.dataset.dealId = dealIdForFu;
+          }
         }
       }
     }
@@ -4894,15 +5053,10 @@ function renderFollowUps() {
     // Render follow-ups into the inner area below the feedback widget
     target.classList.remove('hidden');
     target.classList.add('p-6');
-    const followupsHtml = todayFollowUps.map(f => {
+    const followupsHtml = todayFollowUps.map((f, idx) => {
         // Compose display time (followup_time may be null)
-        let time = 'All day';
-        try {
-          if (f.followup_time) {
-            const t = new Date(`${f.followup_date}T${f.followup_time}`);
-            if (!isNaN(t)) time = t.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-          }
-        } catch (e) { }
+        // replace 'All day' text with a numeric todo-style badge
+        const numberBadge = idx + 1;
 
         // Text fields
         const title = f.title || f.followup_title || 'Follow up';
@@ -4911,8 +5065,8 @@ function renderFollowUps() {
         return `
       <div class="followup-card p-4 bg-bg-dark rounded-lg border-2 border-border-dark mb-4 flex justify-between items-center shadow-lg hover:bg-bg-card transition-all cursor-pointer" data-fu-id="${f.followup_id}">
         <div class="min-w-0">
-          <div class="flex items-center gap-3">
-            <span class="font-bold text-blue-400 mr-2">${time}</span>
+            <div class="flex items-center gap-3">
+            <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-600 text-white font-bold mr-2">${numberBadge}</span>
             <span class="text-white font-semibold truncate">${escapeHtml(title)}</span>
           </div>
           <div class="text-white/60 text-sm mt-1 truncate">${escapeHtml(notes)}</div>
@@ -4930,24 +5084,15 @@ function renderFollowUps() {
 
   // attach action listeners only within the followups area
   // Button handler: stop propagation to avoid double-firing when card is clicked
-  target.querySelectorAll('.followup-action-btn').forEach(btn => {
+    target.querySelectorAll('.followup-action-btn').forEach(btn => {
     if (btn.dataset.action === 'complete-followup') {
-      btn.addEventListener('click', async (e) => {
+      // When user clicks the Complete button in the Today's list, open the follow-up modal
+      // (same behavior as clicking the whole card) so they can confirm / send WhatsApp, etc.
+      btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const fuId = parseInt(e.currentTarget.dataset.fuId, 10);
-        console.debug('[DEBUG] complete followup button clicked', { fuId });
-        // disable to avoid double-clicks
-        e.currentTarget.disabled = true;
-        e.currentTarget.textContent = 'Completing...';
-        // find card element
-        const card = e.currentTarget.closest('.followup-card');
-        try {
-          await completeFollowUpAnimated(fuId, card);
-        } catch (err) {
-          console.error('Failed to complete follow-up', err);
-          e.currentTarget.disabled = false;
-          e.currentTarget.textContent = 'Complete';
-        }
+        console.debug('[DEBUG] complete followup button clicked - opening modal instead', { fuId });
+        handleFollowUpClick(fuId, 'followUpItem', e);
       });
     } else {
       btn.addEventListener('click', (e) => {
@@ -5863,7 +6008,7 @@ function attachEventListeners() {
     closeModal('follow-up-modal');
     openModal('call-log-modal');
   });
-  document.getElementById('whatsapp-btn')?.addEventListener('click', () => {
+  document.getElementById('whatsapp-btn')?.addEventListener('click', async () => {
   if (!selectedFollowUp) return;
   // ✅ AI Context for Follow-Up (preserve referral/review if already set)
   window.currentWhatsAppContext = window.currentWhatsAppContext || {};
@@ -5877,6 +6022,15 @@ function attachEventListeners() {
     last_interaction: selectedFollowUp.lastUpdate || null,
     deal_stage: selectedFollowUp.stage || null
   });
+  // Ensure AI sees the follow-up/system notes as the contact_notes field so
+  // the AI suggestion uses the system template (these are shown in the
+  // follow-up modal as 'system notes'). This value is ephemeral and will
+  // not overwrite persisted contact notes unless the user saves them.
+  try {
+    const modalNotesValue = document.getElementById('modal-notes')?.value || selectedFollowUp.message_prompt || '';
+    window.currentWhatsAppContext.contact_notes = modalNotesValue;
+    window.currentWhatsAppContext.notes_source = 'system';
+  } catch (e) { /* ignore */ }
   
   // Prefill WhatsApp modal subject/message depending on follow-up type
   const waTo = document.getElementById('whatsapp-to');
@@ -5895,13 +6049,91 @@ function attachEventListeners() {
     } else {
       if (waMsg) waMsg.value = '';
     }
+    // If a template was selected in the follow-up modal, carry it over to WhatsApp subject
+    const selTpl = window.currentWhatsAppContext && window.currentWhatsAppContext.selected_template;
+    if (selTpl) {
+      if (selTpl === 'ai_follow_up') {
+        if (waSubject) waSubject.value = window.currentWhatsAppContext.ai_title || waSubject.value || 'AI Follow Up';
+      } else {
+        // for manual template, leave subject as-is or 'Custom'
+        if (waSubject && (!waSubject.value || waSubject.value === '')) waSubject.value = 'Custom';
+      }
+    }
   } catch (e) { /* ignore UI prefilling errors */ }
 document.getElementById('ai-assist-btn')?.addEventListener('click', async () => {
   await handleAIWhatsAppAssist();
 });
+  // If an AI-authored message exists for this follow-up, use it; otherwise request an AI draft
+  try {
+    const aiMsg = window.currentWhatsAppContext && window.currentWhatsAppContext.ai_message;
+    if (aiMsg) {
+      if (waMsg) waMsg.value = aiMsg;
+    } else {
+      try { await handleAIWhatsAppAssist(); } catch (e) { console.warn('AI Assist initial generation failed', e); }
+    }
+  } catch (e) { console.warn('WhatsApp prefill: failed to apply AI message', e); }
+
   // Show the saved notes (read-only) inside the WhatsApp modal so user can reference them
   const modalNotes = document.getElementById('modal-notes')?.value;
   updateWhatsAppNotesDisplay(modalNotes || '');
+
+  // If this WhatsApp modal was opened from Today's follow-ups, show the 'Why this follow-up' block
+  try {
+    const openedFrom = window.currentWhatsAppContext && window.currentWhatsAppContext.openedFrom;
+    const waWhy = document.getElementById('whatsapp-why-followup');
+    const waWhyText = document.getElementById('whatsapp-why-text');
+    if (openedFrom === 'followups_today') {
+      if (waWhy && waWhyText) {
+        // Prefer AI system note if available
+        waWhyText.textContent = window.currentWhatsAppContext?.ai_system_note || window.currentWhatsAppContext?.contact_notes || modalNotes || '';
+        waWhy.classList.remove('hidden');
+      }
+
+      // Hide the top subject/template selector and instead show a template selector after the notes
+      try { document.getElementById('whatsapp-subject-wrapper')?.classList.add('hidden'); } catch (e) {}
+
+      // Ensure the notes display exists and then insert a template selector after it
+      try {
+        const notesDisplay = document.getElementById('whatsapp-modal-notes-display');
+        // create template block if missing
+        let tplBlock = document.getElementById('whatsapp-template-after-notes');
+        if (!tplBlock) {
+          tplBlock = document.createElement('div');
+          tplBlock.id = 'whatsapp-template-after-notes';
+          tplBlock.className = 'mb-4';
+          tplBlock.innerHTML = `
+            <label class="block text-sm font-medium text-white/70 mb-1">Template:</label>
+            <select id="whatsapp-template-select" class="w-full bg-bg-dark border border-border-dark rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+              <option value="ai_follow_up">AI Follow Up</option>
+              <option value="manual">Manual</option>
+              <option value="custom">Custom</option>
+            </select>
+          `;
+        }
+        if (notesDisplay && notesDisplay.parentNode) {
+          // insert after notes display
+          if (!document.getElementById('whatsapp-template-after-notes')) notesDisplay.parentNode.insertBefore(tplBlock, notesDisplay.nextSibling);
+        } else {
+          // fallback: insert before message body container
+          const messageBody = document.getElementById('whatsapp-message-body');
+          if (messageBody && messageBody.closest('div') && !document.getElementById('whatsapp-template-after-notes')) messageBody.closest('div').parentNode.insertBefore(tplBlock, messageBody.closest('div'));
+        }
+
+        // set selected value from context if present
+        try {
+          const sel = document.getElementById('whatsapp-template-select');
+          if (sel && window.currentWhatsAppContext && window.currentWhatsAppContext.selected_template) sel.value = window.currentWhatsAppContext.selected_template;
+          if (sel && !sel._listenerAttached) { sel.addEventListener('change', (ev) => { window.currentWhatsAppContext = window.currentWhatsAppContext || {}; window.currentWhatsAppContext.selected_template = ev.target.value; }); sel._listenerAttached = true; }
+        } catch (e) {}
+      } catch (e) { /* ignore */ }
+
+    } else {
+      if (waWhy) waWhy.classList.add('hidden');
+      try { document.getElementById('whatsapp-subject-wrapper')?.classList.remove('hidden'); } catch (e) {}
+      // remove template-after-notes if present
+      try { const existingTpl = document.getElementById('whatsapp-template-after-notes'); existingTpl && existingTpl.remove(); } catch (e) {}
+    }
+  } catch (e) { /* ignore */ }
 
   // Ensure WhatsApp modal stacks above After Sale modal when opened from follow-up
   try {
@@ -6071,9 +6303,34 @@ document.getElementById('send-whatsapp-btn')?.addEventListener('click', async ()
     }
 
     // 2) Mark follow-up complete when this action originated from a follow-up
-    if (selectedFollowUp && selectedFollowUp.id) {
-      await completeFollowUp(selectedFollowUp.id);
-    }
+    // If this WhatsApp was opened from the Follow Ups Today list, animate the card out
+    try {
+      const openedFrom = window.currentWhatsAppContext && window.currentWhatsAppContext.openedFrom;
+      const fuIdForCard = ctx?.followup_id || ctx?.id || ctx?.followupId || null;
+      if (openedFrom === 'followups_today' && fuIdForCard) {
+        // find the card element in the follow-ups list
+        const card = document.querySelector(`.followup-card[data-fu-id="${fuIdForCard}"]`);
+        if (card) {
+          // Mark visually as completed
+          try {
+            const titleEl = card.querySelector('.text-white.font-semibold');
+            if (titleEl) titleEl.textContent = `${titleEl.textContent} — Completed!`;
+          } catch (e) { /* ignore */ }
+
+          // Slide out after 1 second to give the user feedback
+          setTimeout(() => {
+            try { completeFollowUpAnimated(fuIdForCard, card); } catch (e) { console.error(e); }
+          }, 1000);
+        } else {
+          // Fallback: mark via normal complete
+          if (selectedFollowUp && selectedFollowUp.id) await completeFollowUp(selectedFollowUp.id);
+        }
+      } else {
+        if (selectedFollowUp && selectedFollowUp.id) {
+          await completeFollowUp(selectedFollowUp.id);
+        }
+      }
+    } catch (e) { console.debug('Error completing follow-up after WhatsApp send', e); }
 
     // 3) Open WhatsApp using fast → fallback → copy
     await openWhatsAppWithFallback(contactPhone, message);
@@ -6669,6 +6926,19 @@ function closeModal(modalId) {
   m.classList.add('hidden');
   try { m.style.display = 'none'; } catch (e) {}
   console.log('[DEBUG] closeModal called for', modalId);
+  try {
+    // Cleanup today's-only UI and ephemeral context when follow-up or whatsapp modals close
+    if (modalId === 'follow-up-modal' || modalId === 'whatsapp-modal' || modalId === 'whatsapp-reminder-modal') {
+      try { document.getElementById('followup-today-why')?.classList.add('hidden'); } catch (e) {}
+      try { document.getElementById('followup-today-template')?.classList.add('hidden'); } catch (e) {}
+      try { document.getElementById('whatsapp-why-followup')?.classList.add('hidden'); } catch (e) {}
+      try { document.getElementById('modal-notes')?.classList.remove('hidden'); } catch (e) {}
+      try { document.getElementById('modal-notes-label')?.classList.remove('hidden'); } catch (e) {}
+      if (window.currentWhatsAppContext) {
+        try { window.currentWhatsAppContext.openedFrom = null; } catch (e) {}
+      }
+    }
+  } catch (e) { /* ignore cleanup errors */ }
 }
 
 // -------------------------------------------------------------------
@@ -7201,6 +7471,7 @@ function openAskForReferralModal(customer) {
     // Set the shared WhatsApp/AI context so downstream flows know this is a referral
     window.currentWhatsAppContext = window.currentWhatsAppContext || {};
     window.currentWhatsAppContext.type = 'referral';
+    window.currentWhatsAppContext.openedFrom = null;
     window.currentWhatsAppContext.contact_id = customer.id || null;
     window.currentWhatsAppContext.contact_name = customer.name || '';
     window.currentWhatsAppContext.business_id = BUSINESS_ID || null;
@@ -7257,6 +7528,7 @@ function openAskForReviewModal(customer) {
 
     window.currentWhatsAppContext = window.currentWhatsAppContext || {};
     window.currentWhatsAppContext.type = 'review';
+    window.currentWhatsAppContext.openedFrom = null;
     window.currentWhatsAppContext.contact_id = customer.id || null;
     window.currentWhatsAppContext.contact_name = customer.name || '';
     window.currentWhatsAppContext.business_id = BUSINESS_ID || null;

@@ -1686,7 +1686,8 @@
             <div class="absolute inset-0 flex items-center justify-center p-4">
                 <div id="follow-up-modal-content" class="bg-bg-card rounded-2xl border border-border-dark max-w-xl w-full p-6 card-animate">
                     <h2 id="modal-title" class="text-2xl font-bold mb-4">Follow Up with [Contact Name]</h2>
-                    
+                    <!-- (Follow-up 'why' and template shown conditionally; moved below amount block) -->
+
                     <div class="flex justify-between items-center text-center mb-4 p-3 bg-bg-dark rounded-lg border border-border-dark">
                         <div>
                             <p class="text-sm font-medium text-white/70">Close Date</p>
@@ -1700,7 +1701,21 @@
                         </div>
                     </div>
 
-                    <label class="block text-sm font-medium text-white/70 mb-2">Notes (Editable):</label>
+                    <!-- Follow-ups Today: Why & Template (appear before notes when present) -->
+                    <div id="followup-today-why" class="hidden mb-4">
+                        <label class="block text-sm font-medium text-white/70 mb-1">Why this follow-up?</label>
+                        <div id="followup-today-why-text" class="text-sm text-white/70 bg-bg-dark border border-border-dark rounded-lg p-3"></div>
+                    </div>
+
+                    <div id="followup-today-template" class="hidden mb-4">
+                        <label class="block text-sm font-medium text-white/70 mb-1">Template (AI)</label>
+                        <select id="followup-template-select" class="w-full bg-bg-dark border border-border-dark rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            <option value="ai_follow_up">AI Follow Up</option>
+                            <option value="manual_follow_up">Manual Template</option>
+                        </select>
+                    </div>
+
+                    <label id="modal-notes-label" class="block text-sm font-medium text-white/70 mb-2">Notes (Editable):</label>
                     <textarea id="modal-notes" rows="3" class="w-full bg-bg-dark border border-border-dark rounded-lg p-3 text-white focus:outline-none focus:ring-1 focus:ring-blue-500 mb-6"></textarea>
                     
                     <div class="flex justify-between space-x-4">
@@ -1898,7 +1913,7 @@
                         <input type="text" id="whatsapp-to" readonly class="w-full bg-bg-dark border border-border-dark rounded-lg p-2 text-white/80" value="254712345678">
                     </div>
 
-                    <div class="mb-4">
+                    <div class="mb-4" id="whatsapp-subject-wrapper">
                         <label class="block text-sm font-medium text-white/70 mb-1">Subject / Template:</label>
                         <select id="whatsapp-subject" class="w-full bg-bg-dark border border-border-dark rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-blue-500">
                             <option value="New Offer Alert" class="bg-bg-dark">New Offer Alert</option>
@@ -1908,6 +1923,15 @@
                         </select>
                     </div>
 
+                    <!-- Why this follow-up (only shown when WhatsApp is opened from Today's follow-ups) -->
+                    <div id="whatsapp-why-followup" class="hidden mb-4">
+                        <label class="block text-sm font-medium text-white/70 mb-1">Why this follow-up?</label>
+                        <div id="whatsapp-why-text" class="text-sm text-white/70 bg-bg-dark border border-border-dark rounded-lg p-3">System notes will appear here when opened from Today's follow-ups.</div>
+                    </div>
+
+                    <!-- Notes display will be injected here by updateWhatsAppNotesDisplay() -->
+
+                    <!-- Message Body: AI draft area -->
                     <label class="block text-sm font-medium text-white/70 mb-2">Message Body:</label>
                     <div class="relative mb-6">
                         <textarea id="whatsapp-message-body" rows="6" class="w-full bg-bg-dark border border-border-dark rounded-lg p-3 pt-8 text-white focus:outline-none focus:ring-1 focus:ring-blue-500" placeholder="type your message here or let AI help you"></textarea>
