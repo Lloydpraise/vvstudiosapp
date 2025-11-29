@@ -479,6 +479,14 @@
                 popup.querySelector('#pm-close').addEventListener('click', () => popup.remove());
 
                 const stepEl = popup.querySelector('#pm-step');
+                function getBusinessName(){
+                    try{
+                        const raw = localStorage.getItem('vvUser') || localStorage.getItem('user') || localStorage.getItem('business') || localStorage.getItem('businessName');
+                        if (!raw) return '';
+                        const u = JSON.parse(raw);
+                        return u.business_name || u.business || u.name || u['business name'] || u.businessName || '';
+                    }catch(e){ return ''; }
+                }
 
                 // Visual selection helper
                 function setSelection(method) {
@@ -504,12 +512,21 @@
                     setTimeout(() => {
                         const paid = popup.querySelector('#pm-paid');
                         if (paid) paid.addEventListener('click', () => {
+                            // Save purchase locally
+                            try { localStorage.setItem('purchasePlan', JSON.stringify({ plan: planName, amount, method: 'MPESA' })); } catch (e) {}
+
+                            // Send whatsapp deep link to admin
+                            const business = getBusinessName();
+                            const text = encodeURIComponent(`Hello Lloyd. I have Paid KES ${fmtNum(amount)} for ${planName} for ${business} please confirm. thank you.`);
+                            const wa = `whatsapp://send?phone=254789254864&text=${text}`;
+                            const webWa = `https://wa.me/254789254864?text=${text}`;
+                            try { window.location.href = wa; } catch (e) { window.location.href = webWa; }
+
                             stepEl.innerHTML = `
                                 <p class="text-white/80 mb-4 text-center">Thank you. Payment will be confirmed shortly.</p>
                                 <div class="flex"><button id="pm-done" class="w-full bg-blue-600 text-white py-2 px-4 rounded-xl">Continue</button></div>
                             `;
                             popup.querySelector('#pm-done').addEventListener('click', () => {
-                                try { localStorage.setItem('purchasePlan', JSON.stringify({ plan: planName, amount, method: 'MPESA' })); } catch (e) {}
                                 popup.remove();
                                 window.location.href = 'index.html';
                             });
@@ -550,6 +567,11 @@
                                 const paid2 = popup.querySelector('#pm-paid2');
                                 if (paid2) paid2.addEventListener('click', () => {
                                     try { localStorage.setItem('purchasePlan', JSON.stringify({ plan: planName, amount, method: 'MPESA' })); } catch (e) {}
+                                    const business = getBusinessName();
+                                    const text2 = encodeURIComponent(`Hello Lloyd. I have Paid KES ${fmtNum(amount)} for ${planName} for ${business} please confirm. thank you.`);
+                                    const wa2 = `whatsapp://send?phone=254789254864&text=${text2}`;
+                                    const webWa2 = `https://wa.me/254789254864?text=${text2}`;
+                                    try { window.location.href = wa2; } catch (e) { window.location.href = webWa2; }
                                     popup.remove();
                                     window.location.href = 'index.html';
                                 });

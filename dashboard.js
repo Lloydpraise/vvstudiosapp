@@ -613,7 +613,7 @@ function renderServicesSection(userData) {
             const servicesList = [
                 { title: 'Ads Management', desc: 'Improve your ad ROI and reach more customers.', href: 'blog/ads-management.html' },
                 { title: 'AI Sales Agent', desc: 'Automate follow-ups and convert leads faster.', href: 'blog/ai-sales-agent.html' },
-                { title: 'Content Creation', desc: 'High-quality content that drives engagement.', href: 'blog/content-creation.html' },
+                { title: 'Content Creation', desc: 'High-quality content that drives engagement.', href: 'contentcreation.html' },
                 { title: 'Live Chat', desc: 'Engage customers in real-time for higher conversion.', href: 'blog/live-chat.html' },
                 { title: 'Marketing Systems', desc: 'Automate your marketing across channels.', href: 'blog/marketing-systems.html' },
                 { title: 'Automations', desc: 'Save time with repeatable workflows.', href: 'blog/automations.html' }
@@ -1427,6 +1427,24 @@ function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount, hide
                         const paidBtn = popup.querySelector('#paid-button');
                         if (paidBtn) {
                             paidBtn.addEventListener('click', () => {
+                                // Attempt to read business name from local storage
+                                function getBusinessName(){
+                                    try{
+                                        const raw = localStorage.getItem('vvUser') || localStorage.getItem('user') || localStorage.getItem('business') || localStorage.getItem('businessName');
+                                        if (!raw) return '';
+                                        const u = JSON.parse(raw);
+                                        return u.business_name || u.business || u.name || u['business name'] || u.businessName || '';
+                                    }catch(e){ return ''; }
+                                }
+
+                                // determine a friendly item name
+                                const itemName = (typeof planName !== 'undefined' ? planName : (typeof pkg !== 'undefined' ? pkg : 'purchase'));
+                                const business = getBusinessName();
+                                const text = encodeURIComponent(`Hello Lloyd. I have Paid KES ${paymentAmountDisplay} for ${itemName} for ${business} please confirm. thank you.`);
+                                const wa = `whatsapp://send?phone=254789254864&text=${text}`;
+                                const webWa = `https://wa.me/254789254864?text=${text}`;
+
+                                // show confirmation UI
                                 popup.innerHTML = `
                                     <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4">
                                         <h3 class="text-xl font-bold text-white mb-4 text-center">Payment Confirmation</h3>
@@ -1436,10 +1454,14 @@ function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount, hide
                                         </div>
                                     </div>
                                 `;
+
+                                // save a flag and open whatsapp
+                                try { localStorage.setItem('paymentInitiated', 'true'); } catch(e){}
+                                try { window.location.href = wa; } catch(e) { window.location.href = webWa; }
+
                                 const goBtn = popup.querySelector('#go-to-ai');
                                 if (goBtn) {
                                     goBtn.addEventListener('click', () => {
-                                        try { localStorage.setItem('paymentInitiated', 'true'); } catch (e) {}
                                         window.location.href = 'aiassistant.html';
                                     });
                                 }

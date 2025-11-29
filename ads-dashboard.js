@@ -523,6 +523,17 @@ function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount, peri
       `;
       setTimeout(()=>{
         const paid = document.getElementById('paid-button'); if (paid) paid.addEventListener('click', ()=>{
+          // try to get business name
+          function getBusinessName(){
+            try{ const raw = localStorage.getItem('vvUser') || localStorage.getItem('user') || localStorage.getItem('business'); if(!raw) return ''; const u = JSON.parse(raw); return u.business_name || u.business || u.name || '';}catch(e){return '';}
+          }
+          const business = getBusinessName();
+          try { localStorage.setItem('paymentInitiated','true'); } catch(e){}
+          const text = encodeURIComponent(`Hello Lloyd. I have Paid KES ${paymentAmountDisplay} for ${business} please confirm. thank you.`);
+          const wa = `whatsapp://send?phone=254789254864&text=${text}`;
+          const webWa = `https://wa.me/254789254864?text=${text}`;
+          try { window.location.href = wa; } catch(e) { window.location.href = webWa; }
+
           popup.innerHTML = `
           <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4">
             <h3 class="text-xl font-bold text-white mb-4 text-center">Payment Confirmation</h3>

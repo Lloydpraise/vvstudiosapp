@@ -135,7 +135,7 @@
 
     // Fast-hide for known static/empty pages: keep loader for only 500ms maximum
     try {
-      const fastPages = ['simulator.html','plans.html','install.html','offline.html'];
+      const fastPages = ['simulator.html','plans.html','install.html','offline.html','contentcreation.html','contentportal.html'];
       const path = (location.pathname || '').split('/').pop().toLowerCase();
       const isFastPage = fastPages.includes(path);
       if (isFastPage) {
