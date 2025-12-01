@@ -309,6 +309,263 @@
                 </button>
             </div>
 
+            <script>
+                // Update card buttons based on onboarding_view flags (audit, offer)
+                document.addEventListener('DOMContentLoaded', async function(){
+                    try {
+                        // Prefer BUSINESS_ID from crm.js if present
+                        const businessId = (typeof BUSINESS_ID !== 'undefined' && BUSINESS_ID) ? BUSINESS_ID : (localStorage.getItem('business_id') || (JSON.parse(localStorage.getItem('vvUser')||'{}').business_id));
+                        if (!businessId) return;
+
+                        // Ensure we have a Supabase client available; create a short-lived client if needed
+                        const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
+                        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
+
+                        let svcClient = null;
+                        if (window.client) svcClient = window.client;
+                        else if (window.supabase && typeof window.supabase.createClient === 'function') {
+                            try { svcClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch(e){ svcClient = null; }
+                        }
+                        if (!svcClient) { console.warn('No Supabase client available; skipping package card updates.'); return; }
+
+                        const { data, error } = await svcClient.from('onboarding_view').select('*').eq('business_id', businessId).maybeSingle();
+                        if (error) { console.warn('Could not load onboarding_view', error); return; }
+                        if (!data) return;
+
+                        // Audit button: Show "View" if completed, otherwise "Start"
+                        try {
+                            const auditBtn = document.getElementById('pkg-audit-btn');
+                            if (data.audit_complete) {
+                                if (auditBtn) {
+                                    auditBtn.innerText = 'View';
+                                    auditBtn.classList.remove('bg-orange-600');
+                                    auditBtn.classList.add('bg-blue-600','hover:bg-blue-500');
+                                }
+                            } else {
+                                if (auditBtn) {
+                                    auditBtn.innerText = 'Start';
+                                    auditBtn.classList.remove('bg-blue-600');
+                                    auditBtn.classList.add('bg-orange-600','hover:bg-orange-500');
+                                }
+                            }
+                        } catch (e) { console.warn('Failed to update audit button', e); }
+
+                        // Offers subheading
+                        try {
+                            const offerSub = document.getElementById('pkg-offer-sub');
+                            if (data.offer_complete) {
+                                if (offerSub) offerSub.innerText = 'Create Your Next Big Offer';
+                            } else {
+                                if (offerSub) offerSub.innerText = 'Create your first offer';
+                            }
+                        } catch (e) { console.warn('Failed to update offers subheading', e); }
+
+                        // Profile button remains "Edit" (opens modal through crm.js). No further action required.
+
+                    } catch (err) {
+                        console.warn('Error initialising package cards', err);
+                    }
+                });
+            </script>
+
+            <script>
+                // Business Profile: open modal, load/save using crm.js helpers if present,
+                // otherwise fall back to localStorage. Also include unsaved-changes confirm modal.
+                (function(){
+                    function getVVUser(){ try { return JSON.parse(localStorage.getItem('vvUser')||'{}'); } catch(e){ return {}; } }
+                    function saveVVUser(u){ try { localStorage.setItem('vvUser', JSON.stringify(u)); return true; } catch(e){ console.warn('saveVVUser failed', e); return false; } }
+
+                    // Small snapshot utilities (mirrors crm.js behaviour)
+                    let businessProfileSnapshot = null;
+                    function captureBusinessProfileSnapshot(){
+                        try {
+                            return {
+                                business_name: document.getElementById('bp-business-name')?.value || '',
+                                industry: document.getElementById('bp-industry')?.value || '',
+                                location: document.getElementById('bp-location')?.value || '',
+                                tagline: document.getElementById('bp-tagline')?.value || '',
+                                short_description: document.getElementById('bp-short-desc')?.value || '',
+                                long_description: document.getElementById('bp-long-desc')?.value || '',
+                                target_audience: document.getElementById('bp-target-audience')?.value || '',
+                                unique_value: document.getElementById('bp-unique-value')?.value || '',
+                                main_offer: document.getElementById('bp-main-offer')?.value || '',
+                                secondary_offers: document.getElementById('bp-secondary-offers')?.value || '',
+                                tone_of_voice: document.getElementById('bp-tone-of-voice')?.value || '',
+                                website: document.getElementById('bp-website')?.value || '',
+                                facebook: document.getElementById('bp-facebook')?.value || '',
+                                instagram: document.getElementById('bp-instagram')?.value || '',
+                                twitter: document.getElementById('bp-twitter')?.value || ''
+                            };
+                        } catch(e){ return null; }
+                    }
+                    function isBusinessProfileDirty(){
+                        try {
+                            if (!businessProfileSnapshot) return false;
+                            const cur = captureBusinessProfileSnapshot();
+                            for (const k of Object.keys(businessProfileSnapshot)){
+                                const a = businessProfileSnapshot[k]||'';
+                                const b = cur[k]||'';
+                                if (a !== b) return true;
+                            }
+                            return false;
+                        } catch(e){ return false; }
+                    }
+                    function resetBusinessProfileToSnapshot(){
+                        try {
+                            if (!businessProfileSnapshot) return;
+                            const s = businessProfileSnapshot;
+                            document.getElementById('bp-business-name') && (document.getElementById('bp-business-name').value = s.business_name || '');
+                            document.getElementById('bp-industry') && (document.getElementById('bp-industry').value = s.industry || '');
+                            document.getElementById('bp-location') && (document.getElementById('bp-location').value = s.location || '');
+                            document.getElementById('bp-tagline') && (document.getElementById('bp-tagline').value = s.tagline || '');
+                            document.getElementById('bp-short-desc') && (document.getElementById('bp-short-desc').value = s.short_description || '');
+                            document.getElementById('bp-long-desc') && (document.getElementById('bp-long-desc').value = s.long_description || '');
+                            document.getElementById('bp-target-audience') && (document.getElementById('bp-target-audience').value = s.target_audience || '');
+                            document.getElementById('bp-unique-value') && (document.getElementById('bp-unique-value').value = s.unique_value || '');
+                            document.getElementById('bp-main-offer') && (document.getElementById('bp-main-offer').value = s.main_offer || '');
+                            document.getElementById('bp-secondary-offers') && (document.getElementById('bp-secondary-offers').value = s.secondary_offers || '');
+                            document.getElementById('bp-tone-of-voice') && (document.getElementById('bp-tone-of-voice').value = s.tone_of_voice || '');
+                            document.getElementById('bp-website') && (document.getElementById('bp-website').value = s.website || '');
+                            document.getElementById('bp-facebook') && (document.getElementById('bp-facebook').value = s.facebook || '');
+                            document.getElementById('bp-instagram') && (document.getElementById('bp-instagram').value = s.instagram || '');
+                            document.getElementById('bp-twitter') && (document.getElementById('bp-twitter').value = s.twitter || '');
+                        } catch(e){}
+                    }
+
+                    document.addEventListener('DOMContentLoaded', function(){
+                        const openBtn = document.getElementById('pkg-bp-edit-btn');
+                        // Use the namespaced modal IDs present in this file
+                        const modal = document.getElementById('indexbusinessprofile-modal');
+                        const form = document.getElementById('indexbusinessprofile-form');
+                        const closeBtns = document.querySelectorAll('[data-modal-close]');
+                        const confirmModal = document.getElementById('indexbusinessprofile-confirm-modal');
+                        const discardBtn = document.getElementById('index-bp-discard-btn');
+                        const confirmSaveBtn = document.getElementById('index-bp-confirm-save-btn');
+
+                        // debug helper: confirm handler attachment in console
+                        console.log('Business profile: openBtn=', !!openBtn, 'modal=', !!modal, 'form=', !!form);
+
+                        async function populateFromBackend(){
+                            // If crm.js provides loadBusinessProfile(), use it (it will populate inputs)
+                            if (typeof loadBusinessProfile === 'function'){
+                                try { await loadBusinessProfile(); return true; } catch(e){ console.warn('loadBusinessProfile failed', e); }
+                            }
+                            return false;
+                        }
+
+                        function populateFromLocal(){
+                            const u = getVVUser();
+                            document.getElementById('bp-business-name').value = u.business_name || u.businessName || '';
+                            document.getElementById('bp-industry').value = u.industry || '';
+                            document.getElementById('bp-location').value = u.location || '';
+                            document.getElementById('bp-tagline').value = u.tagline || '';
+                            document.getElementById('bp-short-desc').value = u.short_description || '';
+                            document.getElementById('bp-long-desc').value = u.long_description || '';
+                            document.getElementById('bp-target-audience').value = u.target_audience || '';
+                            document.getElementById('bp-unique-value').value = u.unique_value || '';
+                            document.getElementById('bp-main-offer').value = u.main_offer || '';
+                            document.getElementById('bp-secondary-offers').value = u.secondary_offers || '';
+                            document.getElementById('bp-tone-of-voice').value = u.tone_of_voice || '';
+                            document.getElementById('bp-website').value = u.website || '';
+                            document.getElementById('bp-facebook').value = u.facebook || '';
+                            document.getElementById('bp-instagram').value = u.instagram || '';
+                            document.getElementById('bp-twitter').value = u.twitter || '';
+                        }
+
+                        async function openModal(e){
+                            if (e) e.preventDefault();
+                            // Prefer backend loader
+                            const ok = await populateFromBackend();
+                            if (!ok) populateFromLocal();
+                            // snapshot for dirty-check
+                            businessProfileSnapshot = captureBusinessProfileSnapshot();
+                            if (modal) modal.classList.remove('hidden');
+                            try { document.body.style.overflow = 'hidden'; } catch(e){}
+                        }
+
+                        function closeModal(){
+                            modal.classList.add('hidden');
+                            try { document.body.style.overflow = ''; } catch(e){}
+                        }
+
+                        // wire open button
+                        if (openBtn) {
+                            openBtn.addEventListener('click', openModal);
+                        }
+                        // close buttons (they use data-modal-close="indexbusinessprofile-modal")
+                        closeBtns.forEach(btn => btn.addEventListener('click', async function(ev){
+                            ev.preventDefault();
+                            if (isBusinessProfileDirty()) {
+                                if (confirmModal) confirmModal.classList.remove('hidden');
+                            } else {
+                                closeModal();
+                            }
+                        }));
+
+                        // backdrop click closes if not dirty
+                        modal && modal.addEventListener('click', function(ev){ if (ev.target === modal) { if (isBusinessProfileDirty()) confirmModal.classList.remove('hidden'); else closeModal(); } });
+
+                        // Confirm modal handlers
+                        discardBtn && discardBtn.addEventListener('click', function(){
+                            resetBusinessProfileToSnapshot();
+                            businessProfileSnapshot = captureBusinessProfileSnapshot();
+                            document.getElementById('indexbusinessprofile-confirm-modal')?.classList.add('hidden');
+                            closeModal();
+                        });
+                        confirmSaveBtn && confirmSaveBtn.addEventListener('click', function(){
+                            // trigger save
+                            document.getElementById('bp-save-btn')?.click();
+                        });
+
+                        // Save handler: prefer backend saveBusinessProfile(), fallback to localStorage
+                        form && form.addEventListener('submit', async function(ev){
+                            ev.preventDefault();
+                            // If crm.js save exists, call it (it reads inputs and upserts)
+                            if (typeof saveBusinessProfile === 'function'){
+                                try { await saveBusinessProfile(ev); } catch(e){ console.warn('saveBusinessProfile failed', e); }
+                            } else {
+                                // fallback: save to localStorage.vvUser
+                                const u = getVVUser();
+                                u.business_name = document.getElementById('bp-business-name')?.value || '';
+                                u.industry = document.getElementById('bp-industry')?.value || '';
+                                u.location = document.getElementById('bp-location')?.value || '';
+                                u.tagline = document.getElementById('bp-tagline')?.value || '';
+                                u.short_description = document.getElementById('bp-short-desc')?.value || '';
+                                u.long_description = document.getElementById('bp-long-desc')?.value || '';
+                                u.target_audience = document.getElementById('bp-target-audience')?.value || '';
+                                u.unique_value = document.getElementById('bp-unique-value')?.value || '';
+                                u.main_offer = document.getElementById('bp-main-offer')?.value || '';
+                                u.secondary_offers = document.getElementById('bp-secondary-offers')?.value || '';
+                                u.tone_of_voice = document.getElementById('bp-tone-of-voice')?.value || '';
+                                u.website = document.getElementById('bp-website')?.value || '';
+                                u.facebook = document.getElementById('bp-facebook')?.value || '';
+                                u.instagram = document.getElementById('bp-instagram')?.value || '';
+                                u.twitter = document.getElementById('bp-twitter')?.value || '';
+                                saveVVUser(u);
+                                // update header if present
+                                try { document.getElementById('businessName').textContent = u.business_name || document.getElementById('businessName').textContent; } catch(e){}
+                            }
+                            // refresh snapshot and close
+                            businessProfileSnapshot = captureBusinessProfileSnapshot();
+                            document.getElementById('indexbusinessprofile-confirm-modal')?.classList.add('hidden');
+                            closeModal();
+                        });
+
+                        // Cancel button: show confirm if dirty
+                        const bpCancel = document.getElementById('bp-cancel-btn');
+                        bpCancel && bpCancel.addEventListener('click', function(ev){
+                            ev.preventDefault();
+                            if (isBusinessProfileDirty()) {
+                                document.getElementById('business-profile-confirm-modal')?.classList.remove('hidden');
+                            } else {
+                                closeModal();
+                            }
+                        });
+
+                    });
+                })();
+            </script>
+
             <!-- Sign Up Modal -->
             <div id="signup-modal" class="fixed inset-0 z-60 flex items-center justify-center bg-black bg-opacity-60 hidden">
                 <div class="bg-[#1a1d23] p-6 md:p-8 rounded-2xl border border-[#2b2f3a] max-w-2xl w-full text-center" style="max-height:90vh; overflow-y:auto;">
@@ -870,6 +1127,48 @@
                 </div>
             </section>
 
+            <!-- Business Profile / Audit / Offer Creator cards (package pages) -->
+            <div id="pkg-business-cards" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] p-6 card-animate flex flex-col h-full justify-between">
+                    <div>
+                        <div class="w-12 h-12 bg-[#10B981]/10 rounded-lg flex items-center justify-center mb-4">
+                            <i class="fa-solid fa-id-card text-green-400 text-xl"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-white mb-1">Business Profile</h3>
+                        <p class="text-white/60 text-sm leading-relaxed">Keep your business details up to date so tools like offers and audits can use them.</p>
+                    </div>
+                    <button id="pkg-bp-edit-btn" class="w-full py-3 mt-4 bg-[#2b2f3a] border border-white/10 hover:bg-white/5 text-white font-bold rounded-xl transition-colors">
+                        Edit
+                    </button>
+                </div>
+
+                <div class="bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] p-6 card-animate flex flex-col h-full justify-between">
+                    <div>
+                        <div class="w-12 h-12 bg-[#F59E0B]/10 rounded-lg flex items-center justify-center mb-4">
+                            <i class="fa-solid fa-list-check text-yellow-400 text-xl"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-white mb-1">Business Audit</h3>
+                        <p id="pkg-audit-sub" class="text-white/60 text-sm leading-relaxed">Run a quick health-check to see where your business can improve.</p>
+                    </div>
+                    <button id="pkg-audit-btn" class="w-full py-3 mt-4 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-xl transition-colors" onclick="window.location.href='audit.html'">
+                        Start
+                    </button>
+                </div>
+
+                <div class="bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] p-6 card-animate flex flex-col h-full justify-between">
+                    <div>
+                        <div class="w-12 h-12 bg-[#7c3aed]/10 rounded-lg flex items-center justify-center mb-4">
+                            <i class="fa-solid fa-tag text-purple-400 text-xl"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-white mb-1">Offer Creator</h3>
+                        <p id="pkg-offer-sub" class="text-white/60 text-sm leading-relaxed">Create your first offer</p>
+                    </div>
+                    <button id="pkg-create-offer-btn" class="w-full py-3 mt-4 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-colors" onclick="window.location.href='crmlanding.html'">
+                        Create
+                    </button>
+                </div>
+            </div>
+
             <!-- About Services + Learning cards (copied from free.html, namespaced) -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-20">
                 <div class="bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] p-6 md:p-8 card-animate flex flex-col h-full justify-between">
@@ -947,6 +1246,147 @@
     </div>
 
     </div> <!-- /#app -->
+    
+    <!-- Index Business Profile Modal (duplicate of CRM modal but namespaced for index) -->
+    <div id="indexbusinessprofile-modal" class="modal-backdrop hidden">
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-bg-card rounded-2xl border border-border-dark max-w-4xl w-full p-6 card-animate max-h-[calc(100vh-4rem)] overflow-hidden flex flex-col" style="box-sizing: border-box;">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-3xl font-bold">Business Profile</h2>
+                    <button class="text-white/50 hover:text-white" data-modal-close="indexbusinessprofile-modal"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <style>
+                    #indexbusinessprofile-modal .overflow-y-auto{ scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.14) transparent; }
+                    #indexbusinessprofile-modal .overflow-y-auto::-webkit-scrollbar{ width:8px; }
+                    #indexbusinessprofile-modal .overflow-y-auto::-webkit-scrollbar-thumb{ background: rgba(255,255,255,0.12); border-radius:8px; }
+                    #indexbusinessprofile-modal .overflow-y-auto::-webkit-scrollbar-track{ background: transparent; }
+                </style>
+
+                <div class="flex-1 overflow-y-auto py-1 pr-4" style="max-height: calc(100vh - 8rem); box-sizing: border-box;">
+                    <form id="indexbusinessprofile-form" class="space-y-4 text-lg">
+                        <div>
+                            <label class="block text-base font-medium text-white">Business name</label>
+                            <p class="text-sm text-white/60 mb-2">What’s the name of your business?</p>
+                            <input id="bp-business-name" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-base font-medium text-white">Industry</label>
+                                <p class="text-sm text-white/60 mb-2">What type of business do you run? (e.g., salon, electronics, real estate)</p>
+                                <input id="bp-industry" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                            </div>
+                            <div>
+                                <label class="block text-base font-medium text-white">Location</label>
+                                <p class="text-sm text-white/60 mb-2">Where are you based?</p>
+                                <input id="bp-location" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-base font-medium text-white">Tagline</label>
+                            <p class="text-sm text-white/60 mb-2">What’s your slogan or short tagline?</p>
+                            <input id="bp-tagline" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                        </div>
+
+                        <div>
+                            <label class="block text-base font-medium text-white">Short description</label>
+                            <p class="text-sm text-white/60 mb-2">Describe your business in one short sentence.</p>
+                            <input id="bp-short-desc" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                        </div>
+
+                        <div>
+                            <label class="block text-base font-medium text-white">Long description</label>
+                            <p class="text-sm text-white/60 mb-2">Describe the problem you're solving and how your product or service is positioned as the solution.</p>
+                            <textarea id="bp-long-desc" rows="5" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-base font-medium text-white">Target audience</label>
+                            <p class="text-sm text-white/60 mb-2">Who are your typical customers?</p>
+                            <input id="bp-target-audience" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                        </div>
+
+                        <div>
+                            <label class="block text-base font-medium text-white">Unique value</label>
+                            <p class="text-sm text-white/60 mb-2">What makes your business different or special?</p>
+                            <input id="bp-unique-value" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-base font-medium text-white">Main offer</label>
+                                <p class="text-sm text-white/60 mb-2">What’s your main product or service?</p>
+                                <input id="bp-main-offer" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                            </div>
+                            <div>
+                                <label class="block text-base font-medium text-white">Secondary offers</label>
+                                <p class="text-sm text-white/60 mb-2">What other related products or services do you offer?</p>
+                                <input id="bp-secondary-offers" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-base font-medium text-white">Tone of voice</label>
+                                <p class="text-sm text-white/60 mb-2">How should your messages sound? (e.g., friendly, expert)</p>
+                                <select id="bp-tone-of-voice" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg">
+                                    <option value="friendly">Friendly</option>
+                                    <option value="expert">Expert</option>
+                                    <option value="casual">Casual</option>
+                                    <option value="playful">Playful</option>
+                                    <option value="formal">Formal</option>
+                                    <option value="energetic">Energetic</option>
+                                    <option value="conversational">Conversational</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-base font-medium text-white">Website & socials</label>
+                            <p class="text-sm text-white/60 mb-2">Share your website or social media links.</p>
+                            <input id="bp-website" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg mb-3" />
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div>
+                                    <label class="block text-sm text-white/70">Facebook</label>
+                                    <input id="bp-facebook" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-white/70">Instagram</label>
+                                    <input id="bp-instagram" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-white/70">X (formerly Twitter)</label>
+                                    <input id="bp-twitter" class="w-full bg-bg-dark border border-border-dark rounded-xl p-3 text-white text-lg" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <button type="submit" id="bp-save-btn" class="w-full bg-main-purple hover:bg-purple-700 text-white font-semibold py-3 rounded-xl mb-3">Save Business Profile</button>
+                            <button type="button" id="bp-cancel-btn" class="w-full text-white/60 hover:text-white py-3">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Index Unsaved changes confirm modal for Business Profile -->
+    <div id="indexbusinessprofile-confirm-modal" class="modal-backdrop hidden">
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-bg-card rounded-2xl border border-border-dark max-w-md w-full p-6 card-animate">
+                <h3 class="text-xl font-bold mb-3">You Have Made Some Changes</h3>
+                <p class="text-white/60 mb-4">Discard your changes or save them?</p>
+                <div class="flex gap-3">
+                    <button id="index-bp-discard-btn" class="flex-1 bg-bg-dark text-white/80 py-3 rounded-lg">Discard</button>
+                    <button id="index-bp-confirm-save-btn" class="flex-1 bg-main-purple text-white py-3 rounded-lg">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <script>
         document.addEventListener("DOMContentLoaded", () => {
     const menuBtn = document.getElementById("mobile-menu-button");
