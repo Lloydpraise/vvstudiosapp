@@ -296,6 +296,7 @@ function updateSubscriptionStatus(userData) {
                 link.classList.remove('text-white/30');
                 link.classList.add('text-white');
                 const existingLock = link.querySelector('.fa-lock'); if (existingLock) existingLock.remove();
+                if (link._lockedHandler) { try { link.removeEventListener('click', link._lockedHandler); } catch (e) {} delete link._lockedHandler; }
                 if (link.dataset.origHref) { link.setAttribute('href', link.dataset.origHref); delete link.dataset.origHref; }
                 if (link.dataset.origOnclick) { link.setAttribute('onclick', link.dataset.origOnclick); delete link.dataset.origOnclick; }
                 return;
@@ -305,6 +306,7 @@ function updateSubscriptionStatus(userData) {
                 link.classList.remove('text-white/30');
                 link.classList.add('text-white');
                 const existingLock = link.querySelector('.fa-lock'); if (existingLock) existingLock.remove();
+                if (link._lockedHandler) { try { link.removeEventListener('click', link._lockedHandler); } catch (e) {} delete link._lockedHandler; }
                 if (link.dataset.origHref) { link.setAttribute('href', link.dataset.origHref); delete link.dataset.origHref; }
                 if (link.dataset.origOnclick) { link.setAttribute('onclick', link.dataset.origOnclick); delete link.dataset.origOnclick; }
                 return;
@@ -315,6 +317,7 @@ function updateSubscriptionStatus(userData) {
                 link.classList.remove('text-white/30');
                 link.classList.add('text-white');
                 const existingLock = link.querySelector('.fa-lock'); if (existingLock) existingLock.remove();
+                if (link._lockedHandler) { try { link.removeEventListener('click', link._lockedHandler); } catch (e) {} delete link._lockedHandler; }
                 if (link.dataset.origHref) { link.setAttribute('href', link.dataset.origHref); delete link.dataset.origHref; }
                 if (link.dataset.origOnclick) { link.setAttribute('onclick', link.dataset.origOnclick); delete link.dataset.origOnclick; }
               } else {
@@ -333,6 +336,29 @@ function updateSubscriptionStatus(userData) {
                   lockIcon.className = 'fa-solid fa-lock w-3 h-3 text-white/30 ml-auto';
                   link.appendChild(lockIcon);
                 }
+                // Add a click handler for locked items so Free users see an upgrade prompt
+                try {
+                  if (!link._lockedHandler) {
+                    const handler = function(e) {
+                      try { e.preventDefault(); e.stopPropagation(); } catch (err) {}
+                      // Determine the minimal package that unlocks this item
+                      const tiers = ['free','growth','pro','premium'];
+                      const tierNames = { free: 'Free', growth: 'Growth', pro: 'Pro', premium: 'Premium' };
+                      let required = 'Premium';
+                      for (const t of tiers) {
+                        const set = allowedFor[t];
+                        if (!set || !(set instanceof Set)) continue;
+                        if (set.has(norm)) { required = tierNames[t]; break; }
+                      }
+                      const itemName = title || (link.textContent || 'this feature').trim();
+                      // Friendly message and open upgrade flow if available
+                      try { alert(`Get ${required} to unlock ${itemName}`); } catch (err) {}
+                      if (window.openUpgradeFlow) window.openUpgradeFlow();
+                    };
+                    link._lockedHandler = handler;
+                    link.addEventListener('click', handler);
+                  }
+                } catch (e) {}
               }
             });
           }

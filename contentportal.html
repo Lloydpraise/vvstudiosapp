@@ -6,7 +6,8 @@
     <meta id="dynamic-viewport" name="viewport" content="width=device-width, initial-scale=0.8, viewport-fit=cover">
     <title>My Content | VV Studios</title>
     
-    <!-- Core Libraries -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -14,98 +15,59 @@
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0f1115; color: white; }
         
-        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background-color: transparent; }
         ::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.1); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.2); }
 
-        /* Animations */
         .fade-in { animation: fadeIn 0.4s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Tab Switcher Animation */
-        .tab-btn {
-            position: relative;
-            transition: color 0.3s;
-            z-index: 10;
-        }
+        .tab-btn { position: relative; transition: color 0.3s; z-index: 10; }
         .tab-indicator {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            height: 100%;
-            background: #2b2f3a;
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 0.75rem;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: absolute; bottom: 0; left: 0; height: 100%;
+            background: #2b2f3a; border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 0.75rem; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 1;
         }
 
-        /* Card Styles */
         .content-card {
             background: linear-gradient(145deg, #1a1d23 0%, #14161a 100%);
-            border: 1px solid #2b2f3a;
-            transition: all 0.3s ease;
+            border: 1px solid #2b2f3a; transition: all 0.3s ease;
         }
         .content-card:hover {
-            transform: translateY(-2px);
-            border-color: rgba(255,255,255,0.1);
+            transform: translateY(-2px); border-color: rgba(255,255,255,0.1);
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
         }
 
         /* Status Badges */
-        .badge-progress { background: rgba(249, 115, 22, 0.15); color: #fb923c; border: 1px solid rgba(249, 115, 22, 0.2); }
+        .badge-progress { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.2); }
         .badge-review { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.2); }
         .badge-completed { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.2); }
-        .badge-sub { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.2); }
 
         /* Progress Steps */
         .step-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background-color: #374151;
-            position: relative;
-            z-index: 2;
+            width: 8px; height: 8px; border-radius: 50%;
+            background-color: #374151; position: relative; z-index: 2;
         }
         .step-dot.active { background-color: #fb923c; box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.1); }
         .step-dot.completed { background-color: #fb923c; }
         .step-line {
-            position: absolute;
-            top: 50%;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background-color: #374151;
-            transform: translateY(-50%);
-            z-index: 1;
+            position: absolute; top: 50%; left: 0; width: 100%; height: 2px;
+            background-color: #374151; transform: translateY(-50%); z-index: 1;
         }
         .step-line-fill {
-            height: 100%;
-            background-color: #fb923c;
-            width: 0%;
-            transition: width 1s ease;
+            height: 100%; background-color: #fb923c; width: 0%; transition: width 1s ease;
         }
 
-        /* Modal */
-        .modal-backdrop {
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
+        .modal-backdrop { opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
         .modal-backdrop.active { opacity: 1; pointer-events: auto; }
-        .modal-content {
-            transform: scale(0.95);
-            transition: transform 0.3s ease;
-        }
+        .modal-content { transform: scale(0.95); transition: transform 0.3s ease; }
         .modal-backdrop.active .modal-content { transform: scale(1); }
-
     </style>
 </head>
 <body class="min-h-screen flex flex-col pb-12">
 
-    <!-- Header -->
     <header class="p-6 flex justify-between items-center max-w-[1400px] mx-auto w-full border-b border-white/5 bg-[#0f1115]/80 backdrop-blur-md sticky top-0 z-40">
         <div class="flex items-center gap-3">
             <a href="contentcreation.html" class="flex items-center gap-2 hover:text-white/80 transition-colors">
@@ -118,20 +80,16 @@
         <div class="flex items-center gap-3">
              <span class="font-bold text-xl tracking-tight text-white">My Content</span>
         </div>
-        <div class="w-8"></div> <!-- Spacer for balance -->
+        <div class="w-8"></div>
     </header>
 
-    <!-- Main Content -->
     <main class="flex-1 w-full max-w-[1000px] mx-auto p-4 md:p-8">
 
-        <!-- Tabs -->
         <div class="flex justify-center mb-8">
             <div class="bg-[#14161a] p-1.5 rounded-xl border border-white/10 relative inline-flex">
-                <!-- Moving Background Indicator -->
                 <div id="tab-indicator" class="tab-indicator w-1/2"></div>
-                
                 <button onclick="switchTab('ordered')" id="tab-ordered" class="tab-btn w-32 md:w-40 py-2.5 text-sm font-semibold text-white text-center rounded-lg relative z-10">
-                    In Progress <span class="bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-full ml-1" id="count-ordered">2</span>
+                    In Progress <span class="bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-full ml-1" id="count-ordered">0</span>
                 </button>
                 <button onclick="switchTab('completed')" id="tab-completed" class="tab-btn w-32 md:w-40 py-2.5 text-sm font-semibold text-white/50 text-center rounded-lg relative z-10 hover:text-white/80">
                     Completed
@@ -139,202 +97,15 @@
             </div>
         </div>
 
-        <!-- SECTION: ORDERED (IN PROGRESS) -->
-        <div id="view-ordered" class="space-y-4 fade-in">
-            
-            <!-- Card 1: Graphic Design (Standard) -->
-            <div class="content-card rounded-2xl p-6 relative overflow-hidden">
-                <!-- Top Row: Title & Status -->
-                <div class="flex justify-between items-start mb-4">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-lg bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
-                            <i class="fa-solid fa-pen-nib text-orange-400 text-xl"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-white text-lg">Marketing Flyer Bundle</h3>
-                            <div class="text-xs text-white/50">Graphic Design • Standard Package</div>
-                        </div>
-                    </div>
-                    <span class="badge-review text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">In Review</span>
-                </div>
+        <div id="view-ordered" class="space-y-4 fade-in min-h-[200px]">
+            <div id="loader-ordered" class="text-center text-white/30 mt-10">Loading orders...</div>
+            <div id="container-ordered"></div> </div>
 
-                <!-- Middle Row: Details -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 text-sm">
-                    <div>
-                        <div class="text-white/40 text-xs mb-1">Ordered On</div>
-                        <div class="text-white font-medium">Nov 28, 2025</div>
-                    </div>
-                    <div>
-                        <div class="text-white/40 text-xs mb-1">Deadline</div>
-                        <div class="text-white font-medium">Dec 01, 2025</div>
-                    </div>
-                    <div>
-                        <div class="text-white/40 text-xs mb-1">Amount Paid</div>
-                        <div class="text-white font-medium">KES 800</div>
-                    </div>
-                    <div>
-                        <div class="text-white/40 text-xs mb-1">Revisions</div>
-                        <button onclick="openRevisionModal('Marketing Flyer Bundle')" class="text-purple-400 hover:text-purple-300 font-medium underline decoration-dashed underline-offset-4">1/2 Used</button>
-                    </div>
-                </div>
-
-                <!-- Bottom Row: Progress -->
-                <div class="bg-[#0f1115] rounded-xl p-4 border border-white/5">
-                    <div class="flex justify-between text-xs text-white/50 mb-3 uppercase tracking-wider font-semibold">
-                        <span>Concept</span>
-                        <span>Draft</span>
-                        <span class="text-purple-400">Review</span>
-                        <span>Final</span>
-                    </div>
-                    <div class="relative h-2 w-full mx-auto">
-                        <div class="step-line"></div>
-                        <div class="step-line-fill w-3/4 bg-purple-500 rounded-full"></div> <!-- 75% width for Review -->
-                        <div class="absolute top-1/2 left-0 transform -translate-y-1/2 -translate-x-1/2 step-dot completed"></div>
-                        <div class="absolute top-1/2 left-1/3 transform -translate-y-1/2 -translate-x-1/2 step-dot completed"></div>
-                        <div class="absolute top-1/2 left-2/3 transform -translate-y-1/2 -translate-x-1/2 step-dot active"></div>
-                        <div class="absolute top-1/2 left-full transform -translate-y-1/2 -translate-x-1/2 step-dot"></div>
-                    </div>
-                    <p class="text-xs text-white/40 mt-3 text-center">
-                        <i class="fa-solid fa-clock mr-1"></i> Awaiting your feedback on Draft v2.
-                    </p>
-                </div>
-            </div>
-
-            <!-- Card 2: Social Media (Subscription) -->
-            <div class="content-card rounded-2xl p-6 relative overflow-hidden">
-                <div class="flex justify-between items-start mb-4">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
-                            <i class="fa-solid fa-hashtag text-blue-400 text-xl"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-white text-lg">Monthly Management</h3>
-                            <div class="text-xs text-white/50">Social Media • Pro Package</div>
-                        </div>
-                    </div>
-                    <span class="badge-sub text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Active</span>
-                </div>
-
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
-                    <div>
-                        <div class="text-white/40 text-xs mb-1">Started</div>
-                        <div class="text-white font-medium">Nov 01, 2025</div>
-                    </div>
-                    <div>
-                        <div class="text-white/40 text-xs mb-1">Renews</div>
-                        <div class="text-white font-medium">Dec 01, 2025</div>
-                    </div>
-                    <div>
-                        <div class="text-white/40 text-xs mb-1">Monthly Fee</div>
-                        <div class="text-white font-medium">KES 10,000</div>
-                    </div>
-                    <div>
-                        <div class="text-white/40 text-xs mb-1">Posts Done</div>
-                        <div class="text-white font-medium">12 / 15 Posts</div>
-                    </div>
-                </div>
-
-                <!-- Monthly Cycle Visual -->
-                <div class="mt-4">
-                    <div class="flex justify-between items-end mb-2">
-                        <span class="text-xs text-blue-400 font-medium">Current Cycle Progress</span>
-                        <span class="text-xs text-white/60">2 days remaining</span>
-                    </div>
-                    <div class="h-2 w-full bg-[#2b2f3a] rounded-full overflow-hidden">
-                        <div class="h-full bg-blue-500 w-[93%] rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- SECTION: COMPLETED -->
-        <div id="view-completed" class="space-y-4 hidden">
-            
-            <!-- Completed Item 1 -->
-            <div class="content-card rounded-2xl p-6 flex flex-col md:flex-row gap-6 items-center">
-                <!-- Preview Thumbnail (Clickable) -->
-                <div class="w-full md:w-48 aspect-video bg-gray-800 rounded-lg relative group cursor-pointer overflow-hidden border border-white/10" onclick="openPreview('assets/logo.png', 'image')">
-                    <img src="https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=400" class="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" alt="Work">
-                    <div class="absolute inset-0 flex items-center justify-center">
-                        <div class="w-10 h-10 bg-black/50 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
-                            <i class="fa-solid fa-eye text-white"></i>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Details -->
-                <div class="flex-1 w-full">
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <h3 class="font-bold text-white text-lg">Holiday Campaign Video</h3>
-                            <div class="text-xs text-white/50">Video Editing • Standard</div>
-                        </div>
-                        <span class="badge-completed text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider"><i class="fa-solid fa-check mr-1"></i> Paid</span>
-                    </div>
-                    
-                    <div class="flex flex-wrap gap-4 text-sm text-white/60 mb-4 mt-2">
-                        <span><i class="fa-regular fa-calendar mr-1"></i> Completed Oct 15</span>
-                        <span><i class="fa-solid fa-tag mr-1"></i> KES 4,000</span>
-                        <button onclick="openFeedbackLog('Holiday Campaign Video')" class="hover:text-white underline decoration-dotted">View Feedback Log</button>
-                    </div>
-
-                    <div class="flex gap-3 mt-auto">
-                        <button class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-rotate-left"></i> Reuse Settings
-                        </button>
-                        <button class="flex-1 bg-green-600 hover:bg-green-500 text-white text-sm font-bold py-2.5 rounded-lg shadow-lg shadow-green-900/20 transition-colors flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-download"></i> Download
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Completed Item 2 -->
-            <div class="content-card rounded-2xl p-6 flex flex-col md:flex-row gap-6 items-center">
-                <!-- Preview Thumbnail -->
-                <div class="w-full md:w-48 aspect-video bg-gray-800 rounded-lg relative group cursor-pointer overflow-hidden border border-white/10" onclick="openPreview('', 'doc')">
-                    <div class="w-full h-full flex items-center justify-center bg-[#2b2f3a]">
-                        <i class="fa-solid fa-file-lines text-4xl text-white/20"></i>
-                    </div>
-                    <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div class="w-10 h-10 bg-black/50 rounded-full flex items-center justify-center backdrop-blur-sm">
-                            <i class="fa-solid fa-eye text-white"></i>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Details -->
-                <div class="flex-1 w-full">
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <h3 class="font-bold text-white text-lg">SEO Blog: "Top 10 Trends"</h3>
-                            <div class="text-xs text-white/50">SEO Content • Basic</div>
-                        </div>
-                        <span class="badge-completed text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider"><i class="fa-solid fa-check mr-1"></i> Paid</span>
-                    </div>
-                    
-                    <div class="flex flex-wrap gap-4 text-sm text-white/60 mb-4 mt-2">
-                        <span><i class="fa-regular fa-calendar mr-1"></i> Completed Sep 20</span>
-                        <span><i class="fa-solid fa-tag mr-1"></i> KES 1,000</span>
-                        <span><i class="fa-solid fa-check-double mr-1"></i> 0 Revisions</span>
-                    </div>
-
-                    <div class="flex gap-3 mt-auto">
-                        <button class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-rotate-left"></i> Reuse Settings
-                        </button>
-                        <button class="flex-1 bg-green-600 hover:bg-green-500 text-white text-sm font-bold py-2.5 rounded-lg shadow-lg shadow-green-900/20 transition-colors flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-download"></i> Download
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-        </div>
+        <div id="view-completed" class="space-y-4 hidden min-h-[200px]">
+            <div id="container-completed"></div> </div>
 
     </main>
 
-    <!-- MODAL: REVISION / FEEDBACK LOG -->
     <div id="modal-revision" class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
         <div class="modal-content bg-[#1a1d23] w-full max-w-md rounded-2xl border border-white/10 overflow-hidden flex flex-col max-h-[80vh]">
             <div class="p-4 border-b border-white/10 flex justify-between items-center bg-[#14161a]">
@@ -342,29 +113,11 @@
                 <button onclick="closeModal('modal-revision')" class="text-white/50 hover:text-white"><i class="fa-solid fa-times"></i></button>
             </div>
             <div class="p-6 overflow-y-auto space-y-6">
-                
-                <!-- Item 1 -->
                 <div class="relative pl-6 border-l border-white/10">
                     <div class="absolute -left-1.5 top-0 w-3 h-3 rounded-full bg-green-500"></div>
-                    <div class="text-xs text-white/40 mb-1">Nov 29, 10:00 AM</div>
-                    <p class="text-sm text-white">Draft V2 submitted by Designer.</p>
+                    <div class="text-xs text-white/40 mb-1">Recent</div>
+                    <p class="text-sm text-white">Order created and requirements submitted.</p>
                 </div>
-
-                <!-- Item 2 -->
-                <div class="relative pl-6 border-l border-white/10">
-                    <div class="absolute -left-1.5 top-0 w-3 h-3 rounded-full bg-purple-500"></div>
-                    <div class="text-xs text-white/40 mb-1">Nov 28, 04:30 PM</div>
-                    <p class="text-sm text-white"><strong>You:</strong> "Please change the background color to a darker shade of navy and make the logo bigger."</p>
-                    <div class="mt-2 p-2 bg-white/5 rounded text-xs text-white/60 italic">1 Revision deducted.</div>
-                </div>
-
-                <!-- Item 3 -->
-                <div class="relative pl-6 border-l border-white/10">
-                    <div class="absolute -left-1.5 top-0 w-3 h-3 rounded-full bg-green-500"></div>
-                    <div class="text-xs text-white/40 mb-1">Nov 28, 09:00 AM</div>
-                    <p class="text-sm text-white">Draft V1 submitted by Designer.</p>
-                </div>
-
             </div>
             <div class="p-4 border-t border-white/10 bg-[#14161a]">
                 <button onclick="closeModal('modal-revision')" class="w-full py-2 bg-white/5 hover:bg-white/10 rounded-lg text-white text-sm">Close</button>
@@ -372,22 +125,210 @@
         </div>
     </div>
 
-    <!-- MODAL: PREVIEW ASSET -->
     <div id="modal-preview" class="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
         <div class="modal-content w-full max-w-3xl rounded-xl overflow-hidden relative">
             <button onclick="closeModal('modal-preview')" class="absolute top-4 right-4 z-10 w-10 h-10 bg-black/50 text-white rounded-full hover:bg-white/20 transition-colors flex items-center justify-center">
                 <i class="fa-solid fa-times"></i>
             </button>
-            
-            <div id="preview-container" class="bg-black flex items-center justify-center min-h-[300px]">
-                <!-- Content injected via JS -->
-            </div>
+            <div id="preview-container" class="bg-black flex items-center justify-center min-h-[300px]"></div>
         </div>
     </div>
 
 
     <script>
-        // Tab Logic
+        // --- 1. SUPABASE CONFIG ---
+        const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // Simulating the logged in business
+        const CURRENT_BUSINESS_ID = 'fortunebooks12';
+
+        // --- 2. FETCH DATA ---
+        async function fetchOrders() {
+            try {
+                // Fetch all orders for this business
+                const { data, error } = await supabase
+                    .from('content_orders')
+                    .select('*')
+                    .eq('business_id', CURRENT_BUSINESS_ID)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                // Split into Pending and Completed
+                const pending = data.filter(item => item.status !== 'completed');
+                const completed = data.filter(item => item.status === 'completed');
+
+                // Update Count Badge
+                document.getElementById('count-ordered').innerText = pending.length;
+                document.getElementById('loader-ordered').style.display = 'none';
+
+                renderPendingCards(pending);
+                renderCompletedCards(completed);
+
+            } catch (err) {
+                console.error("Error:", err);
+                document.getElementById('loader-ordered').innerText = "Error loading orders.";
+            }
+        }
+
+        // --- 3. RENDER FUNCTIONS ---
+
+        function renderPendingCards(items) {
+            const container = document.getElementById('container-ordered');
+            container.innerHTML = '';
+
+            if (items.length === 0) {
+                container.innerHTML = `<div class="text-white/40 text-center py-10">When VVStudios is working on Your Content, progress will be shown here</div>`;
+                return;
+            }
+
+            items.forEach(item => {
+                // Determine Status Badge style
+                let badgeClass = 'badge-progress';
+                let badgeText = 'In Progress';
+                if(item.status === 'review') {
+                    badgeClass = 'badge-review';
+                    badgeText = 'In Review';
+                }
+
+                // Calculate Progress Bar (Step 1-4)
+                const step = item.current_step || 1; 
+                const percentage = (step === 1 ? 15 : step === 2 ? 40 : step === 3 ? 75 : 100);
+                
+                // Helper for dot classes
+                const getDotClass = (dotStep) => {
+                    if (step > dotStep) return 'step-dot completed';
+                    if (step === dotStep) return 'step-dot active';
+                    return 'step-dot';
+                };
+
+                const cardHTML = `
+                <div class="content-card rounded-2xl p-6 relative overflow-hidden">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-lg bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
+                                <i class="fa-solid fa-pen-nib text-orange-400 text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-white text-lg">${item.title}</h3>
+                                <div class="text-xs text-white/50">${item.service_type} • ${item.package_tier}</div>
+                            </div>
+                        </div>
+                        <span class="${badgeClass} text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">${badgeText}</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 text-sm">
+                        <div>
+                            <div class="text-white/40 text-xs mb-1">Ordered On</div>
+                            <div class="text-white font-medium">${new Date(item.created_at).toLocaleDateString()}</div>
+                        </div>
+                        <div>
+                            <div class="text-white/40 text-xs mb-1">Deadline</div>
+                            <div class="text-white font-medium">${item.deadline ? new Date(item.deadline).toLocaleDateString() : 'TBD'}</div>
+                        </div>
+                        <div>
+                            <div class="text-white/40 text-xs mb-1">Price</div>
+                            <div class="text-white font-medium">KES ${item.price}</div>
+                        </div>
+                        <div>
+                            <div class="text-white/40 text-xs mb-1">Revisions</div>
+                            <button onclick="openRevisionModal('${item.title}')" class="text-purple-400 hover:text-purple-300 font-medium underline decoration-dashed underline-offset-4">
+                                ${item.revisions_used}/${item.revisions_total} Used
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#0f1115] rounded-xl p-4 border border-white/5">
+                        <div class="flex justify-between text-xs text-white/50 mb-3 uppercase tracking-wider font-semibold">
+                            <span>Concept</span>
+                            <span>Draft</span>
+                            <span>Review</span>
+                            <span>Final</span>
+                        </div>
+                        <div class="relative h-2 w-full mx-auto">
+                            <div class="step-line"></div>
+                            <div class="step-line-fill bg-purple-500 rounded-full" style="width: ${percentage}%"></div>
+                            <div class="absolute top-1/2 left-0 transform -translate-y-1/2 -translate-x-1/2 ${getDotClass(1)}"></div>
+                            <div class="absolute top-1/2 left-1/3 transform -translate-y-1/2 -translate-x-1/2 ${getDotClass(2)}"></div>
+                            <div class="absolute top-1/2 left-2/3 transform -translate-y-1/2 -translate-x-1/2 ${getDotClass(3)}"></div>
+                            <div class="absolute top-1/2 left-full transform -translate-y-1/2 -translate-x-1/2 ${getDotClass(4)}"></div>
+                        </div>
+                        <p class="text-xs text-white/40 mt-3 text-center">
+                            <i class="fa-solid fa-clock mr-1"></i> Current Stage: Step ${step}
+                        </p>
+                    </div>
+                </div>`;
+                
+                container.innerHTML += cardHTML;
+            });
+        }
+
+        function renderCompletedCards(items) {
+            const container = document.getElementById('container-completed');
+            container.innerHTML = '';
+
+            if (items.length === 0) {
+                container.innerHTML = `<div class="text-white/40 text-center py-10">All your Completed Projects will be shown Here</div>`;
+                return;
+            }
+
+            items.forEach(item => {
+                // Handle thumbnail logic
+                const hasThumb = item.thumbnail_url && item.thumbnail_url.length > 5;
+                const thumbHTML = hasThumb 
+                    ? `<img src="${item.thumbnail_url}" class="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" alt="Work">`
+                    : `<div class="w-full h-full flex items-center justify-center bg-[#2b2f3a]"><i class="fa-solid fa-file-lines text-4xl text-white/20"></i></div>`;
+                
+                // If there's a file URL, set type to video/image based on extension or context (simplified here)
+                const isVideo = item.download_url && item.download_url.endsWith('.mp4');
+                const previewType = isVideo ? 'video' : (item.thumbnail_url ? 'image' : 'doc');
+                const previewSrc = isVideo ? item.download_url : item.thumbnail_url;
+
+                const cardHTML = `
+                <div class="content-card rounded-2xl p-6 flex flex-col md:flex-row gap-6 items-center">
+                    <div class="w-full md:w-48 aspect-video bg-gray-800 rounded-lg relative group cursor-pointer overflow-hidden border border-white/10" 
+                         onclick="openPreview('${previewSrc}', '${previewType}')">
+                        ${thumbHTML}
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <div class="w-10 h-10 bg-black/50 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
+                                <i class="fa-solid fa-eye text-white"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 w-full">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <h3 class="font-bold text-white text-lg">${item.title}</h3>
+                                <div class="text-xs text-white/50">${item.service_type} • ${item.package_tier}</div>
+                            </div>
+                            <span class="badge-completed text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider"><i class="fa-solid fa-check mr-1"></i> Paid</span>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-4 text-sm text-white/60 mb-4 mt-2">
+                            <span><i class="fa-regular fa-calendar mr-1"></i> Completed ${item.completed_at ? new Date(item.completed_at).toLocaleDateString() : 'N/A'}</span>
+                            <span><i class="fa-solid fa-tag mr-1"></i> KES ${item.price}</span>
+                        </div>
+
+                        <div class="flex gap-3 mt-auto">
+                            <button class="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-rotate-left"></i> Re-Order
+                            </button>
+                            <a href="${item.download_url || '#'}" target="_blank" class="flex-1 bg-green-600 hover:bg-green-500 text-white text-sm font-bold py-2.5 rounded-lg shadow-lg shadow-green-900/20 transition-colors flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-download"></i> Download
+                            </a>
+                        </div>
+                    </div>
+                </div>`;
+                
+                container.innerHTML += cardHTML;
+            });
+        }
+
+        // --- 4. VIEW LOGIC (Existing) ---
         const indicator = document.getElementById('tab-indicator');
         const orderedBtn = document.getElementById('tab-ordered');
         const completedBtn = document.getElementById('tab-completed');
@@ -396,33 +337,20 @@
 
         function switchTab(tab) {
             if (tab === 'ordered') {
-                // Move indicator left
                 indicator.style.transform = 'translateX(0)';
-                // Text colors
-                orderedBtn.classList.remove('text-white/50');
-                orderedBtn.classList.add('text-white');
-                completedBtn.classList.remove('text-white');
-                completedBtn.classList.add('text-white/50');
-                // Views
-                orderedView.classList.remove('hidden');
-                orderedView.classList.add('fade-in');
+                orderedBtn.classList.remove('text-white/50'); orderedBtn.classList.add('text-white');
+                completedBtn.classList.remove('text-white'); completedBtn.classList.add('text-white/50');
+                orderedView.classList.remove('hidden'); orderedView.classList.add('fade-in');
                 completedView.classList.add('hidden');
             } else {
-                // Move indicator right (width is 50%, so translate 100% of itself)
                 indicator.style.transform = 'translateX(100%)';
-                // Text colors
-                completedBtn.classList.remove('text-white/50');
-                completedBtn.classList.add('text-white');
-                orderedBtn.classList.remove('text-white');
-                orderedBtn.classList.add('text-white/50');
-                // Views
-                completedView.classList.remove('hidden');
-                completedView.classList.add('fade-in');
+                completedBtn.classList.remove('text-white/50'); completedBtn.classList.add('text-white');
+                orderedBtn.classList.remove('text-white'); orderedBtn.classList.add('text-white/50');
+                completedView.classList.remove('hidden'); completedView.classList.add('fade-in');
                 orderedView.classList.add('hidden');
             }
         }
 
-        // Modal Logic
         function openRevisionModal(title) {
             document.getElementById('rev-modal-title').innerText = title + " - History";
             document.getElementById('modal-revision').classList.add('active');
@@ -430,35 +358,39 @@
 
         function openPreview(src, type) {
             const container = document.getElementById('preview-container');
-            container.innerHTML = ''; // clear
+            container.innerHTML = ''; 
 
-            if (type === 'image') {
+            if (!src || src === 'null' || src === 'undefined') {
+                 container.innerHTML = `<div class="text-center p-10"><p class="text-white">No preview available.</p></div>`;
+            } else if (type === 'image') {
                 const img = document.createElement('img');
                 img.src = src;
                 img.className = "max-h-[80vh] max-w-full object-contain";
                 container.appendChild(img);
+            } else if (type === 'video') {
+                 container.innerHTML = `
+                    <video controls autoplay class="max-h-[80vh] w-full">
+                        <source src="${src}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>`;
             } else {
                 container.innerHTML = `<div class="text-center p-10"><i class="fa-solid fa-file-pdf text-6xl text-white/50 mb-4"></i><p class="text-white">Preview not available for documents.</p></div>`;
             }
             document.getElementById('modal-preview').classList.add('active');
         }
 
-        function openFeedbackLog(title) {
-            // For demo, reusing the revision modal with completed context
-            document.getElementById('rev-modal-title').innerText = title + " - Feedback Log";
-            document.getElementById('modal-revision').classList.add('active');
-        }
-
         function closeModal(id) {
             document.getElementById(id).classList.remove('active');
         }
 
-        // Close on backdrop click
         document.querySelectorAll('.modal-backdrop').forEach(m => {
             m.addEventListener('click', (e) => {
                 if (e.target === m) m.classList.remove('active');
             })
         });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', fetchOrders);
 
     </script>
 </body>

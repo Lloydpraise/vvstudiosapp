@@ -6,7 +6,8 @@
     <meta id="dynamic-viewport" name="viewport" content="width=device-width, initial-scale=0.8, viewport-fit=cover">
     <title>Order Content | VV Studios</title>
     
-    <!-- Core Libraries -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -28,16 +29,13 @@
         .folder-card-container {
             position: relative;
             width: 100%;
-            aspect-ratio: 1 / 1; /* Square card */
+            aspect-ratio: 1 / 1;
             cursor: pointer;
             transition: transform 0.3s ease;
             perspective: 1000px;
         }
-        .folder-card-container:hover {
-            transform: translateY(-5px);
-        }
+        .folder-card-container:hover { transform: translateY(-5px); }
 
-        /* The "files" peeking out */
         .folder-file {
             position: absolute;
             top: 10%;
@@ -52,25 +50,22 @@
             border: 1px solid rgba(255,255,255,0.1);
         }
         
-        /* File Stacking Logic */
         .folder-file:nth-child(1) { transform: rotate(-6deg) translateY(0); z-index: 1; background-color: #2a2d36; }
         .folder-file:nth-child(2) { transform: rotate(4deg) translateY(0); z-index: 2; background-color: #323640; }
         
-        /* Hover Effect: Files pop up */
         .folder-card-container:hover .folder-file:nth-child(1) { transform: rotate(-12deg) translateY(-25px); }
         .folder-card-container:hover .folder-file:nth-child(2) { transform: rotate(8deg) translateY(-15px); }
 
-        /* The Front "Pocket" of the folder */
         .folder-front {
             position: absolute;
             bottom: 0;
             left: 0;
             width: 100%;
-            height: 65%; /* Covers bottom 65% */
+            height: 65%;
             background: linear-gradient(145deg, #1a1d23 0%, #14161a 100%);
             border: 1px solid #2b2f3a;
             border-top: 1px solid rgba(255,255,255,0.15);
-            border-radius: 0 0 16px 16px; /* Rounded bottom */
+            border-radius: 0 0 16px 16px;
             z-index: 10;
             display: flex;
             flex-direction: column;
@@ -79,24 +74,22 @@
             box-shadow: 0 -5px 20px rgba(0,0,0,0.4);
         }
         
-        /* Make the top of the pocket look cut/styled */
         .folder-front::before {
             content: '';
             position: absolute;
-            top: -15px; /* Stick up slightly */
+            top: -15px;
             left: 0;
             width: 100%;
             height: 20px;
             background: #1a1d23;
-            border-radius: 12px 12px 0 0; /* Rounded top */
-            clip-path: polygon(0 100%, 100% 100%, 100% 20%, 0 0); /* Angled cut */
+            border-radius: 12px 12px 0 0;
+            clip-path: polygon(0 100%, 100% 100%, 100% 20%, 0 0);
             z-index: 10;
         }
 
-        /* Order Button on Card */
         .card-order-btn {
             position: absolute;
-            top: -25px; /* Sits on the rim of the pocket */
+            top: -25px;
             right: 15px;
             color: white;
             font-weight: 700;
@@ -107,11 +100,9 @@
             transition: transform 0.2s, box-shadow 0.2s;
             border: 1px solid rgba(255,255,255,0.2);
         }
-        .folder-card-container:hover .card-order-btn {
-            transform: scale(1.1);
-        }
+        .folder-card-container:hover .card-order-btn { transform: scale(1.1); }
 
-        /* Button Color Variants */
+        /* Button Colors */
         .btn-orange { background-color: #f97316; box-shadow: 0 4px 6px rgba(249, 115, 22, 0.3); }
         .btn-purple { background-color: #a855f7; box-shadow: 0 4px 6px rgba(168, 85, 247, 0.3); }
         .btn-blue { background-color: #3b82f6; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3); }
@@ -121,56 +112,29 @@
         .btn-cyan { background-color: #06b6d4; box-shadow: 0 4px 6px rgba(6, 182, 212, 0.3); }
         .btn-red { background-color: #ef4444; box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3); }
 
-
         /* --- Modals --- */
         .modal-backdrop {
-            position: fixed;
-            inset: 0;
-            background-color: rgba(0,0,0,0.8);
-            backdrop-filter: blur(5px);
-            z-index: 50;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
+            position: fixed; inset: 0; background-color: rgba(0,0,0,0.8); backdrop-filter: blur(5px);
+            z-index: 50; display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
         }
-        .modal-backdrop.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
+        .modal-backdrop.active { opacity: 1; pointer-events: auto; }
         .modal-content {
-            background: #1a1d23;
-            border: 1px solid #2b2f3a;
-            border-radius: 1rem;
-            width: 90%;
-            max-width: 600px; /* Default width */
-            max-height: 90vh;
-            overflow-y: auto;
-            transform: scale(0.95);
-            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            background: #1a1d23; border: 1px solid #2b2f3a; border-radius: 1rem;
+            width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto;
+            transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             position: relative;
         }
-        .modal-backdrop.active .modal-content {
-            transform: scale(1);
-        }
+        .modal-backdrop.active .modal-content { transform: scale(1); }
 
-        /* Pricing Card inside Modal */
+        /* Pricing Card */
         .tier-card {
-            border: 1px solid #2b2f3a;
-            border-radius: 12px;
-            padding: 1rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
+            border: 1px solid #2b2f3a; border-radius: 12px; padding: 1rem;
+            cursor: pointer; transition: all 0.2s ease;
         }
-        .tier-card:hover {
-            border-color: #f97316;
-            background-color: rgba(249, 115, 22, 0.05);
-        }
+        .tier-card:hover { border-color: #f97316; background-color: rgba(249, 115, 22, 0.05); }
         .tier-card.selected {
-            border-color: #f97316;
-            background-color: rgba(249, 115, 22, 0.1);
+            border-color: #f97316; background-color: rgba(249, 115, 22, 0.1);
             box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.3);
         }
 
@@ -178,7 +142,6 @@
 </head>
 <body class="min-h-screen flex flex-col">
 
-    <!-- Header (No Sidebar version) -->
     <header class="p-6 flex justify-between items-center max-w-[1400px] mx-auto w-full border-b border-white/5 bg-[#0f1115]/80 backdrop-blur-md sticky top-0 z-40">
         <div class="flex items-center gap-3">
             <a href="index.html" class="flex items-center gap-3 hover:opacity-80 transition-opacity">
@@ -187,18 +150,16 @@
             </a>
         </div>
         <div class="flex gap-4">
-            <a href="contentportal.html" class="px-5 py-2.5 btn-purple rounded-lg text-base text-white hover:opacity-90 transition-colors flex items-center gap-2" title="My Content">My Content</a>
+            <a href="contentportal.html" class="px-5 py-2.5 btn-purple rounded-lg text-base text-white hover:opacity-90 transition-colors flex items-center gap-2">My Content</a>
             <a href="index.html" class="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm text-white transition-colors border border-white/10 flex items-center gap-2">
-                <i class="fa-solid fa-arrow-left"></i> <span class="hidden sm:inline">Back to Dashboard</span>
+                <i class="fa-solid fa-arrow-left"></i> <span class="hidden sm:inline">Back</span>
             </a>
         </div>
     </header>
 
-    <!-- Main Content -->
     <main class="flex-1 w-full max-w-[1400px] mx-auto p-4 md:p-8 mb-20">
         
         <div class="text-center mb-10 mt-4 fade-in">
-            <!-- Colorful Title Gradient -->
             <h1 class="text-3xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-orange-400 to-blue-400">
                 Order Content for Your Business
             </h1>
@@ -207,183 +168,128 @@
             </p>
         </div>
 
-        <!-- Cards Grid -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 px-2 md:px-0 fade-in" style="animation-delay: 0.1s;">
 
-            <!-- 1. Graphic Design (Orange) -->
             <div class="folder-card-container" onclick="openSamples('Graphic Design')">
                 <div class="folder-file bg-cover" style="background-image: url('https://images.unsplash.com/photo-1626785774573-4b799314346d?auto=format&fit=crop&q=80&w=300');"></div>
                 <div class="folder-file bg-cover" style="background-image: url('https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=300');"></div>
-                
                 <div class="folder-front">
                     <button class="card-order-btn btn-orange">Order Now</button>
                     <h3 class="text-white font-bold text-lg leading-tight mb-1">Graphic Design</h3>
-                    <p class="text-white/40 text-xs line-clamp-2">Captivating graphics for your business branding and social media.</p>
+                    <p class="text-white/40 text-xs line-clamp-2">Captivating graphics for your business.</p>
                 </div>
             </div>
 
-            <!-- 2. Social Media Management (Purple) -->
             <div class="folder-card-container" onclick="openSamples('Social Media Management')">
                 <div class="folder-file bg-cover" style="background-image: url('https://images.unsplash.com/photo-1611162616475-46b635cb6868?auto=format&fit=crop&q=80&w=300');"></div>
                 <div class="folder-file bg-cover" style="background-image: url('https://images.unsplash.com/photo-1611926653458-09294b3142bf?auto=format&fit=crop&q=80&w=300');"></div>
                 <div class="folder-front">
                     <button class="card-order-btn btn-purple">Order Now</button>
-                    <h3 class="text-white font-bold text-lg leading-tight mb-1">Social Media Management</h3>
-                    <p class="text-white/40 text-xs line-clamp-2">Engage, grow, and dominate your feed with managed strategies.</p>
+                    <h3 class="text-white font-bold text-lg leading-tight mb-1">Social Media</h3>
+                    <p class="text-white/40 text-xs line-clamp-2">Engage and grow your feed.</p>
                 </div>
             </div>
 
-            <!-- 3. Website Design (Blue) -->
             <div class="folder-card-container" onclick="openSamples('Website Design')">
                 <div class="folder-file bg-cover" style="background-image: url('https://images.unsplash.com/photo-1547658719-da2b51169166?auto=format&fit=crop&q=80&w=300');"></div>
                 <div class="folder-file bg-cover" style="background-image: url('https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?auto=format&fit=crop&q=80&w=300');"></div>
                 <div class="folder-front">
                     <button class="card-order-btn btn-blue">Order Now</button>
                     <h3 class="text-white font-bold text-lg leading-tight mb-1">Website Design</h3>
-                    <p class="text-white/40 text-xs line-clamp-2">Stunning, high-converting sites tailored to your brand.</p>
+                    <p class="text-white/40 text-xs line-clamp-2">Stunning sites that convert.</p>
                 </div>
             </div>
 
-            <!-- 4. Video Shooting (Green) -->
             <div class="folder-card-container" onclick="openSamples('Video Shooting')">
                 <div class="folder-file bg-cover" style="background-image: url('https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=300');"></div>
                 <div class="folder-file bg-cover" style="background-image: url('https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&q=80&w=300');"></div>
                 <div class="folder-front">
                     <button class="card-order-btn btn-green">Order Now</button>
                     <h3 class="text-white font-bold text-lg leading-tight mb-1">Video Shooting</h3>
-                    <p class="text-white/40 text-xs line-clamp-2">Cinematic quality production for your brand story.</p>
+                    <p class="text-white/40 text-xs line-clamp-2">Cinematic quality production.</p>
                 </div>
             </div>
 
-            <!-- 5. Video Editing (Pink) -->
             <div class="folder-card-container" onclick="openSamples('Video Editing')">
                 <div class="folder-file bg-cover" style="background-image: url('https://images.unsplash.com/photo-1536240478700-b869070f9279?auto=format&fit=crop&q=80&w=300');"></div>
                 <div class="folder-file bg-cover" style="background-image: url('https://images.unsplash.com/photo-1574717024653-61fd2cf4d44c?auto=format&fit=crop&q=80&w=300');"></div>
                 <div class="folder-front">
                     <button class="card-order-btn btn-purple">Order Now</button>
                     <h3 class="text-white font-bold text-lg leading-tight mb-1">Video Editing</h3>
-                    <p class="text-white/40 text-xs line-clamp-2">Turning raw footage into polished masterpieces.</p>
+                    <p class="text-white/40 text-xs line-clamp-2">Professional editing services.</p>
                 </div>
             </div>
 
-            <!-- 6. Ad Creatives (Yellow) -->
             <div class="folder-card-container" onclick="openSamples('Ad Creatives')">
                 <div class="folder-file bg-cover" style="background-image: url('https://images.unsplash.com/photo-1557838923-2985c318be48?auto=format&fit=crop&q=80&w=300');"></div>
                 <div class="folder-file bg-cover" style="background-image: url('https://images.unsplash.com/photo-1611162618071-b39a2ec055fb?auto=format&fit=crop&q=80&w=300');"></div>
                 <div class="folder-front">
                     <button class="card-order-btn btn-orange">Order Now</button>
                     <h3 class="text-white font-bold text-lg leading-tight mb-1">Ad Creatives</h3>
-                    <p class="text-white/40 text-xs line-clamp-2">High-converting visuals specifically optimized for Ads.</p>
+                    <p class="text-white/40 text-xs line-clamp-2">High-converting visuals.</p>
                 </div>
             </div>
 
-            <!-- 7. SEO & Website Content (Cyan) -->
             <div class="folder-card-container" onclick="openSamples('SEO Content')">
                 <div class="folder-file bg-cover" style="background-image: url('https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&q=80&w=300');"></div>
                 <div class="folder-file bg-cover" style="background-image: url('https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&q=80&w=300');"></div>
                 <div class="folder-front">
                     <button class="card-order-btn btn-blue">Order Now</button>
                     <h3 class="text-white font-bold text-lg leading-tight mb-1">SEO & Copy</h3>
-                    <p class="text-white/40 text-xs line-clamp-2">Blogs, copy, and text that rank and resonate.</p>
+                    <p class="text-white/40 text-xs line-clamp-2">Blogs that rank.</p>
                 </div>
             </div>
 
-            <!-- 8. Motion Graphics (Red) -->
             <div class="folder-card-container" onclick="openSamples('Motion Graphics')">
                 <div class="folder-file bg-cover" style="background-image: url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=300');"></div>
                 <div class="folder-file bg-cover" style="background-image: url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=300');"></div>
                 <div class="folder-front">
                     <button class="card-order-btn btn-green">Order Now</button>
                     <h3 class="text-white font-bold text-lg leading-tight mb-1">Motion Graphics</h3>
-                    <p class="text-white/40 text-xs line-clamp-2">Dynamic animations that grab attention instantly.</p>
+                    <p class="text-white/40 text-xs line-clamp-2">Dynamic animations.</p>
                 </div>
             </div>
 
         </div>
 
         <div class="mt-20 border-t border-white/10 pt-10 text-center text-white/40 text-sm">
-            <p>Need a custom package? <a href="#" onclick="alert('Redirect to WhatsApp or Contact Form')" class="text-orange-400 hover:underline">Contact Support</a></p>
+            <p>Need a custom package? <a href="#" onclick="alert('Redirect to WhatsApp')" class="text-orange-400 hover:underline">Contact Support</a></p>
         </div>
     </main>
 
-    <!-- MODAL 1: SAMPLES VIEW -->
     <div id="modal-samples" class="modal-backdrop">
         <div class="modal-content p-0 overflow-hidden">
-            <!-- Header of Modal -->
             <div class="p-4 border-b border-white/10 flex justify-between items-center bg-[#14161a]">
-                <h2 id="sample-title" class="text-xl font-bold text-white">Graphic Design</h2>
+                <h2 id="sample-title" class="text-xl font-bold text-white">Service Name</h2>
                 <button onclick="closeModal('modal-samples')" class="text-white/50 hover:text-white transition-colors">
                     <i class="fa-solid fa-times text-xl"></i>
                 </button>
             </div>
             
-            <!-- Body -->
             <div class="p-6">
-                <!-- Order Now Big Button -->
                 <button onclick="openPricing()" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-orange-900/30 transition-all mb-6 flex items-center justify-center gap-2">
                     <span>Order Now</span>
                     <i class="fa-solid fa-arrow-right"></i>
                 </button>
 
-                <p id="sample-desc" class="text-white/60 text-sm mb-4">Captivating Graphics for your Business.</p>
+                <p id="sample-desc" class="text-white/60 text-sm mb-4">Service Description</p>
                 
-                <!-- Masonry Grid for Images (Mock) -->
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="h-40 bg-gray-700 rounded-lg bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1626785774573-4b799314346d?auto=format&fit=crop&q=80&w=400')"></div>
-                    <div class="h-32 bg-gray-700 rounded-lg bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=400')"></div>
-                    <div class="h-32 bg-gray-700 rounded-lg bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1561070791-2526d30994b5?auto=format&fit=crop&q=80&w=400')"></div>
-                    <div class="h-40 bg-gray-700 rounded-lg bg-cover bg-center" style="background-image: url('https://images.unsplash.com/photo-1572044162444-ad60f128bdea?auto=format&fit=crop&q=80&w=400')"></div>
+                <div id="portfolio-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="text-white/30 text-center col-span-2 py-4">Loading samples...</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- MODAL 2: PRICING / TIERS (Checkout Page Style) -->
     <div id="modal-pricing" class="modal-backdrop">
         <div class="modal-content p-6 max-w-lg">
             <div class="text-center mb-6">
-                <h2 id="pricing-title" class="text-2xl font-bold text-white mb-1">Graphic Design</h2>
-                <p id="pricing-subtitle" class="text-orange-400 text-sm">Captivating Graphics for your Business</p>
+                <h2 id="pricing-title" class="text-2xl font-bold text-white mb-1">Service</h2>
+                <p id="pricing-subtitle" class="text-orange-400 text-sm">Subtitle</p>
             </div>
 
-            <!-- Tiers List -->
-            <div class="space-y-3 mb-6">
-                <!-- Basic -->
-                <div class="tier-card flex justify-between items-center group" onclick="selectTier('Basic', 500)">
-                    <div>
-                        <div class="font-bold text-white group-hover:text-orange-400 transition-colors">Basic</div>
-                        <div class="text-xs text-white/50">Simple layout, 1 revision</div>
-                    </div>
-                    <div class="text-right">
-                        <div class="font-bold text-white text-lg">500sh</div>
-                        <div class="w-4 h-4 rounded-full border border-white/30 ml-auto mt-1 flex items-center justify-center selection-circle"></div>
-                    </div>
+            <div id="tiers-container" class="space-y-3 mb-6">
                 </div>
-
-                <!-- Standard -->
-                <div class="tier-card flex justify-between items-center group" onclick="selectTier('Standard', 800)">
-                    <div>
-                        <div class="font-bold text-white group-hover:text-orange-400 transition-colors">Standard</div>
-                        <div class="text-xs text-white/50">Enhanced detail, 2 revisions</div>
-                    </div>
-                    <div class="text-right">
-                        <div class="font-bold text-white text-lg">800sh</div>
-                        <div class="w-4 h-4 rounded-full border border-white/30 ml-auto mt-1 flex items-center justify-center selection-circle"></div>
-                    </div>
-                </div>
-
-                <!-- Professional -->
-                <div class="tier-card flex justify-between items-center group" onclick="selectTier('Professional', 1500)">
-                    <div>
-                        <div class="font-bold text-white group-hover:text-orange-400 transition-colors">Professional</div>
-                        <div class="text-xs text-white/50">Premium quality, source files</div>
-                    </div>
-                    <div class="text-right">
-                        <div class="font-bold text-white text-lg">1,500sh</div>
-                        <div class="w-4 h-4 rounded-full border border-white/30 ml-auto mt-1 flex items-center justify-center selection-circle"></div>
-                    </div>
-                </div>
-            </div>
 
             <div class="flex gap-3">
                 <button onclick="closeModal('modal-pricing')" class="flex-1 py-3 rounded-xl border border-white/10 text-white/70 hover:bg-white/5 font-medium">Cancel</button>
@@ -391,23 +297,22 @@
         </div>
     </div>
 
-    <!-- MODAL 3: CONFIRM & DETAILS -->
     <div id="modal-confirm" class="modal-backdrop">
         <div class="modal-content p-6 max-w-lg">
             <h2 class="text-xl font-bold text-white mb-4">Complete Order</h2>
             
             <div class="bg-[#14161a] p-4 rounded-xl border border-white/5 mb-4 flex justify-between items-center">
                 <div>
-                    <div id="confirm-service" class="text-sm text-white/60">Graphic Design</div>
-                    <div id="confirm-tier" class="font-bold text-white">Basic Package</div>
+                    <div id="confirm-service" class="text-sm text-white/60">Service</div>
+                    <div id="confirm-tier" class="font-bold text-white">Tier</div>
                 </div>
-                <div id="confirm-price" class="text-orange-400 font-bold text-xl">500sh</div>
+                <div id="confirm-price" class="text-orange-400 font-bold text-xl">0sh</div>
             </div>
 
             <form onsubmit="submitOrder(event)">
                 <div class="mb-4">
                     <label class="block text-sm text-white/70 mb-2">Describe what you are looking for</label>
-                    <textarea id="order-details" required class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl p-4 text-white placeholder-white/30 focus:outline-none focus:border-orange-500 min-h-[120px]" placeholder="E.g. I need a poster for a weekend sale... Colors should be red and black..."></textarea>
+                    <textarea id="order-details" required class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl p-4 text-white placeholder-white/30 focus:outline-none focus:border-orange-500 min-h-[120px]" placeholder="E.g. I need a poster for a weekend sale..."></textarea>
                 </div>
                 
                 <button type="submit" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-orange-900/30 transition-all">
@@ -418,123 +323,172 @@
         </div>
     </div>
 
-    <!-- LOGIC -->
     <script>
-        // Data Store
-        const services = {
-            'Graphic Design': {
-                subtitle: 'Captivating Graphics for your Business',
-                images: [], // Images are generic in HTML for now, but this structure is ready for dynamic loading
-                pricing: { basic: 500, standard: 800, professional: 1500 }
-            },
-            'Social Media Management': {
-                subtitle: 'Engage, Grow, and Dominate Your Feed',
-                pricing: { basic: 5000, standard: 10000, professional: 20000 }
-            },
-            'Website Design': {
-                subtitle: 'Stunning Sites that Convert Visitors',
-                pricing: { basic: 15000, standard: 25000, professional: 45000 }
-            },
-            'Video Shooting': {
-                subtitle: 'Cinematic Quality for Your Brand Story',
-                pricing: { basic: 8000, standard: 15000, professional: 30000 }
-            },
-            'Video Editing': {
-                subtitle: 'Turning Raw Footage into Masterpieces',
-                pricing: { basic: 2000, standard: 4000, professional: 8000 }
-            },
-            'Ad Creatives': {
-                subtitle: 'High-Converting Visuals for Your Campaigns',
-                pricing: { basic: 1000, standard: 2000, professional: 3500 }
-            },
-            'SEO Content': {
-                subtitle: 'Words that Rank and Resonate',
-                pricing: { basic: 1000, standard: 2500, professional: 5000 }
-            },
-            'Motion Graphics': {
-                subtitle: 'Dynamic Animations that Grab Attention',
-                pricing: { basic: 3000, standard: 6000, professional: 12000 }
-            }
-        };
+        // --- 1. CONFIGURATION ---
+        const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
 
-        let currentService = '';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // --- 2. GLOBAL STATE ---
+        // We will fetch data from DB and store it here to avoid re-fetching constantly
+        let servicesData = []; 
+        let currentServiceData = null; // The object of the currently open service
         let currentTier = '';
         let currentPrice = 0;
 
-        // --- View Samples ---
-        function openSamples(serviceName) {
-            currentService = serviceName;
-            document.getElementById('sample-title').textContent = serviceName;
-            
-            const data = services[serviceName];
-            if(data) {
-                document.getElementById('sample-desc').textContent = data.subtitle;
-            }
+        // --- 3. FETCH DATA ON LOAD ---
+        async function fetchServices() {
+            try {
+                // Fetch Services, Prices, and Portfolio Items in one go if possible
+                // For simplicity, we fetch services first, then we'll fetch details when needed or pre-fetch all
+                
+                // Let's fetch everything to make the UI snappy
+                const { data: services, error: sError } = await supabase.from('services').select('*');
+                if (sError) throw sError;
 
-            document.getElementById('modal-samples').classList.add('active');
+                const { data: prices, error: pError } = await supabase.from('pricing_tiers').select('*');
+                if (pError) throw pError;
+
+                const { data: portfolio, error: pfError } = await supabase.from('portfolio_items').select('*');
+                if (pfError) throw pfError;
+
+                // Combine data into a structured array
+                servicesData = services.map(service => {
+                    return {
+                        ...service,
+                        pricing: prices.filter(p => p.service_id === service.id).sort((a,b) => a.price - b.price),
+                        portfolio: portfolio.filter(p => p.service_id === service.id)
+                    };
+                });
+                console.log("Data loaded:", servicesData);
+
+            } catch (err) {
+                console.error("Error loading data:", err);
+                // alert("Could not connect to database. Please check console.");
+            }
         }
 
-        // --- View Pricing ---
+        // Run fetch on load
+        document.addEventListener('DOMContentLoaded', fetchServices);
+
+
+        // --- 4. VIEW LOGIC ---
+
+        async function openSamples(serviceName) {
+            // Show modal and a loading placeholder immediately
+            const grid = document.getElementById('portfolio-grid');
+            document.getElementById('sample-title').textContent = serviceName;
+            document.getElementById('sample-desc').textContent = 'Loading samples...';
+            grid.innerHTML = `<div class="col-span-2 text-center text-white/40 py-8">Loading samples...</div>`;
+            document.getElementById('modal-samples').classList.add('active');
+
+            try {
+                // If servicesData is empty, try to fetch it now
+                if (!servicesData || servicesData.length === 0) {
+                    await fetchServices();
+                }
+
+                // Find the data in our fetched array
+                const data = servicesData.find(s => s.name === serviceName);
+
+                if (!data) {
+                    // No service found — show friendly message inside modal instead of alert
+                    grid.innerHTML = `<div class="col-span-2 text-center text-white/40 py-8">No samples uploaded yet.</div>`;
+                    return;
+                }
+
+                currentServiceData = data; // Store for later use
+
+                // Update Text
+                document.getElementById('sample-title').textContent = data.name;
+                document.getElementById('sample-desc').textContent = data.subtitle || 'Professional Content Services';
+
+                // Update Portfolio Grid (Handle Images vs Videos)
+                grid.innerHTML = ''; // Clear old
+
+                if (data.portfolio && data.portfolio.length > 0) {
+                    data.portfolio.forEach(item => {
+                        const el = document.createElement('div');
+                        el.className = "bg-gray-800 rounded-lg overflow-hidden border border-white/10";
+                        
+                        if (item.media_type === 'video') {
+                            // Render Video Player
+                            el.innerHTML = `
+                                <video controls class="w-full h-48 object-cover">
+                                    <source src="${item.media_url}" type="video/mp4">
+                                    Your browser does not support video.
+                                </video>
+                            `;
+                        } else {
+                            // Render Image
+                            el.innerHTML = `
+                                <div class="h-48 bg-cover bg-center cursor-pointer hover:opacity-90 transition" 
+                                     style="background-image: url('${item.media_url}')"
+                                     onclick="window.open('${item.media_url}', '_blank')">
+                                </div>
+                            `;
+                        }
+                        grid.appendChild(el);
+                    });
+                } else {
+                    grid.innerHTML = `<div class="col-span-2 text-center text-white/40 py-8">No samples uploaded yet.</div>`;
+                }
+
+            } catch (err) {
+                console.error('Error loading samples:', err);
+                grid.innerHTML = `<div class="col-span-2 text-center text-white/40 py-8">Error loading samples.</div>`;
+            }
+        }
+
         function openPricing() {
             closeModal('modal-samples'); // Hide samples
             
-            const data = services[currentService];
-            document.getElementById('pricing-title').textContent = currentService;
-            document.getElementById('pricing-subtitle').textContent = data.subtitle;
+            if (!currentServiceData) return;
 
-            // Update Pricing cards dynamically
-            const cards = document.querySelectorAll('.tier-card');
-            
-            // Basic
-            updateTierCard(cards[0], 'Basic', data.pricing.basic);
-            // Standard
-            updateTierCard(cards[1], 'Standard', data.pricing.standard);
-            // Professional
-            updateTierCard(cards[2], 'Professional', data.pricing.professional);
+            document.getElementById('pricing-title').textContent = currentServiceData.name;
+            document.getElementById('pricing-subtitle').textContent = currentServiceData.subtitle;
+
+            // Generate Pricing Cards dynamically
+            const container = document.getElementById('tiers-container');
+            container.innerHTML = ''; // Clear old
+
+            if (currentServiceData.pricing && currentServiceData.pricing.length > 0) {
+                currentServiceData.pricing.forEach(tier => {
+                    const card = document.createElement('div');
+                    card.className = "tier-card flex justify-between items-center group";
+                    card.onclick = () => selectTier(tier.tier_name, tier.price);
+                    
+                    card.innerHTML = `
+                        <div>
+                            <div class="font-bold text-white group-hover:text-orange-400 transition-colors">${tier.tier_name}</div>
+                            <div class="text-xs text-white/50">${tier.description || ''}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-bold text-white text-lg">${Number(tier.price).toLocaleString()}sh</div>
+                            <div class="w-4 h-4 rounded-full border border-white/30 ml-auto mt-1 flex items-center justify-center selection-circle"></div>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            } else {
+                container.innerHTML = '<div class="text-white/50 text-center">No pricing tiers configured.</div>';
+            }
 
             document.getElementById('modal-pricing').classList.add('active');
-        }
-
-        function updateTierCard(element, tierName, price) {
-            element.querySelector('.font-bold.text-lg').textContent = price.toLocaleString() + 'sh';
-            // Store raw price in data attribute for easy access if needed, or just rely on passing it in onclick
-            element.onclick = function() { selectTier(tierName, price); };
-            
-            // Reset Styles
-            element.classList.remove('selected');
-            element.querySelector('.selection-circle').innerHTML = '';
-            element.querySelector('.selection-circle').classList.remove('bg-orange-500', 'border-none');
         }
 
         function selectTier(tier, price) {
             currentTier = tier;
             currentPrice = price;
-
-            // Visual feedback
-            const cards = document.querySelectorAll('.tier-card');
-            cards.forEach(c => {
-                c.classList.remove('selected');
-                const circle = c.querySelector('.selection-circle');
-                circle.innerHTML = '';
-                circle.classList.remove('bg-orange-500', 'border-none');
-            });
-            
-            // Highlight clicked
-            // Note: In a real app we'd use IDs or index, here relying on event bubbling is tricky if we don't catch the current target. 
-            // Since we set onclick on the element, 'event.currentTarget' inside the handler (if passed) would work, 
-            // but we wrapped it. Let's just open the next modal immediately as per "checkout" flow feel.
-            
             openConfirm();
         }
 
-        // --- Confirm Order ---
         function openConfirm() {
             closeModal('modal-pricing');
-            
-            document.getElementById('confirm-service').textContent = currentService;
-            document.getElementById('confirm-tier').textContent = currentTier + ' Package';
-            document.getElementById('confirm-price').textContent = currentPrice.toLocaleString() + 'sh';
-            
+            document.getElementById('confirm-service').textContent = currentServiceData.name;
+            document.getElementById('confirm-tier').textContent = currentTier;
+            document.getElementById('confirm-price').textContent = Number(currentPrice).toLocaleString() + 'sh';
             document.getElementById('modal-confirm').classList.add('active');
         }
 
@@ -542,20 +496,19 @@
             document.getElementById(id).classList.remove('active');
         }
 
+        // --- PAYMENT LOGIC (M-PESA POPUP) ---
         function fmtNum(n){ try{ return Number(n).toLocaleString(); }catch(e){ return n; } }
         function getBusinessName(){
             try{
                 const raw = localStorage.getItem('vvUser') || localStorage.getItem('user') || localStorage.getItem('business') || localStorage.getItem('businessName');
                 if (!raw) return '';
                 const u = JSON.parse(raw);
-                return u.business_name || u.business || u.name || u['business name'] || u.businessName || '';
+                return u.business_name || u.business || u.name || '';
             }catch(e){ return ''; }
         }
 
-        // Open a simple M-Pesa till-style payment modal for content orders
         function openMpesaOrderPayment(service, tier, price, details){
             const popup = document.createElement('div');
-            // use existing modal styles so it is centered and constrained
             popup.className = 'modal-backdrop active';
             popup.innerHTML = `
                 <div class="modal-content p-6 max-w-lg">
@@ -563,50 +516,38 @@
                     <button id="mp-close" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">&times;</button>
                     <h3 class="text-xl font-bold text-white mb-2 text-center">Order: ${service}</h3>
                     <p class="text-white/70 text-sm mb-4 text-center">${tier} — <span class="text-orange-400 font-bold">KES ${fmtNum(price)}</span></p>
-                    <p class="text-white/80 mb-4 text-center">PAY VIA MPESA — Buy Goods and Services Till Number <strong>3790912</strong>.<br/>Amount: <strong>KES ${fmtNum(price)}</strong>.<br/><strong>Once you pay, Click "Paid" below for confirmation.</strong></p>
+                    <p class="text-white/80 mb-4 text-center">PAY VIA MPESA — Buy Goods and Services Till Number <strong>3790912</strong>.<br/>Amount: <strong>KES ${fmtNum(price)}</strong>.<br/><strong>Once you pay, Click "Paid" below.</strong></p>
                     <div id="mp-step" class="mt-2"></div>
                 </div>
             `;
 
             document.body.appendChild(popup);
-
-            // Close handlers (buttons)
             popup.querySelector('#mp-close')?.addEventListener('click', () => popup.remove());
             popup.querySelector('#mp-back')?.addEventListener('click', () => popup.remove());
 
-            // Close on backdrop click
-            popup.addEventListener('click', (e) => { if (e.target === popup) popup.remove(); });
-
             const stepEl = popup.querySelector('#mp-step');
-
-            // Initial Paid button
             stepEl.innerHTML = `<div class="flex"><button id="mp-paid" class="w-full bg-green-600 text-white py-2 px-4 rounded-xl">Paid</button></div>`;
 
             setTimeout(()=>{
                 const paid = popup.querySelector('#mp-paid');
                 if (!paid) return;
                 paid.addEventListener('click', () => {
-                    // Save order locally
                     try{ localStorage.setItem('lastContentOrder', JSON.stringify({ service, tier, price, details, created: Date.now() })); }catch(e){}
 
-                    // Prepare whatsapp message and open app (whatsapp://) with fallback to web
                     const business = getBusinessName();
-                    const text = encodeURIComponent(`Hello Lloyd. I have Paid KES ${fmtNum(price)} for ${service} for ${business} please confirm. thank you.`);
+                    const text = encodeURIComponent(`Hello. I have Paid KES ${fmtNum(price)} for ${service} (${tier}) for ${business}. Details: ${details}`);
                     const wa = `whatsapp://send?phone=254789254864&text=${text}`;
                     const webWa = `https://wa.me/254789254864?text=${text}`;
                     try { window.location.href = wa; } catch(e) { window.location.href = webWa; }
 
-                    // Show confirmation UI in case user returns
                     stepEl.innerHTML = `
-                        <p class="text-white/80 mb-4 text-center">Thank you. Payment will be confirmed shortly.</p>
+                        <p class="text-white/80 mb-4 text-center">Thank you. Payment will be confirmed via WhatsApp.</p>
                         <div class="flex"><button id="mp-done" class="w-full bg-blue-600 text-white py-2 px-4 rounded-xl">Continue</button></div>
                     `;
-
-                    const done = popup.querySelector('#mp-done');
-                    if (done) done.addEventListener('click', () => {
+                    
+                    popup.querySelector('#mp-done').addEventListener('click', () => {
                         popup.remove();
                         closeModal('modal-confirm');
-                        try{ localStorage.setItem('paymentInitiated', 'true'); }catch(e){}
                         window.location.href = 'index.html';
                     });
                 });
@@ -616,28 +557,15 @@
         function submitOrder(e) {
             e.preventDefault();
             const details = document.getElementById('order-details').value;
-
-            if(!details) {
-                alert("Please provide some details about your order.");
-                return;
-            }
-
-            // Ensure we have selected service and price
-            if(!currentService || !currentTier || !currentPrice){
-                alert('Please select a service and tier before confirming.');
-                return;
-            }
-
-            // Open M-Pesa payment modal with selected service and price
-            openMpesaOrderPayment(currentService, currentTier, currentPrice, details);
+            if(!details) { alert("Please provide order details."); return; }
+            if(!currentServiceData || !currentTier || !currentPrice){ alert('Select a service first.'); return; }
+            
+            openMpesaOrderPayment(currentServiceData.name, currentTier, currentPrice, details);
         }
 
-        // Close modals on backdrop click
         document.querySelectorAll('.modal-backdrop').forEach(modal => {
             modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    modal.classList.remove('active');
-                }
+                if (e.target === modal) modal.classList.remove('active');
             });
         });
 

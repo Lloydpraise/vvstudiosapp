@@ -1,281 +1,339 @@
-// audit.js - separated logic for audit.html
-// Initialize Supabase client using keys from the project
-const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
-let supabaseClient = null;
-try {
-  if (!window.supabase) throw new Error('Supabase JS not loaded');
-  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
-  console.log('[audit] Supabase client initialized');
-} catch (e) {
-  console.warn('[audit] Could not initialize Supabase client:', e.message);
+/* ============================
+   CLEANED AUDIT.JS WITH RUN-ONCE LOGIC
+   ============================ */
+
+// Read configuration (set in `config.js`) when available; fallback to defaults.
+const APP_CONFIG = (window && window.__APP_CONFIG) ? window.__APP_CONFIG : {};
+const SUPABASE_URL = APP_CONFIG.SUPABASE_URL || "https://xgtnbxdxbbywvzrttixf.supabase.co";
+const SUPABASE_KEY = APP_CONFIG.SUPABASE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ";
+const API_URL = `${SUPABASE_URL}/rest/v1/audit_results`;
+const AUDIT_START_URL = "/functions/v1/audit-start";
+
+let auditPolling = null;
+let lastPollState = null;
+
+/* -----------------------------
+   DOM HELPERS
+------------------------------ */
+
+function $(id) {
+  return document.getElementById(id);
 }
 
-function normalizeWebsite(raw) {
-  if (!raw) return '';
-  let url = raw.trim();
-  url = url.replace(/^http:\/\//i, 'https://');
-  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+// Safe helper: return trimmed value from the first matching id
+function getElValueByIds(...ids) {
+  for (const id of ids) {
+    const el = $(id);
+    if (!el) continue;
+    // input, textarea, select
+    if (typeof el.value !== "undefined") return String(el.value).trim();
+    // other elements (data attributes / textContent)
+    if (typeof el.textContent !== "undefined") return String(el.textContent).trim();
+  }
+  return "";
+}
+
+// Resolve business id from DOM, URL params, or localStorage
+function resolveBusinessId() {
+  // 0) Prefer the shared auth util used across the app (login populates vvUser)
   try {
-    const u = new URL(url);
-    u.protocol = 'https:';
-    let normalized = u.toString();
-    if (normalized.endsWith('/') && u.pathname === '/') normalized = normalized.slice(0, -1);
-    return normalized;
+    if (window.authUtils && typeof window.authUtils.getBusinessId === "function") {
+      const bid = window.authUtils.getBusinessId();
+      if (bid) return String(bid).trim();
+    }
   } catch (e) {
-    return '';
+    // ignore
+  }
+
+  // 1) DOM inputs
+  const fromDom = getElValueByIds("business_id", "businessId", "inputBusiness");
+  if (fromDom) return fromDom;
+
+  // 2) URL search params
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const viaUrl = params.get("business_id") || params.get("businessId") || params.get("id");
+    if (viaUrl) return viaUrl.trim();
+  } catch (e) {
+    // ignore
+  }
+
+  // 3) localStorage
+  try {
+    // Prefer direct business_id keys
+    const ls = localStorage.getItem("business_id") || localStorage.getItem("businessId");
+    if (ls) return ls.trim();
+
+    // Many pages store the logged in user as `vvUser` — parse it for business_id
+    const rawUser = localStorage.getItem('vvUser');
+    if (rawUser) {
+      try {
+        const u = JSON.parse(rawUser);
+        if (u && (u.business_id || u.businessId)) return String(u.business_id || u.businessId).trim();
+      } catch (e) {
+        // ignore parse errors
+      }
+    }
+  } catch (e) {
+    // ignore (e.g., disabled storage)
+  }
+
+  return "";
+}
+
+function setText(id, text) {
+  const el = $(id);
+  if (el) el.textContent = text;
+}
+
+function showScreen(id) {
+  ["screen-input", "screen-loading", "screen-results"].forEach((s) =>
+    $(s).classList.add("hidden")
+  );
+  $(id).classList.remove("hidden");
+}
+
+function showError(msg) {
+  const el = $("loading-error");
+  el.textContent = msg || "Something went wrong.";
+  el.classList.remove("hidden");
+}
+
+function hideError() {
+  $("loading-error").classList.add("hidden");
+}
+
+/* -----------------------------
+   PAGE LOAD: CHECK IF USER ALREADY HAS RESULTS
+------------------------------ */
+
+window.addEventListener("DOMContentLoaded", checkPreviousAudit);
+
+async function checkPreviousAudit() {
+  hideError();
+
+  // Resolve business id from DOM / URL / localStorage. If none, show input.
+  const business_id = resolveBusinessId();
+  if (!business_id) {
+    console.warn("No business ID provided (DOM / URL / localStorage).");
+    return showScreen("screen-input");
+  }
+
+  try {
+    const url = `${API_URL}?business_id=eq.${business_id}&select=*`;
+    const res = await fetch(url, { headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` } });
+
+    if (!res.ok) return showScreen("screen-input");
+
+    const data = await res.json();
+
+    if (!Array.isArray(data) || data.length === 0) {
+      // No audits yet for this business id
+      return showScreen("screen-input");
+    }
+
+    // Check if any successful audit exists (errors null)
+    const successful = data.find((d) => !d.errors);
+
+    if (successful) {
+      showResults(successful);
+      return;
+    }
+
+    // Only failed results exist → user can retry
+    showScreen("screen-input");
+
+  } catch (err) {
+    console.error("Initial audit check error:", err);
+    showScreen("screen-input");
   }
 }
 
-function getStoredBusinessInfo() {
-  try {
-    const raw = localStorage.getItem('vvUser');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      return {
-        business_id: parsed?.business_id || parsed?.['business id'] || localStorage.getItem('business_id') || null,
-        plan_level: (parsed?.package || parsed?.package_name || parsed?.packageType || localStorage.getItem('package') || localStorage.getItem('package_name') || '')
-      };
-    }
-  } catch (e) {}
-  return { business_id: localStorage.getItem('business_id') || null, plan_level: localStorage.getItem('package') || localStorage.getItem('package_name') || '' };
-}
+/* -----------------------------
+   START AUDIT
+------------------------------ */
 
 async function startAudit() {
-  const screenInput = document.getElementById('screen-input');
-  const screenLoading = document.getElementById('screen-loading');
-  const screenResults = document.getElementById('screen-results');
-  const statusText = document.getElementById('loading-text');
-  const progressBar = document.getElementById('progress-bar');
-  const startBtn = document.getElementById('startAuditBtn');
+  hideError();
+  // read values with fallbacks to the IDs present in the HTML or URL/localStorage
+  const business_id = resolveBusinessId();
+  const website = getElValueByIds("website", "inputUrl");
+  const facebook = getElValueByIds("facebook", "inputFb");
+  const instagram = getElValueByIds("instagram", "inputIg");
+  const plan_level = getElValueByIds("plan_level") || "free";
 
-  const rawWebsite = document.getElementById('inputUrl').value || '';
-  const website = normalizeWebsite(rawWebsite);
-  if (!website) { alert('Please enter a valid website URL'); return; }
+  if (!business_id) return showError("Please enter your business ID.");
 
-  let instagram = (document.getElementById('inputIg').value || '').trim();
-  let facebook = (document.getElementById('inputFb').value || '').trim();
-  const stored = getStoredBusinessInfo();
-  const business_id = stored.business_id;
-  const plan_level = stored.plan_level || 'free';
+  if (website && !website.startsWith("http")) return showError("Invalid website link.");
+  if (facebook && !facebook.includes("facebook.com")) return showError("Invalid Facebook link.");
+  if (instagram && !instagram.includes("instagram.com")) return showError("Invalid Instagram link.");
 
-  console.log('[audit] startAudit called', { website, instagram, facebook, business_id, plan_level });
+  showScreen("screen-loading");
+  setText("loading-text", "Checking links...");
 
-  if (startBtn) { startBtn.disabled = true; startBtn.classList.add('opacity-60','cursor-not-allowed'); }
-
-  // Switch screens
-  screenInput.classList.add('hidden');
-  screenLoading.classList.remove('hidden');
-  screenResults.classList.add('hidden');
-
-  // Start animations
-  setTimeout(()=>{ progressBar.classList.add('progress-bar-fill'); progressBar.style.width='100%'; }, 100);
-
-  statusText.textContent = 'Starting Audit...';
-  setTimeout(()=>{ statusText.textContent = 'Checking Links...'; }, 450);
-
-  // Validate social links locally before sending to backend
-  const loadErrEl = document.getElementById('loading-error');
-  function returnToInputWithMessage(msg) {
-    try { if (loadErrEl) { loadErrEl.textContent = msg; loadErrEl.classList.remove('hidden'); } } catch(e){}
-    // show input screen again so user can correct links
-    try { screenLoading.classList.add('hidden'); screenInput.classList.remove('hidden'); } catch(e){}
-    if (startBtn) { startBtn.disabled = false; startBtn.classList.remove('opacity-60','cursor-not-allowed'); }
-  }
-
-  // Relaxed Instagram validation: accept usernames, @handles, or full URLs; normalize to https://instagram.com/handle
-  if (instagram) {
-    console.log('[audit] validating instagram input:', instagram);
-    let ig = instagram.replace(/\s+/g,'');
-    if (!/^https?:\/\//i.test(ig)) {
-      if (ig.startsWith('@')) ig = 'https://instagram.com/' + ig.slice(1);
-      else if (/^[A-Za-z0-9._-]+$/.test(ig)) ig = 'https://instagram.com/' + ig;
-      else ig = 'https://' + ig;
-    }
-    try {
-      const u = new URL(ig);
-      if (!u.hostname.toLowerCase().includes('instagram.com')) {
-        console.log('[audit] instagram validation failed - hostname:', u.hostname);
-        returnToInputWithMessage('Check your Facebook link/Instagram link and retry.');
-        return;
-      }
-      // use normalized form
-      instagram = u.toString().replace(/\/?$/, '');
-      console.log('[audit] instagram normalized to', instagram);
-    } catch (e) {
-      console.log('[audit] instagram parse error', e);
-      returnToInputWithMessage('Check your Facebook link/Instagram link and retry.');
-      return;
-    }
-  }
-
-  // Relaxed Facebook validation: accept full facebook.com URLs or usernames; normalize to https://facebook.com/username
-  if (facebook) {
-    console.log('[audit] validating facebook input:', facebook);
-    let fb = facebook.replace(/\s+/g,'');
-    if (!/^https?:\/\//i.test(fb)) {
-      if (fb.startsWith('@')) fb = 'https://facebook.com/' + fb.slice(1);
-      else if (/^[A-Za-z0-9._-]+$/.test(fb)) fb = 'https://facebook.com/' + fb;
-      else fb = 'https://' + fb;
-    }
-    try {
-      const ufb = new URL(fb);
-      if (!(ufb.hostname.toLowerCase().includes('facebook.com') || fb.toLowerCase().includes('.php'))) {
-        console.log('[audit] facebook validation failed - hostname:', ufb.hostname);
-        returnToInputWithMessage('Check your Facebook link/Instagram link and retry.');
-        return;
-      }
-      facebook = ufb.toString().replace(/\/?$/, '');
-      console.log('[audit] facebook normalized to', facebook);
-    } catch (e) {
-      console.log('[audit] facebook parse error', e);
-      returnToInputWithMessage('Check your Facebook link/Instagram link and retry.');
-      return;
-    }
-  }
-
-  // If valid, save social links back to localStorage for convenience
   try {
-    if (instagram) localStorage.setItem('business_instagram', instagram);
-    if (facebook) localStorage.setItem('business_facebook', facebook);
-  } catch (e) { console.warn('[audit] could not save social links to localStorage', e); }
+    const res = await fetch(AUDIT_START_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ business_id, website, facebook, instagram, plan_level })
+    });
 
-  // reset polling-stopped flag (we are starting a new audit)
-  window.auditPollingStopped = false;
+    if (!res.ok) return showError("Could not start audit.");
 
+    const { audit_id } = await res.json();
 
-  // POST to audit-start and wait for audit_id
-  try {
-    console.log('[audit] sending audit-start payload');
-    const payload = { business_id, website, facebook, instagram, plan_level };
-    const fnUrl = `${SUPABASE_URL}/functions/v1/audit-start`;
-    const res = await fetch(fnUrl, { method: 'POST', headers: { 'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':`Bearer ${SUPABASE_ANON_KEY}` }, body: JSON.stringify(payload) });
+    if (!audit_id) return showError("Audit failed to start.");
 
-    // Always read the response text for debugging, then try to parse JSON
-    let respText = null;
-    try { respText = await res.text(); } catch (e) { respText = null; }
-    console.log('[audit] audit-start response status:', res.status, res.statusText);
-    console.log('[audit] audit-start response text:', respText);
+    setText("loading-text", "Audit started...");
+    // store a transient business id if provided in the form so future page loads can detect it
+    try { if (business_id) localStorage.setItem('business_id', business_id); } catch (e) {}
+    beginPolling(audit_id);
 
-    let data = null;
-    if (respText) {
-      try { data = JSON.parse(respText); } catch (e) { data = null; }
-    }
-
-    // If the function returned non-JSON text that includes an id, try to extract it via regex
-    let auditId = data?.audit_id || data?.id || null;
-    if (!auditId && respText) {
-      const m = respText.match(/(?:audit[_-]?id|id)["'\s:]*([A-Za-z0-9-_]{6,})/i);
-      if (m && m[1]) auditId = m[1];
-    }
-    if (res.ok && auditId) {
-      window.currentAuditId = auditId; try { localStorage.setItem('current_audit_id', String(auditId)); } catch(e){}
-      console.log('[audit] started, audit_id=', auditId);
-      console.log('[audit] starting poll for audit id', auditId);
-      statusText.textContent = `Audit started (ID: ${auditId})`;
-      pollForResults(auditId);
-    } else if (res.ok && !auditId) {
-      // Function returned 200 but no audit id in body — fallback to polling by business_id or website
-      console.log('[audit] audit-start returned 200 but no audit_id; falling back to polling by business_id/website', { data, respText });
-      statusText.textContent = 'Audit accepted, waiting for results...';
-      pollForResults(null, { business_id, website });
-    } else {
-      // Non-ok status from function
-      console.error('[audit] audit-start returned error status', res.status, res.statusText, respText);
-      returnToInputWithMessage('Audit could not be run at this time, please try again later.');
-      return;
-    }
   } catch (err) {
-    console.error('[audit] audit-start fetch error', err);
-    returnToInputWithMessage('Audit could not be run at this time, please try again later.');
-    return;
+    console.error(err);
+    showError("Network error, try again.");
   }
-
-  // Continue with other messages while polling
-  const messagesAfterStart = ['Scanning SEO setup...','Checking call-to-action strength...','Reviewing mobile responsiveness...','Browsing Instagram profile...','Looking at profile bio...','Scanning Facebook page...','Checking recent engagement...','Finalizing your snapshot...'];
-  await new Promise(r=>setTimeout(r,700));
-  let msgIndex=0; statusText.textContent = messagesAfterStart[0];
-  const interval = setInterval(()=>{ msgIndex++; if (msgIndex < messagesAfterStart.length) { statusText.style.opacity='0'; setTimeout(()=>{ statusText.textContent=messagesAfterStart[msgIndex]; statusText.style.opacity='1'; },150); } else clearInterval(interval); }, 550);
-
-  // NOTE: do NOT auto-show results here. Results screen is shown only when actual results arrive.
 }
 
-// Poll REST table for results
-function pollForResults(auditIdToPoll, fallback) {
-  // fallback: { business_id, website }
-  if (!auditIdToPoll) auditIdToPoll = window.currentAuditId || localStorage.getItem('current_audit_id');
-  const useFallback = !auditIdToPoll && fallback && (fallback.business_id || fallback.website);
-  if (!auditIdToPoll && !useFallback) throw new Error('No audit id or fallback filter for polling');
-  if (window.auditPollInterval) { clearInterval(window.auditPollInterval); window.auditPollInterval = null; }
-  if (window.auditPollingStopped) {
-    console.log('[audit] polling disabled because results already shown');
-    return null;
-  }
-  const pollStart = Date.now();
-  const maxPollMs = 3 * 60 * 1000;
+/* -----------------------------
+   BEGIN POLLING
+------------------------------ */
 
-  window.auditPollInterval = setInterval(async () => {
-    try {
-      let url;
-      if (auditIdToPoll) {
-        url = `${SUPABASE_URL}/rest/v1/audit_results?audit_id=eq.${encodeURIComponent(auditIdToPoll)}`;
-      } else if (useFallback) {
-        // If both business_id and website are available, poll for either using an OR filter and return the latest record
-        if (fallback.business_id && fallback.website) {
-          const orPart = `business_id.eq.${encodeURIComponent(fallback.business_id)},website.eq.${encodeURIComponent(fallback.website)}`;
-          url = `${SUPABASE_URL}/rest/v1/audit_results?or=(${orPart})&order=created_at.desc&limit=1`;
-        } else if (fallback.business_id) {
-          url = `${SUPABASE_URL}/rest/v1/audit_results?business_id=eq.${encodeURIComponent(fallback.business_id)}&order=created_at.desc&limit=1`;
-        } else {
-          url = `${SUPABASE_URL}/rest/v1/audit_results?website=eq.${encodeURIComponent(fallback.website)}&order=created_at.desc&limit=1`;
-        }
-      }
-      console.log('[audit] poll attempt for', auditIdToPoll || '(fallback)', 'url', url, 'at', new Date().toISOString());
-      const r = await fetch(url, { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } });
-      console.log('[audit] poll fetch status', r.status, r.statusText);
-      if (!r.ok) {
-        console.warn('[audit] poll fetch non-ok', r.status, r.statusText);
-        try { const loadErr = document.getElementById('loading-error'); if (loadErr) { loadErr.textContent = 'Audit failed. Please check your links and try again.'; loadErr.classList.remove('hidden'); } } catch (e) {}
-        clearInterval(window.auditPollInterval); window.auditPollInterval = null;
-        try { const startBtn = document.getElementById('startAuditBtn'); if (startBtn) { startBtn.disabled = false; startBtn.classList.remove('opacity-60','cursor-not-allowed'); } const screenLoading = document.getElementById('screen-loading'); const screenInput = document.getElementById('screen-input'); if (screenLoading) screenLoading.classList.add('hidden'); if (screenInput) screenInput.classList.remove('hidden'); } catch(e){}
-        return;
-      }
+function beginPolling(auditId) {
+  lastPollState = null;
 
-      const data = await r.json().catch(() => null) || [];
-      console.log('[audit] poll result raw length:', Array.isArray(data)?data.length:0, data);
-      if (Array.isArray(data) && data.length > 0) {
-        showResults(data[0]);
-        if (window.auditPollInterval) { clearInterval(window.auditPollInterval); window.auditPollInterval = null; }
-        return;
-      }
+  auditPolling = setInterval(() => {
+    pollForResults(auditId);
+  }, 2000);
 
-      if (Date.now() - pollStart > maxPollMs) {
-        console.warn('[audit] polling timed out');
-        try { const loadErr = document.getElementById('loading-error'); if (loadErr) { loadErr.textContent = 'Audit timed out. Please check your links and try again.'; loadErr.classList.remove('hidden'); } } catch (e) {}
-        clearInterval(window.auditPollInterval); window.auditPollInterval = null;
-        try { const startBtn = document.getElementById('startAuditBtn'); if (startBtn) { startBtn.disabled = false; startBtn.classList.remove('opacity-60','cursor-not-allowed'); } const screenLoading = document.getElementById('screen-loading'); const screenInput = document.getElementById('screen-input'); if (screenLoading) screenLoading.classList.add('hidden'); if (screenInput) screenInput.classList.remove('hidden'); } catch(e){}
-        return;
+  setText("loading-text", "Auditing your platforms...");
+}
+
+/* -----------------------------
+   POLL RESULTS
+------------------------------ */
+
+async function pollForResults(auditId) {
+  try {
+    const url = `${API_URL}?audit_id=eq.${auditId}&select=*`;
+    const res = await fetch(url, {
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json"
       }
-    } catch (e) {
-      console.error('[audit] polling error', e);
-      try { const loadErr = document.getElementById('loading-error'); if (loadErr) { loadErr.textContent = 'Audit failed. Please check your links and try again.'; loadErr.classList.remove('hidden'); } } catch (ex) {}
-      clearInterval(window.auditPollInterval); window.auditPollInterval = null;
-      try { const startBtn = document.getElementById('startAuditBtn'); if (startBtn) { startBtn.disabled = false; startBtn.classList.remove('opacity-60','cursor-not-allowed'); } const screenLoading = document.getElementById('screen-loading'); const screenInput = document.getElementById('screen-input'); if (screenLoading) screenLoading.classList.add('hidden'); if (screenInput) screenInput.classList.remove('hidden'); } catch(e){}
+    });
+
+    if (!res.ok) return;
+
+    const data = await res.json();
+
+    if (!Array.isArray(data) || data.length === 0) {
+      updateLoadingText();
       return;
     }
-  }, 2500);
-  return window.auditPollInterval;
+
+    const result = data[0];
+
+    if (result.errors) {
+      clearInterval(auditPolling);
+      return showAuditError(result.errors);
+    }
+
+    clearInterval(auditPolling);
+    showResults(result);
+
+  } catch (err) {
+    console.error("Polling error:", err);
+  }
 }
+
+/* -----------------------------
+   UPDATE LOADING TEXT
+------------------------------ */
+
+function updateLoadingText() {
+  const steps = [
+    "Auditing your website...",
+    "Checking Facebook...",
+    "Checking Instagram...",
+    "Analyzing with AI...",
+    "Finalizing results..."
+  ];
+
+  if (lastPollState === null) lastPollState = 0;
+  else lastPollState = (lastPollState + 1) % steps.length;
+
+  setText("loading-text", steps[lastPollState]);
+}
+
+/* -----------------------------
+   SHOW AUDIT ERROR
+------------------------------ */
+
+function showAuditError(errObj) {
+  const errText =
+    typeof errObj === "string" ? errObj : JSON.stringify(errObj, null, 2);
+
+  setText("loading-text", "Audit failed.");
+  showError(errText);
+
+  setTimeout(() => {
+    showScreen("screen-input");
+  }, 2000);
+}
+
+/* -----------------------------
+   SHOW RESULTS
+------------------------------ */
 
 function showResults(result) {
-  // stop any active polling once we show results
-  try { if (window.auditPollInterval) { clearInterval(window.auditPollInterval); window.auditPollInterval = null; } } catch(e){}
-  window.auditPollingStopped = true;
-  console.log('[audit] final result object:', result);
-  try { const dbg=document.getElementById('debug-audit-raw'); const pre=document.getElementById('debugRawAudit'); if (pre && dbg) { pre.textContent=JSON.stringify(result,null,2); dbg.classList.remove('hidden'); } } catch(e){}
-  try { const screenLoading=document.getElementById('screen-loading'); const screenResults=document.getElementById('screen-results'); if (screenLoading) screenLoading.classList.add('hidden'); if (screenResults) screenResults.classList.remove('hidden'); window.scrollTo({top:0,behavior:'smooth'}); } catch(e){}
-  try { const startBtn=document.getElementById('startAuditBtn'); if (startBtn) { startBtn.disabled=false; startBtn.classList.remove('opacity-60','cursor-not-allowed'); } } catch(e){}
+  showScreen("screen-results");
+
+  // Populate the debug box and a simple summary card area
+  const debugRaw = $("debugRawAudit");
+  if (debugRaw) debugRaw.textContent = JSON.stringify(result, null, 2);
+
+  const debugContainer = $("debug-audit-raw");
+  if (debugContainer) debugContainer.classList.remove("hidden");
+
+  const cards = $("results-cards");
+  if (cards) {
+    const summary = result.summary || "No summary available.";
+    const score = result.overall_score ?? "N/A";
+    cards.innerHTML = `\
+      <div class="col-span-2 bg-[#0b0d10] p-6 rounded-xl border border-[#22252b]">\
+        <h3 class="text-lg font-bold mb-2">Summary</h3>\
+        <p class="text-white/80">${summary}</p>\
+      </div>\
+      <div class="bg-[#0b0d10] p-6 rounded-xl border border-[#22252b] flex items-center justify-center">\
+        <div>\
+          <div class="text-sm text-white/60">Overall score</div>\
+          <div class="text-3xl font-bold">${score}</div>\
+        </div>\
+      </div>\
+    `;
+  }
+
+  // Persist the business id so future loads can skip the input screen
+  try {
+    const bid = result.business_id || result.businessId || resolveBusinessId();
+    if (bid) localStorage.setItem("business_id", bid);
+  } catch (e) {
+    // ignore storage errors
+  }
 }
 
-// Wire start button
-document.addEventListener('DOMContentLoaded', ()=>{ const b=document.getElementById('startAuditBtn'); if (b) b.addEventListener('click', startAudit); });
+/* -----------------------------
+   EXPORT FUNCTIONS FOR HTML
+------------------------------ */
+window.startAudit = startAudit;
+
+// Bind start button (if present) so users can trigger the audit
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = $("startAuditBtn");
+  if (btn && !btn._bound) {
+    btn.addEventListener("click", startAudit);
+    btn._bound = true;
+  }
+});

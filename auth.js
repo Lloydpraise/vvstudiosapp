@@ -65,6 +65,49 @@ window.authUtils = {
     logout
 };
 
+// Helpers to toggle services locally (useful for admin to enable features)
+function _saveLoggedInUser(userObj) {
+    try {
+        localStorage.setItem('vvUser', JSON.stringify(userObj));
+    } catch (e) {
+        console.warn('failed saving vvUser', e);
+    }
+}
+
+function enableServiceForCurrentUser(serviceName) {
+    const raw = getLoggedInUser();
+    if (!raw) return false;
+    const user = applyDefaultPackageSettings(raw);
+    const svc = String(serviceName || '').trim();
+    if (!svc) return false;
+    const active = new Set((user.active_services || []).map(s => String(s)));
+    active.add(svc);
+    user.active_services = Array.from(active);
+    // If pending_services existed, remove from it
+    if (Array.isArray(user.pending_services)) {
+        user.pending_services = user.pending_services.filter(s => String(s).toLowerCase() !== svc.toLowerCase());
+    }
+    _saveLoggedInUser(user);
+    return true;
+}
+
+function disableServiceForCurrentUser(serviceName) {
+    const raw = getLoggedInUser();
+    if (!raw) return false;
+    const user = applyDefaultPackageSettings(raw);
+    const svc = String(serviceName || '').trim();
+    if (!svc) return false;
+    user.active_services = (user.active_services || []).filter(s => String(s).toLowerCase() !== svc.toLowerCase());
+    // add to pending_services
+    user.pending_services = Array.isArray(user.pending_services) ? user.pending_services : [];
+    if (!user.pending_services.some(s => String(s).toLowerCase() === svc.toLowerCase())) user.pending_services.push(svc);
+    _saveLoggedInUser(user);
+    return true;
+}
+
+window.authUtils.enableServiceForCurrentUser = enableServiceForCurrentUser;
+window.authUtils.disableServiceForCurrentUser = disableServiceForCurrentUser;
+
 // --- Package helpers ---
 function normalizePackageName(pkg) {
     if (!pkg) return 'Free';
@@ -132,6 +175,17 @@ function applyDefaultPackageSettings(loginRecord) {
     const det = getPackageDetails(out.package);
     if (det.amount != null) out.package_amount = det.amount;
     out.active_services = Array.isArray(out.active_services) && out.active_services.length ? out.active_services : det.services.slice();
+    // For Growth customers we keep Business Assistant locked by default
+    // The admin can enable it later (user will toggle it on when ready).
+    try {
+        if (String(out.package).toLowerCase() === 'growth') {
+            out.active_services = (out.active_services || []).filter(s => String(s).toLowerCase() !== 'business assistant');
+            // Keep a record of services that are available but admin-disabled
+            out.pending_services = (det.services || []).filter(s => String(s).toLowerCase() === 'business assistant');
+        }
+    } catch (e) {
+        // ignore failures and leave services as-is
+    }
     // Mark is_active based on expiry (if expiry exists)
     if (out.package_expiry_date) {
         const now = new Date();
