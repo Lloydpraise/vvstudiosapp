@@ -623,13 +623,87 @@
                             </select>
                         </div>
                         <div id="signup-error" class="text-red-400 text-sm hidden"></div>
-                        <p class="text-xs text-white/60 mt-2">By Signing Up you agree to our <a href="terms.html" class="text-blue-400 underline">Terms</a>.</p>
+                        <p class="text-xs text-white/60 mt-2">By Signing Up you agree to our <button id="signup-terms-btn" class="text-blue-400 underline">Terms</button>.</p>
                         <div class="flex items-center justify-between gap-3">
                             <button type="button" id="signup-cancel" class="w-1/2 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg">Cancel</button>
                             <button type="submit" id="signup-submit" class="w-1/2 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg">Sign Up</button>
                         </div>
                     </form>
                 </div>
+
+                <!-- Inline Terms Modal (opens only from signup) -->
+                <div id="signup-terms-overlay" class="fixed inset-0 z-70 flex items-center justify-center hidden" aria-hidden="true">
+                    <div id="signup-terms-backdrop" class="absolute inset-0 bg-black bg-opacity-50"></div>
+                    <div id="signup-terms" class="relative bg-[#0f1115] rounded-2xl border border-[#2b2f3a] p-6 w-1/2 max-w-[680px] text-left text-white overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="signup-terms-title" style="max-height:80vh;">
+                        <h3 id="signup-terms-title" class="text-lg font-bold mb-3">Terms of Service</h3>
+                        <div id="signup-terms-content" class="prose prose-invert text-sm text-white/80">Terms of Service will Appear Here.</div>
+                    </div>
+                </div>
+
+                <script>
+                    document.addEventListener('DOMContentLoaded', function(){
+                        var termsBtn = document.getElementById('signup-terms-btn');
+                        var overlay = document.getElementById('signup-terms-overlay');
+                        var backdrop = document.getElementById('signup-terms-backdrop');
+                        var contentEl = document.getElementById('signup-terms-content');
+                        if (!termsBtn || !overlay || !contentEl) return;
+
+                        function loadMarked(){
+                            return new Promise(function(resolve){
+                                if (window.marked) return resolve(window.marked);
+                                var s = document.createElement('script');
+                                s.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
+                                s.async = true;
+                                s.onload = function(){ resolve(window.marked); };
+                                s.onerror = function(){ resolve(null); };
+                                document.head.appendChild(s);
+                            });
+                        }
+
+                        function openTerms(e){
+                            if (e && e.preventDefault) e.preventDefault();
+                            overlay.classList.remove('hidden');
+                            try { document.body.style.overflow = 'hidden'; } catch(e){}
+
+                            // Fetch and render markdown file (terms.md). If markdown library isn't available, show plain text.
+                            Promise.all([loadMarked(), fetch('terms.md')])
+                                .then(function(results){
+                                    var markedLib = results[0];
+                                    var resp = results[1];
+                                    if (resp && resp.ok) return resp.text().then(function(txt){ return { txt: txt, marked: markedLib }; });
+                                    return { txt: 'Terms of Service will Appear Here.', marked: markedLib };
+                                })
+                                .then(function(obj){
+                                    if (obj.marked) {
+                                        try { contentEl.innerHTML = obj.marked.parse(obj.txt || ''); return; } catch(e){}
+                                    }
+                                    // Fallback: plain text (escape HTML)
+                                    contentEl.textContent = obj.txt || 'Terms of Service will Appear Here.';
+                                })
+                                .catch(function(){
+                                    contentEl.textContent = 'Terms of Service will Appear Here.';
+                                });
+                        }
+
+                        function closeTerms(){
+                            overlay.classList.add('hidden');
+                            try { document.body.style.overflow = ''; } catch(e){}
+                        }
+
+                        termsBtn.addEventListener('click', openTerms);
+
+                        // Close on click-away (clicking the overlay/backdrop)
+                        overlay.addEventListener('click', function(ev){
+                            if (ev.target === overlay || ev.target === backdrop) {
+                                closeTerms();
+                            }
+                        });
+
+                        // Optional: close on Escape key
+                        document.addEventListener('keydown', function(ev){ if (ev.key === 'Escape' && !overlay.classList.contains('hidden')) closeTerms(); });
+                    });
+                </script>
+
             </div>
         </div>
     </div>
