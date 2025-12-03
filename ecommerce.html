@@ -67,9 +67,12 @@
         @media (min-width: 1024px) {
             .sidebar {
                 position: sticky;
-                transform: translateX(0); /* Always visible on desktop */
+                left: 0;
+                transform: none; /* Always visible on desktop */
                 height: 100vh;
-                border-right: none;
+                /* Keep a subtle right border on desktop so layout edges remain clear */
+                border-right: 1px solid var(--border-dark);
+                box-shadow: none;
             }
         }
 
@@ -223,7 +226,10 @@
     <!-- Shared global loading is provided by loading.js (no local overlay here) -->
 
     <div class="lg:hidden fixed top-0 left-0 right-0 p-4 card-base z-40 flex justify-between items-center h-16 rounded-none border-x-0 border-t-0 bg-[#0f1115]">
-        <h1 class="text-lg font-bold text-white">Admin Console</h1>
+        <div class="flex items-center space-x-3">
+            <button id="back-button" onclick="history.back()" class="text-white text-2xl px-2 focus:outline-none lg:hidden" aria-label="Back">←</button>
+            <h1 class="text-lg font-bold text-white">Ecommerce</h1>
+        </div>
         <button id="sidebar-toggle" class="text-white text-2xl px-2 focus:outline-none">☰</button>
     </div>
 
@@ -267,7 +273,7 @@
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-2">
                 <h1 class="text-2xl md:text-3xl font-bold">Analytics Dashboard</h1>
                 <div class="flex flex-col items-end space-y-2">
-                    <button id="ecom-back-btn" onclick="history.back()" class="text-sm text-white/80 bg-white/3 hover:bg-white/5 py-1 px-3 rounded-lg">← Back</button>
+                    <button id="ecom-back-btn" onclick="history.back()" class="hidden lg:inline-flex text-sm text-white/80 bg-white/3 hover:bg-white/5 py-1 px-3 rounded-lg" aria-label="Back">← Back</button>
                     <div class="text-sm text-white/50" id="analytics-timestamp">Loading data...</div>
                 </div>
             </div>
@@ -491,25 +497,27 @@
                     <input type="text" id="setting-whatsapp-number" class="w-full" placeholder="2547...">
                 </div>
 
-                <h2 class="text-xl font-semibold border-b border-white/10 pb-3 pt-4">Brand Colors</h2>
+                <h2 class="text-xl font-semibold border-b border-white/10 pb-3 pt-4">Brand Colors <span class="text-sm text-white/50 font-normal">(Product page only)</span></h2>
+
+                <p class="text-sm text-white/60 mt-2 mb-4">These colors apply only to the product storefront: primary accent affects <strong>prices and buttons</strong>, secondary affects <strong>offers</strong>, and background applies to the product page container.</p>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div>
-                        <label for="setting-primary-color" class="block text-sm font-medium text-white/70 mb-1">Primary Color (Accent)</label>
+                        <label for="setting-primary-color" class="block text-sm font-medium text-white/70 mb-1">Primary Color (Accent — prices and buttons)</label>
                         <div class="flex space-x-2">
                             <input type="color" id="setting-primary-color" class="w-12 h-10 p-0.5 rounded-lg border-none shrink-0" oninput="updateBrandColor('--primary-color', this.value)" value="#7c3aed">
                             <input type="text" id="setting-primary-color-hex" class="flex-1 w-full" value="#7c3aed" oninput="updateBrandColor('--primary-color', this.value)">
                         </div>
                     </div>
                     <div>
-                        <label for="setting-secondary-color" class="block text-sm font-medium text-white/70 mb-1">Secondary Color (Details)</label>
+                        <label for="setting-secondary-color" class="block text-sm font-medium text-white/70 mb-1">Secondary Color (Offers)</label>
                         <div class="flex space-x-2">
                             <input type="color" id="setting-secondary-color" class="w-12 h-10 p-0.5 rounded-lg border-none shrink-0" oninput="updateBrandColor('--secondary-color', this.value)" value="#ea580c">
                             <input type="text" id="setting-secondary-color-hex" class="flex-1 w-full" value="#ea580c" oninput="updateBrandColor('--secondary-color', this.value)">
                         </div>
                     </div>
                     <div>
-                        <label for="setting-bg-color" class="block text-sm font-medium text-white/70 mb-1">Background Color</label>
+                        <label for="setting-bg-color" class="block text-sm font-medium text-white/70 mb-1">Background Color (Product page only)</label>
                         <div class="flex space-x-2">
                             <input type="color" id="setting-bg-color" class="w-12 h-10 p-0.5 rounded-lg border-none shrink-0" oninput="updateBrandColor('--bg-dark', this.value)" value="#0f1115">
                             <input type="text" id="setting-bg-color-hex" class="flex-1 w-full" value="#0f1115" oninput="updateBrandColor('--bg-dark', this.value)">
@@ -827,7 +835,20 @@
         }
 
         function updateBrandColor(cssVar, hexValue) {
-            document.documentElement.style.setProperty(cssVar, hexValue);
+            // Scope color changes to the products section only so the rest of the app remains unaffected.
+            // If #products is not present, fall back to document root.
+            try {
+                const productsEl = document.getElementById('products');
+                if (productsEl) {
+                    productsEl.style.setProperty(cssVar, hexValue);
+                } else {
+                    document.documentElement.style.setProperty(cssVar, hexValue);
+                }
+            } catch (e) {
+                // Fallback to root on any error
+                document.documentElement.style.setProperty(cssVar, hexValue);
+            }
+
             // Sync text inputs if triggered by color picker
             const idBase = cssVar.replace('--', 'setting-');
             const hexInput = document.getElementById(idBase + '-hex');

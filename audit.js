@@ -9,6 +9,9 @@ const SUPABASE_KEY = APP_CONFIG.SUPABASE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6Ikp
 const API_URL = `${SUPABASE_URL}/rest/v1/audit_results`;
 const AUDIT_START_URL = "/functions/v1/audit-start";
 
+// When true, audits are disabled and UI shows maintenance notice
+const AUDIT_MAINTENANCE = true;
+
 let auditPolling = null;
 let lastPollState = null;
 
@@ -155,6 +158,12 @@ async function checkPreviousAudit() {
 
 async function startAudit() {
   hideError();
+  // Maintenance guard: do not attempt to start audits while maintenance is active
+  if (typeof AUDIT_MAINTENANCE !== "undefined" && AUDIT_MAINTENANCE) {
+    showScreen("screen-input");
+    showError("Audit AI is under maintainence, we will inform you when back");
+    return;
+  }
   // read values with fallbacks to the IDs present in the HTML or URL/localStorage
   const business_id = resolveBusinessId();
   const website = getElValueByIds("website", "inputUrl");
@@ -333,7 +342,12 @@ window.startAudit = startAudit;
 document.addEventListener("DOMContentLoaded", () => {
   const btn = $("startAuditBtn");
   if (btn && !btn._bound) {
-    btn.addEventListener("click", startAudit);
+    if (!AUDIT_MAINTENANCE) {
+      btn.addEventListener("click", startAudit);
+    } else {
+      btn.disabled = true;
+      btn.setAttribute('aria-disabled', 'true');
+    }
     btn._bound = true;
   }
 });

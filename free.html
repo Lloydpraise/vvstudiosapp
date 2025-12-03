@@ -291,12 +291,12 @@
                             
                             <!-- Static Tasks -->
                             <div id="task-offer" class="task-card p-4 rounded-xl flex flex-col justify-between h-full hover:border-white/20 transition-colors">
-                                <div class="flex items-start justify-between mb-3"><span class="task-number">3</span><button id="create-offer-btn" class="text-xs bg-[#2b2f3a] border border-white/10 text-white py-1 px-3 rounded-md">Create</button></div>
+                                <div class="flex items-start justify-between mb-3"><span class="task-number">3</span><button id="create-offer-btn" onclick="window.location.href='ecommerce.html#offers'" class="text-xs bg-[#2b2f3a] border border-white/10 text-white py-1 px-3 rounded-md">Create</button></div>
                                 <div><h3 class="font-medium text-white mb-1 text-sm">Create One Offer</h3><p class="text-xs text-white/40">Define what you're selling.</p></div>
                             </div>
-                            <div id="task-audit" class="task-card p-4 rounded-xl flex flex-col justify-between h-full hover:border-white/20 transition-colors">
-                                <div class="flex items-start justify-between mb-3"><span class="task-number">4</span><button id="run-audit-btn" class="text-xs bg-[#2b2f3a] border border-white/10 text-white py-1 px-3 rounded-md">Run Audit</button></div>
-                                <div><h3 class="font-medium text-white mb-1 text-sm">Run Audit</h3><p class="text-xs text-white/40">Check online presence.</p></div>
+                            <div id="task-addproduct" class="task-card p-4 rounded-xl flex flex-col justify-between h-full hover:border-white/20 transition-colors">
+                                <div class="flex items-start justify-between mb-3"><span class="task-number">4</span><a id="add-first-product-btn" href="ecommerce.html#products" class="text-xs bg-[#2b2f3a] border border-white/10 text-white py-1 px-3 rounded-md">Add</a></div>
+                                <div><h3 class="font-medium text-white mb-1 text-sm">Add Your First Product</h3><p class="text-xs text-white/40">Create a product so customers can start buying from you.</p></div>
                             </div>
                             <!-- Book a Call (step 5) - locked until all onboarding steps complete -->
                             <div id="task-bookcall" class="md:col-span-2 lg:col-span-4 task-card p-3 rounded-xl flex items-center justify-between group hover:border-white/20 transition-colors">
@@ -304,7 +304,7 @@
                                     <span class="task-number">5</span>
                                     <div>
                                         <h3 class="font-medium text-white mb-0.5 text-sm">Book A Call</h3>
-                                        <p class="text-xs text-white/40">Get a 1:1 onboarding call with our team.</p>
+                                        <p class="text-xs text-white/40">Finish Above tasks to schedule an indepth stratefy call.</p>
                                     </div>
                                 </div>
                                 <div>
@@ -433,9 +433,55 @@
                 <button class="text-white/50 hover:text-white" data-modal-close="free-business-profile-modal"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <form id="free-business-profile-form" class="space-y-4">
-                <div><label class="block text-white mb-1">Business Name</label><input class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl p-3 text-white" placeholder="My Business"></div>
-                <!-- Add more fields as needed -->
-                <div class="pt-4"><button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold">Save Profile</button></div>
+                <div class="flex flex-col md:flex-row items-center md:space-x-4 space-y-4 md:space-y-0">
+                    <div class="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center overflow-hidden border border-white/20 shrink-0 relative">
+                         <span class="text-2xl" id="logo-placeholder">📷</span>
+                         <img id="logo-preview" class="w-full h-full object-cover hidden">
+                         <div id="logo-loading" class="absolute inset-0 bg-black/50 hidden flex items-center justify-center">
+                            <div class="loader"></div>
+                         </div>
+                    </div>
+                    <div class="w-full">
+                        <label class="block text-sm font-medium text-white/70 mb-1">Business Logo</label>
+                        <input type="file" id="setting-logo-upload" accept="image/*" class="w-full text-sm text-white/70">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="setting-business-name" class="block text-sm font-medium text-white/70 mb-1">Business Name</label>
+                    <input type="text" id="setting-business-name" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl p-3 text-white" placeholder="Your Business">
+                </div>
+                <div>
+                    <label for="setting-whatsapp-number" class="block text-sm font-medium text-white/70 mb-1">WhatsApp Number (e.g., 2547XXXXXXXX)</label>
+                    <input type="text" id="setting-whatsapp-number" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl p-3 text-white" placeholder="2547...">
+                </div>
+
+                <h3 class="text-lg font-semibold pt-2">Brand Colors</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                        <label for="setting-primary-color" class="block text-sm font-medium text-white/70 mb-1">Primary Color (Accent)</label>
+                        <div class="flex space-x-2">
+                            <input type="color" id="setting-primary-color" class="w-12 h-10 p-0.5 rounded-lg border-none shrink-0" value="#7c3aed">
+                            <input type="text" id="setting-primary-color-hex" class="flex-1 w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl p-3 text-white" value="#7c3aed">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="setting-secondary-color" class="block text-sm font-medium text-white/70 mb-1">Secondary Color (Details)</label>
+                        <div class="flex space-x-2">
+                            <input type="color" id="setting-secondary-color" class="w-12 h-10 p-0.5 rounded-lg border-none shrink-0" value="#ea580c">
+                            <input type="text" id="setting-secondary-color-hex" class="flex-1 w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl p-3 text-white" value="#ea580c">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="setting-bg-color" class="block text-sm font-medium text-white/70 mb-1">Background Color</label>
+                        <div class="flex space-x-2">
+                            <input type="color" id="setting-bg-color" class="w-12 h-10 p-0.5 rounded-lg border-none shrink-0" value="#0f1115">
+                            <input type="text" id="setting-bg-color-hex" class="flex-1 w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl p-3 text-white" value="#0f1115">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4"><button type="submit" id="save-free-business-profile" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold">Save Profile</button></div>
             </form>
         </div>
     </div>
@@ -681,7 +727,7 @@
             const closeBtns = document.querySelectorAll('[data-modal-close]');
             
             if(openBtn && modal) {
-                openBtn.addEventListener('click', (e) => { e.preventDefault(); modal.classList.remove('hidden'); });
+                openBtn.addEventListener('click', async (e) => { e.preventDefault(); await loadBusinessProfile(); modal.classList.remove('hidden'); });
                 closeBtns.forEach(btn => btn.addEventListener('click', () => modal.classList.add('hidden')));
             }
             
@@ -730,6 +776,119 @@
                 const target = evt.target;
                 if (target && target.getAttribute && target.getAttribute('data-modal-close') === 'book-call-modal') {
                     document.getElementById('book-call-modal')?.classList.add('hidden');
+                }
+            });
+
+            // --- Business Profile Load/Save + Logo Upload Helpers ---
+            async function updateBrandColor(cssVar, hexValue) {
+                try { document.documentElement.style.setProperty(cssVar, hexValue); } catch(e){}
+                // Sync text inputs if present
+                const idBase = cssVar.replace('--', 'setting-');
+                const hexInput = document.getElementById(idBase + '-hex');
+                const colorInput = document.getElementById(idBase);
+                if (hexInput && hexInput.value !== hexValue) hexInput.value = hexValue;
+                if (colorInput && colorInput.value !== hexValue) colorInput.value = hexValue;
+            }
+
+            async function loadBusinessProfile() {
+                const businessId = getBusinessId();
+                // Reset any loading state
+                try {
+                    const { data, error } = await supabase.from('business_settings').select('*').eq('business_id', businessId).single();
+                    if (!error && data) {
+                        document.getElementById('setting-business-name').value = data.business_name || '';
+                        document.getElementById('setting-whatsapp-number').value = data.whatsapp_number || '';
+                        const colors = data.brand_colors || {};
+                        const primary = colors.primary || '#7c3aed';
+                        const secondary = colors.secondary || '#ea580c';
+                        const bg = colors.background || '#0f1115';
+                        document.getElementById('setting-primary-color').value = primary;
+                        document.getElementById('setting-primary-color-hex').value = primary;
+                        document.getElementById('setting-secondary-color').value = secondary;
+                        document.getElementById('setting-secondary-color-hex').value = secondary;
+                        document.getElementById('setting-bg-color').value = bg;
+                        document.getElementById('setting-bg-color-hex').value = bg;
+                        // Logo
+                        if (data.logo_url) {
+                            const img = document.getElementById('logo-preview');
+                            img.src = data.logo_url;
+                            img.classList.remove('hidden');
+                            document.getElementById('logo-placeholder').classList.add('hidden');
+                        } else {
+                            document.getElementById('logo-preview').classList.add('hidden');
+                            document.getElementById('logo-placeholder').classList.remove('hidden');
+                        }
+                        // Apply colors to page preview
+                        updateBrandColor('--primary-color', primary);
+                        updateBrandColor('--secondary-color', secondary);
+                        updateBrandColor('--bg-dark', bg);
+                    } else {
+                        // No data: ensure defaults
+                    }
+                } catch (err) {
+                    console.error('loadBusinessProfile error', err);
+                }
+            }
+
+            // Logo upload handler
+            document.getElementById('setting-logo-upload')?.addEventListener('change', async (ev) => {
+                const file = ev.target.files && ev.target.files[0];
+                if (!file) return;
+                const businessId = getBusinessId();
+                const preview = document.getElementById('logo-preview');
+                const placeholder = document.getElementById('logo-placeholder');
+                const loader = document.getElementById('logo-loading');
+                try {
+                    loader.classList.remove('hidden');
+                    const fileName = `logos/${businessId}-${Date.now()}-${file.name}`;
+                    const { error } = await supabase.storage.from('ecommerce-assets').upload(fileName, file);
+                    if (!error) {
+                        const { data } = supabase.storage.from('ecommerce-assets').getPublicUrl(fileName);
+                        const publicUrl = data?.publicUrl || '';
+                        preview.src = publicUrl;
+                        preview.classList.remove('hidden');
+                        placeholder.classList.add('hidden');
+                        // Persist immediately to settings so user sees it (non-blocking)
+                        await supabase.from('business_settings').upsert({ business_id: businessId, logo_url: publicUrl });
+                    } else {
+                        console.warn('logo upload failed', error);
+                    }
+                } catch (e) { console.error(e); }
+                try { loader.classList.add('hidden'); } catch(e){}
+            });
+
+            // Sync color inputs
+            ['setting-primary-color','setting-secondary-color','setting-bg-color'].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.addEventListener('input', (e) => updateBrandColor('--' + id.replace('setting-','').replace('-color',''), e.target.value));
+            });
+
+            // Save form handler
+            const profileForm = document.getElementById('free-business-profile-form');
+            profileForm?.addEventListener('submit', async (ev) => {
+                ev.preventDefault();
+                const businessId = getBusinessId();
+                const payload = {
+                    business_id: businessId,
+                    business_name: document.getElementById('setting-business-name').value,
+                    whatsapp_number: document.getElementById('setting-whatsapp-number').value,
+                    brand_colors: {
+                        primary: document.getElementById('setting-primary-color').value,
+                        secondary: document.getElementById('setting-secondary-color').value,
+                        background: document.getElementById('setting-bg-color').value
+                    }
+                };
+                try {
+                    await supabase.from('business_settings').upsert(payload);
+                    // Close modal
+                    modal.classList.add('hidden');
+                    // Refresh onboarding status
+                    try { loadOnboardingStatus(); } catch(e){}
+                    alert('Profile saved');
+                } catch (err) {
+                    console.error('save profile failed', err);
+                    alert('Failed to save profile');
                 }
             });
 
