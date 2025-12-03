@@ -384,7 +384,7 @@
             </div>
             
             <div class="card-base p-4 overflow-x-auto">
-                <table class="min-w-full divide-y divide-white/10">
+                <table class="min-w-full divide-y divide-white/10" id="products-table">
                     <thead>
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider whitespace-nowrap">Product</th>
@@ -394,8 +394,17 @@
                         </tr>
                     </thead>
                     <tbody id="products-list" class="divide-y divide-white/10">
-                        </tbody>
+                    </tbody>
                 </table>
+
+                <!-- Empty state banner (hidden by default). Shown when there are no products. -->
+                <div id="empty-products-banner" class="hidden w-full p-8 flex flex-col items-center justify-center text-center">
+                    <div class="text-lg font-semibold text-white mb-4">Create Your First Product Here!</div>
+                    <button onclick="openProductModal()" class="btn-primary text-white font-medium py-2 px-4 rounded-xl">
+                        <span class="text-lg">+</span>
+                        <span class="ml-2">Create New Product</span>
+                    </button>
+                </div>
             </div>
         </section>
 
@@ -409,7 +418,7 @@
             </div>
             
             <div class="card-base p-4 overflow-x-auto">
-                <table class="min-w-full divide-y divide-white/10">
+                <table class="min-w-full divide-y divide-white/10" id="offers-table">
                     <thead>
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider whitespace-nowrap">Offer Name</th>
@@ -420,8 +429,17 @@
                         </tr>
                     </thead>
                     <tbody id="offers-list" class="divide-y divide-white/10">
-                        </tbody>
+                    </tbody>
                 </table>
+
+                <!-- Empty state banner (hidden by default). Shown when there are no offers. -->
+                <div id="empty-offers-banner" class="hidden w-full p-8 flex flex-col items-center justify-center text-center">
+                    <div class="text-lg font-semibold text-white mb-4">Create Your First Offer Here!</div>
+                    <button onclick="openOfferModal()" class="btn-primary text-white font-medium py-2 px-4 rounded-xl">
+                        <span class="text-lg">🎉</span>
+                        <span class="ml-2">Create New Offer</span>
+                    </button>
+                </div>
             </div>
         </section>
 
@@ -895,19 +913,19 @@
                 }
             } catch (e) { /* ignore */ }
 
+            // If there are no products, hide the table and show a centered banner (mobile-friendly)
             if (!products || products.length === 0) {
-                list.innerHTML = `
-                <tr>
-                    <td colspan="4" class="px-6 py-12 text-center">
-                        <div class="text-lg font-semibold text-white mb-3">Create Your First Product Here!</div>
-                        <button onclick="openProductModal()" class="btn-primary text-white font-medium py-2 px-4 rounded-xl">
-                            <span class="text-lg">+</span>
-                            <span class="ml-2">Create New Product</span>
-                        </button>
-                    </td>
-                </tr>
-                `;
+                const tableEl = document.getElementById('products-table');
+                const bannerEl = document.getElementById('empty-products-banner');
+                if (tableEl) tableEl.style.display = 'none';
+                if (bannerEl) bannerEl.style.display = 'flex';
                 return;
+            } else {
+                // Ensure table is visible if products exist
+                const tableEl = document.getElementById('products-table');
+                const bannerEl = document.getElementById('empty-products-banner');
+                if (tableEl) tableEl.style.display = '';
+                if (bannerEl) bannerEl.style.display = 'none';
             }
 
             // Build table rows using DOM so we can apply LQIP placeholders and lazy upgrade
@@ -1347,18 +1365,17 @@
             const list = document.getElementById('offers-list');
             const safeOffers = offers || [];
             if (safeOffers.length === 0) {
-                list.innerHTML = `
-                <tr>
-                    <td colspan="5" class="px-6 py-12 text-center">
-                        <div class="text-lg font-semibold text-white mb-3">Create Your First Offer Here!</div>
-                        <button onclick="openOfferModal()" class="btn-primary text-white font-medium py-2 px-4 rounded-xl">
-                            <span class="text-lg">🎉</span>
-                            <span class="ml-2">Create New Offer</span>
-                        </button>
-                    </td>
-                </tr>
-                `;
+                // Hide table and show the centered empty banner for offers
+                const tableEl = document.getElementById('offers-table');
+                const bannerEl = document.getElementById('empty-offers-banner');
+                if (tableEl) tableEl.style.display = 'none';
+                if (bannerEl) bannerEl.style.display = 'flex';
             } else {
+                // Ensure table visible when offers exist
+                const tableEl = document.getElementById('offers-table');
+                const bannerEl = document.getElementById('empty-offers-banner');
+                if (tableEl) tableEl.style.display = '';
+                if (bannerEl) bannerEl.style.display = 'none';
                 list.innerHTML = safeOffers.map(o => {
                 const prodName = productsCache.find(p => p.id === o.product_id)?.title || 'Unknown Product';
                 const discDisplay = o.discount_type === 'percent' ? `${o.discount_value}% OFF` : `KES ${o.discount_value} FIX`;

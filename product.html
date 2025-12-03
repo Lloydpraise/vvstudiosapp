@@ -95,6 +95,25 @@
             /* Prevent the main content from being covered by the sticky button */
             #main-content { padding-bottom: 140px; }
             .mobile-sticky-btn { z-index: 60; }
+
+            /* Prevent the centered store name from overlapping absolutely positioned
+               logo/back buttons. Add horizontal padding to reserve space and reduce
+               font-size so the name fits nicely on small screens. Also allow
+               truncation with ellipsis for long business names. */
+            header {
+                padding-left: 72px; /* reserve space for left logo */
+                padding-right: 72px; /* reserve space for potential back button */
+            }
+            #biz-name {
+                margin-top: 6px;
+                font-size: 1rem; /* slightly smaller on mobile */
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: calc(100% - 32px);
+            }
+            /* Slightly reduce logo size to keep spacing tidy */
+            #biz-logo, #logo-placeholder { height: 36px; width: auto; }
         }
     </style>
 </head>

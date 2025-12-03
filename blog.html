@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="loading.js"></script>
+    <meta charset="UTF-8">
+    <meta id="dynamic-viewport" name="viewport" content="width=device-width, initial-scale=0.8, viewport-fit=cover">
+    <title>Resources | VV Studios</title>
+    
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f1115; color: white; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background-color: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.1); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.2); }
+
+        /* Animations */
+        .card-animate { transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease; }
+        .card-animate:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1); }
+        
+        .fade-in { animation: fadeIn 0.6s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Article Prose Styling */
+        .prose h2 { font-size: 1.5rem; font-weight: 700; margin-top: 2rem; margin-bottom: 1rem; color: white; }
+        .prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.75rem; color: white; }
+        .prose p { margin-bottom: 1rem; line-height: 1.7; color: rgba(255,255,255,0.8); }
+        .prose ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; color: rgba(255,255,255,0.8); }
+        .prose li { margin-bottom: 0.5rem; }
+        .prose strong { color: white; font-weight: 600; }
+        .prose a { color: #3b82f6; text-decoration: underline; }
+    </style>
+</head>
+<body class="bg-[#0f1115] text-white min-h-screen flex flex-col">
+
+    <header class="p-6 flex justify-between items-center max-w-[1400px] mx-auto w-full border-b border-white/5 bg-[#0f1115]/80 backdrop-blur-md sticky top-0 z-50">
+        <div class="flex items-center gap-3">
+            <img src="assets/logo.png" onerror="this.src='https://via.placeholder.com/40'" class="w-10 h-10 rounded-full bg-gray-800" alt="Logo">
+            <span class="font-bold text-xl tracking-tight">VV Studios <span class="text-white/40 font-normal">| Resources</span></span>
+        </div>
+        <div class="flex gap-4">
+            <a href="free.html" class="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm text-white transition-colors border border-white/10">
+                Back to Dashboard
+            </a>
+        </div>
+    </header>
+
+    <main class="flex-1 w-full max-w-[1400px] mx-auto p-4 md:p-8 mb-12 fade-in relative" id="main-content">
+        
+        <div class="text-center mb-10 mt-4">
+            <h1 class="text-3xl md:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-green-400">
+                Learn, Grow, and Scale
+            </h1>
+            <p class="text-white/60 text-lg max-w-2xl mx-auto">
+                Explore our library of services, strategies, and learning materials.
+            </p>
+        </div>
+
+        <div id="blog-grid-view" class="fade-in">
+            
+            <div class="flex justify-center gap-4 mb-10 overflow-x-auto pb-2">
+                <button onclick="filterCategory('All')" id="btn-all" class="px-6 py-2 rounded-full bg-blue-600 text-white text-sm font-bold transition-colors hover:bg-blue-500 shadow-lg shadow-blue-900/20 whitespace-nowrap">All</button>
+                <button onclick="filterCategory('Services')" id="btn-services" class="px-6 py-2 rounded-full bg-[#1a1d23] border border-[#2b2f3a] text-white/70 text-sm font-bold transition-colors hover:bg-white/10 hover:text-white whitespace-nowrap">Services</button>
+                <button onclick="filterCategory('Learning')" id="btn-learning" class="px-6 py-2 rounded-full bg-[#1a1d23] border border-[#2b2f3a] text-white/70 text-sm font-bold transition-colors hover:bg-white/10 hover:text-white whitespace-nowrap">Learning Materials</button>
+            </div>
+
+            <div id="grid-loader" class="text-center py-20 hidden">
+                <i class="fa-solid fa-circle-notch fa-spin text-3xl text-blue-500"></i>
+            </div>
+
+            <div id="articles-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                </div>
+        </div>
+
+        <div id="blog-detail-view" class="hidden fade-in max-w-4xl mx-auto">
+            <button onclick="closeArticle()" class="mb-6 flex items-center gap-2 text-white/50 hover:text-white transition-colors bg-[#1a1d23] px-4 py-2 rounded-lg border border-white/5">
+                <i class="fa-solid fa-arrow-left"></i> Back to list
+            </button>
+
+            <div id="detail-loader" class="text-center py-20 hidden">
+                <i class="fa-solid fa-circle-notch fa-spin text-3xl text-blue-500"></i>
+            </div>
+
+            <article id="detail-content" class="bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] p-6 md:p-10 shadow-2xl">
+                <div class="mb-6 flex items-center gap-4">
+                    <span id="art-category" class="text-xs font-bold px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase tracking-wider">Category</span>
+                    <span class="text-white/40 text-sm" id="art-date">Date</span>
+                </div>
+                <h1 id="art-title" class="text-3xl md:text-5xl font-bold mb-6 text-white leading-tight">Article Title</h1>
+                
+                <div class="flex items-center gap-3 mb-8 border-b border-white/10 pb-8">
+                    <div class="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center font-bold text-white shadow-lg shadow-purple-500/30">V</div>
+                    <div>
+                        <p class="text-sm font-medium text-white" id="art-author">Author Name</p>
+                        <p class="text-xs text-white/40">VV Studios Team</p>
+                    </div>
+                </div>
+
+                <div id="art-body" class="prose max-w-none">
+                    </div>
+            </article>
+        </div>
+
+    </main>
+
+    <footer class="mt-auto border-t border-white/10 py-8 text-center text-white/40 text-sm bg-[#0f1115]">
+        <p>&copy; 2025 VV Studios. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // --- CONFIG ---
+        const APP_CONFIG = (window && window.__APP_CONFIG) ? window.__APP_CONFIG : {};
+        // Replace with your keys or use config
+        const SUPABASE_URL = APP_CONFIG.SUPABASE_URL || "https://xgtnbxdxbbywvzrttixf.supabase.co";
+        const SUPABASE_KEY = APP_CONFIG.SUPABASE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ";
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let allArticles = [];
+
+        // --- FUNCTIONS ---
+
+        // 1. Fetch All Articles
+        async function fetchArticles() {
+            const loader = document.getElementById('grid-loader');
+            const container = document.getElementById('articles-container');
+            
+            loader.classList.remove('hidden');
+            container.innerHTML = '';
+
+            try {
+                const { data, error } = await supabase
+                    .from('articles')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+                allArticles = data || [];
+                
+                // Check for URL param "category" to filter immediately
+                const urlParams = new URLSearchParams(window.location.search);
+                const catParam = urlParams.get('category');
+                
+                if (catParam) {
+                    filterCategory(catParam);
+                } else {
+                    renderGrid(allArticles);
+                }
+
+                // Check for URL param "id" to open specific article
+                const idParam = urlParams.get('id');
+                if (idParam) {
+                    openArticle(idParam);
+                }
+
+            } catch (err) {
+                console.error("Error fetching articles:", err);
+                container.innerHTML = `<p class="text-white/50 col-span-full text-center">Failed to load content.</p>`;
+            } finally {
+                loader.classList.add('hidden');
+            }
+        }
+
+        // 2. Render Grid
+        function renderGrid(articles) {
+            const container = document.getElementById('articles-container');
+            container.innerHTML = '';
+
+            if (articles.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center py-20 bg-[#1a1d23] rounded-2xl border border-white/5 text-white/50">No articles found in this category.</div>`;
+                return;
+            }
+
+            articles.forEach(art => {
+                const date = new Date(art.created_at).toLocaleDateString();
+                // Determine icon based on category
+                let icon = art.category === 'Services' ? 'fa-layer-group' : 'fa-graduation-cap';
+                let iconColor = art.category === 'Services' ? 'text-purple-400' : 'text-orange-400';
+                let bgIcon = art.category === 'Services' ? 'bg-purple-500/20' : 'bg-orange-500/20';
+                let glowClass = art.category === 'Services' ? 'shadow-purple-900/20' : 'shadow-orange-900/20';
+
+                const html = `
+                <div class="bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] p-6 flex flex-col h-full card-animate cursor-pointer group hover:border-white/20" onclick="openArticle('${art.id}')">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="w-12 h-12 ${bgIcon} rounded-lg flex items-center justify-center">
+                            <i class="fa-solid ${icon} ${iconColor} text-xl"></i>
+                        </div>
+                        <span class="text-xs font-medium text-white/40 bg-white/5 px-2 py-1 rounded border border-white/10">${art.category}</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">${art.title}</h3>
+                    <p class="text-white/60 text-sm mb-6 flex-1 line-clamp-3 leading-relaxed">${art.excerpt || 'Click to read more...'}</p>
+                    <div class="flex items-center justify-between mt-auto pt-4 border-t border-white/5">
+                        <span class="text-xs text-white/40">${date}</span>
+                        <span class="text-sm font-bold text-blue-500 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">Read Now <i class="fa-solid fa-arrow-right text-xs"></i></span>
+                    </div>
+                </div>`;
+                container.insertAdjacentHTML('beforeend', html);
+            });
+        }
+
+        // 3. Filter Logic
+        function filterCategory(category) {
+            // Update Buttons
+            document.querySelectorAll('button[id^="btn-"]').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white', 'shadow-lg');
+                btn.classList.add('bg-[#1a1d23]', 'text-white/70');
+            });
+            
+            const activeId = category === 'All' ? 'btn-all' : `btn-${category.toLowerCase().replace(' ', '')}`;
+            const activeBtn = document.getElementById(activeId);
+            
+            if(activeBtn) {
+                activeBtn.classList.remove('bg-[#1a1d23]', 'text-white/70');
+                activeBtn.classList.add('bg-blue-600', 'text-white', 'shadow-lg');
+            }
+
+            if (category === 'All') {
+                renderGrid(allArticles);
+            } else {
+                const filtered = allArticles.filter(a => a.category.toLowerCase().includes(category.toLowerCase()));
+                renderGrid(filtered);
+            }
+        }
+
+        // 4. Open Single Article
+        async function openArticle(id) {
+            // Switch Views
+            document.getElementById('blog-grid-view').classList.add('hidden');
+            document.getElementById('blog-detail-view').classList.remove('hidden');
+            document.getElementById('detail-content').classList.add('hidden');
+            document.getElementById('detail-loader').classList.remove('hidden');
+            
+            // Hide Header Text in detail view for cleanliness
+            document.querySelector('.text-center.mb-10').classList.add('hidden');
+
+            // Scroll to top
+            window.scrollTo(0,0);
+
+            // Fetch specific article (or find in existing array to save bandwidth)
+            let article = allArticles.find(a => a.id === id);
+
+            if (!article) {
+                // If accessed directly via URL
+                const { data } = await supabase.from('articles').select('*').eq('id', id).single();
+                article = data;
+            }
+
+            document.getElementById('detail-loader').classList.add('hidden');
+            
+            if (article) {
+                document.getElementById('detail-content').classList.remove('hidden');
+                document.getElementById('art-title').innerText = article.title;
+                document.getElementById('art-category').innerText = article.category;
+                document.getElementById('art-date').innerText = new Date(article.created_at).toLocaleDateString();
+                document.getElementById('art-author').innerText = article.author || 'VV Team';
+                document.getElementById('art-body').innerHTML = article.content || '<p>No content available.</p>';
+            }
+        }
+
+        // 5. Close Article (Back to grid)
+        function closeArticle() {
+            document.getElementById('blog-detail-view').classList.add('hidden');
+            document.getElementById('blog-grid-view').classList.remove('hidden');
+            
+            // Show Header Text again
+            document.querySelector('.text-center.mb-10').classList.remove('hidden');
+            
+            // Clear ID from URL without refreshing
+            const url = new URL(window.location);
+            url.searchParams.delete('id');
+            window.history.pushState({}, '', url);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', fetchArticles);
+
+    </script>
+</body>
+</html>
