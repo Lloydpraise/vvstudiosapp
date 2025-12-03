@@ -217,14 +217,31 @@
         
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Helper: Convert storage path to public URL (no-op for absolute URLs)
-        function getPublicImageUrl(path) {
-            if (!path) return path;
-            if (path.startsWith('http') || path.startsWith('data:')) return path;
-            const { data } = supabase.storage.from('ecommerce-assets').getPublicUrl(path);
-            return data?.publicUrl || path;
-        }
+ // Helper: Convert storage path to public URL (The reliable fix)
+function getPublicImageUrl(path) {
+    if (!path) return "";
 
+    // 1. If path is already a full URL (stored in the database), return it as-is.
+    if (path.startsWith("http") || path.startsWith("//")) {
+        console.log(`[Image Console] Path is already a full URL (bypassed SDK): ${path}`);
+        return path;
+    }
+
+    // 2. If path is a storage reference, clean it.
+    const bucketName = "ecommerce-assets"; 
+    // Remove the bucket name if it's included in the path, as .from() already specifies the bucket.
+    const cleanPath = path.replace(new RegExp(`^${bucketName}\/`), "");
+    
+    // 3. Generate the URL using Supabase SDK. The SDK handles encoding correctly.
+    const { data } = supabase.storage
+        .from(bucketName)
+        .getPublicUrl(cleanPath);
+
+    console.log(`[Image Console] Final Public URL generated via SDK: ${data.publicUrl}`);
+
+    // Return the raw URL from the SDK.
+    return data.publicUrl;
+}
         // --- STATE ---
         let productData = null;
         let businessData = null;
@@ -236,6 +253,43 @@
             // 1. Get ID from URL
             const urlParams = new URLSearchParams(window.location.search);
             const productId = urlParams.get('id');
+
+            // If opened from the app, show a back button
+            try {
+                const fromApp = urlParams.get('from_app');
+                const appUser = urlParams.get('app_user');
+                if (fromApp === '1') {
+                    const header = document.querySelector('header');
+                    const backBtn = document.createElement('button');
+                    backBtn.className = 'absolute right-4 top-1/2 -translate-y-1/2 text-sm text-white/80 bg-white/3 hover:bg-white/5 py-1 px-3 rounded-lg';
+                    backBtn.innerText = '← Back';
+                    backBtn.onclick = () => {
+                        // Try to navigate back in the opener if present, else close window
+                        try {
+                            if (window.opener && !window.opener.closed) {
+                                // If opener is under same origin, try to focus and navigate back
+                                try { window.opener.focus(); } catch(e) {}
+                                if (window.opener.location && window.opener.location.href) {
+                                    // If opener is the app, attempt to bring it to products section
+                                    try {
+                                        const openerUrl = new URL(window.opener.location.href);
+                                        openerUrl.hash = '#products';
+                                        window.opener.location.href = openerUrl.toString();
+                                    } catch(e) {
+                                        // Last resort: just close this window
+                                        window.close();
+                                    }
+                                } else {
+                                    window.close();
+                                }
+                            } else {
+                                window.close();
+                            }
+                        } catch (e) { window.close(); }
+                    };
+                    header.appendChild(backBtn);
+                }
+            } catch(e) {}
 
             if (!productId) return showError();
 
@@ -333,7 +387,7 @@
                 const publicUrls = images.map(getPublicImageUrl);
                 const mainImg = document.getElementById('main-image');
                 mainImg.src = publicUrls[0];
-                mainImg.onerror = () => { mainImg.src = 'https://via.placeholder.com/800x800?text=No+Image'; };
+                mainImg.onerror = () => { mainImg.src = 'https://placehold.co/800x800?text=No+Image'; };
                 const thumbContainer = document.getElementById('image-thumbnails');
                 thumbContainer.innerHTML = '';
 
@@ -342,7 +396,7 @@
                     thumb.src = url;
                     thumb.className = `w-16 h-16 rounded-lg object-cover border-2 border-transparent cursor-pointer gallery-thumb ${idx === 0 ? 'active' : ''}`;
                     thumb.loading = 'lazy';
-                    thumb.onerror = () => { thumb.src = 'https://via.placeholder.com/100x100?text=No+Image'; };
+                    thumb.onerror = () => { thumb.src = 'https://placehold.co/100x100?text=No+Image'; };
                     thumb.onclick = () => {
                         document.getElementById('main-image').src = url;
                         document.querySelectorAll('.gallery-thumb').forEach(t => t.classList.remove('active'));

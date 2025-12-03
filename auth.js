@@ -349,6 +349,9 @@ window.authUtils.applyDefaultPackageSettings = applyDefaultPackageSettings;
     document.addEventListener('DOMContentLoaded', () => {
         const sidebarLinks = document.querySelectorAll('#sidebar nav ul li a');
         sidebarLinks.forEach(link => {
+            // Respect explicit allow flag on links (e.g., data-always-allow="true")
+            if (link.dataset && (link.dataset.alwaysAllow === 'true' || link.dataset.alwaysAllow === '1')) return;
+
             const hasLock = !!link.querySelector('.fa-lock');
             const isDisabledHref = link.getAttribute('href') === '#';
             if ((hasLock || isDisabledHref) && !(link.textContent||'').includes('Content Creation')) {
@@ -374,6 +377,15 @@ window.authUtils.applyDefaultPackageSettings = applyDefaultPackageSettings;
 
             const sidebarLinks = document.querySelectorAll('#sidebar nav ul li a');
             sidebarLinks.forEach(link => {
+                // If explicitly allowed on the element, skip locking logic
+                if (link.dataset && (link.dataset.alwaysAllow === 'true' || link.dataset.alwaysAllow === '1')) {
+                    link.classList.remove('text-white/30');
+                    link.classList.add('text-white');
+                    const existingLock = link.querySelector('.fa-lock'); if (existingLock) existingLock.remove();
+                    // make sure href remains navigable
+                    try { if (!link.getAttribute('href') || link.getAttribute('href') === '#') link.setAttribute('href', 'ecommerce.html'); } catch(e){}
+                    return;
+                }
                 let title = '';
                 try {
                     const spans = Array.from(link.querySelectorAll('span'));
@@ -384,8 +396,8 @@ window.authUtils.applyDefaultPackageSettings = applyDefaultPackageSettings;
                 }
                 const norm = String(title).toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
 
-                // Always allow My Business and Content Creation
-                if (norm === 'mybusiness' || norm === 'contentcreation') {
+                // Always allow My Business, Content Creation and Ecommerce
+                if (norm === 'mybusiness' || norm === 'contentcreation' || norm === 'ecommerce') {
                     link.classList.remove('text-white/30');
                     link.classList.add('text-white');
                     const existingLock = link.querySelector('.fa-lock'); if (existingLock) existingLock.remove();

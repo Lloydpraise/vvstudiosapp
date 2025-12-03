@@ -529,6 +529,17 @@ export function activateServices(services) {
     sidebarLinks.forEach(link => {
         if (!link) return;
 
+        // If link explicitly marked to always allow, restore and skip locking
+        try {
+            if (link.dataset && (link.dataset.alwaysAllow === 'true' || link.dataset.alwaysAllow === '1')) {
+                link.classList.remove('text-white/30');
+                link.classList.add('text-white');
+                const existingLock = link.querySelector('.fa-lock'); if (existingLock) existingLock.remove();
+                if (link.dataset.origHref) { link.setAttribute('href', link.dataset.origHref); delete link.dataset.origHref; }
+                if (link.dataset.origOnclick) { link.setAttribute('onclick', link.dataset.origOnclick); delete link.dataset.origOnclick; }
+                return;
+            }
+        } catch (e) {}
         // derive title/label for matching
         let title = '';
         try {

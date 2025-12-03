@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="loading.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Admin Dashboard</title>
@@ -219,6 +220,8 @@
 </head>
 <body>
 
+    <!-- Shared global loading is provided by loading.js (no local overlay here) -->
+
     <div class="lg:hidden fixed top-0 left-0 right-0 p-4 card-base z-40 flex justify-between items-center h-16 rounded-none border-x-0 border-t-0 bg-[#0f1115]">
         <h1 class="text-lg font-bold text-white">Admin Console</h1>
         <button id="sidebar-toggle" class="text-white text-2xl px-2 focus:outline-none">☰</button>
@@ -263,7 +266,10 @@
         <section id="analytics" class="content-section">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-2">
                 <h1 class="text-2xl md:text-3xl font-bold">Analytics Dashboard</h1>
-                <div class="text-sm text-white/50" id="analytics-timestamp">Loading data...</div>
+                <div class="flex flex-col items-end space-y-2">
+                    <button id="ecom-back-btn" onclick="history.back()" class="text-sm text-white/80 bg-white/3 hover:bg-white/5 py-1 px-3 rounded-lg">← Back</button>
+                    <div class="text-sm text-white/50" id="analytics-timestamp">Loading data...</div>
+                </div>
             </div>
 
             <div class="mb-10">
@@ -590,21 +596,105 @@
             <button onclick="createOffer()" class="btn-primary text-white font-medium py-2 px-4 rounded-xl w-full">Create Offer</button>
         </div>
     </div>
+    <script src="auth.js"></script>
 
     <script>
         // --- 1. CONFIGURATION & SUPABASE SETUP ---
         const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co'; // Replace
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ'; // Replace
-        const BUSINESS_ID = 'fortunebooks12'; // Test ID
+        // Business id comes from logged-in user (auth.js). If null, some actions will be disabled.
+        const BUSINESS_ID = (window.authUtils && window.authUtils.getBusinessId) ? window.authUtils.getBusinessId() : null;
 
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         
         // Helper: Convert storage path to public URL (no-op for absolute URLs)
         function getPublicImageUrl(path) {
+            console.debug('[getPublicImageUrl] input:', path);
             if (!path) return path;
-            if (path.startsWith('http') || path.startsWith('data:')) return path;
-            const { data } = supabase.storage.from('ecommerce-assets').getPublicUrl(path);
-            return data?.publicUrl || path;
+            // If it's already a full URL or data URL, return as-is (avoid re-encoding which can double-encode)
+            if (path.startsWith('http') || path.startsWith('data:')) {
+                return path;
+            }
+
+            try {
+                const { data } = supabase.storage.from('ecommerce-assets').getPublicUrl(path);
+                console.debug('[getPublicImageUrl] storage path -> publicUrl:', path, '=>', data?.publicUrl);
+                return data?.publicUrl || path;
+            } catch (e) {
+                console.error('[getPublicImageUrl] storage getPublicUrl error for', path, e);
+                return path;
+            }
+        }
+
+        // --- Image Helpers: LQIP / Preload / Lazy Upgrade ---
+        // Inline fallback placeholders (data URIs) to avoid external network lookups
+        const DATA_PLACEHOLDER_50 = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50"><rect width="100%" height="100%" fill="%23222"/></svg>';
+        const DATA_PLACEHOLDER_100 = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100%" height="100%" fill="%23222"/></svg>';
+        async function createLowQualityPlaceholder(url, maxDim = 40, quality = 0.45) {
+            if (!url) return '';
+            // Normalize common double-encoding artifacts and spaces
+            try {
+                url = String(url).replace(/%25/g, '%').replace(/\s/g, '%20');
+            } catch (e) {}
+
+            try {
+                // Load via Image() with crossOrigin to allow canvas extraction when CORS permits
+                const img = new Image();
+                // Try loading the image; if it fails we silently fall back to returning the original URL
+                img.crossOrigin = 'anonymous';
+                const p = new Promise((resolve) => {
+                    img.onload = () => resolve(true);
+                    img.onerror = () => resolve(false);
+                });
+                img.src = url;
+                const ok = await p;
+                if (!ok) return url;
+
+                const width = img.naturalWidth || img.width || 1;
+                const height = img.naturalHeight || img.height || 1;
+                const scale = Math.min(1, maxDim / Math.max(width, height));
+                const w = Math.max(1, Math.round(width * scale));
+                const h = Math.max(1, Math.round(height * scale));
+                const canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                const dataUrl = canvas.toDataURL('image/jpeg', quality);
+                return dataUrl;
+            } catch (err) {
+                // Silent fallback: return the original URL so the browser can attempt to load it.
+                return url;
+            }
+        }
+
+        // Upgrade an image element to its high-res source (decode first)
+        async function upgradeImageToHighRes(imgEl) {
+            if (!imgEl || !imgEl.dataset || !imgEl.dataset.high) return;
+            const high = imgEl.dataset.high;
+            try {
+                const im = new Image();
+                im.src = high;
+                // Attempt to decode; if it fails, just set src
+                if (im.decode) await im.decode();
+                imgEl.src = high;
+            } catch (e) {
+                imgEl.src = high;
+            }
+        }
+
+        // Preload image but do not block longer than timeoutMs
+        function preloadImage(url, timeoutMs = 600) {
+            return new Promise((resolve) => {
+                if (!url) return resolve();
+                const img = new Image();
+                let done = false;
+                const finish = () => { if (!done) { done = true; resolve(); } };
+                img.onload = finish;
+                img.onerror = finish;
+                img.src = url;
+                setTimeout(finish, timeoutMs);
+            });
         }
         
         // --- 2. GLOBAL STATE ---
@@ -614,9 +704,21 @@
         let currentEditingProductId = null; // For variations
 
         // --- 3. INIT & NAVIGATION ---
+
         document.addEventListener('DOMContentLoaded', async () => {
+            // Ensure user is logged in (shared auth utilities)
+            if (window.authUtils && window.authUtils.checkLoginAndRedirect) window.authUtils.checkLoginAndRedirect();
+            // Use the shared loader from loading.js for consistency across pages
+            try { if (window.showGlobalLoading) window.showGlobalLoading(); } catch (e) {}
             await loadSettings(); // Apply theme first
-            showSection('analytics');
+            // Keep loader visible briefly so it reads as a load (approx 500ms)
+            await new Promise(r => setTimeout(r, 500));
+            try { if (window.vvAppReady) window.vvAppReady(); else if (window.hideGlobalLoading) window.hideGlobalLoading(); } catch (e) {}
+            // Respect hash or query to open a specific section (e.g., ecommerce.html#products or ?section=products)
+            const hash = window.location.hash;
+            const qs = new URLSearchParams(window.location.search);
+            if (hash === '#products' || qs.get('section') === 'products') showSection('products');
+            else showSection('analytics');
             
             // Listeners
             document.getElementById('sidebar-toggle').addEventListener('click', toggleSidebar);
@@ -766,40 +868,156 @@
         async function renderProducts() {
             const products = await fetchProducts();
             const list = document.getElementById('products-list');
-            
-            list.innerHTML = products.map(p => {
-                const imageUrl = getPublicImageUrl(p.images?.[0]);
-                return `
-                <tr class="hover:bg-white/5 transition-colors">
-                    <td class="px-6 py-4 whitespace-nowrap flex items-center space-x-3">
-                            <img src="${imageUrl || 'https://via.placeholder.com/50?text=No+Img'}" onerror="this.src='https://via.placeholder.com/50?text=No+Img'" loading="lazy" class="w-10 h-10 rounded object-cover border border-white/10">
-                        <div class="text-sm font-medium text-white truncate max-w-[150px] md:max-w-none">${p.title}</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-white/70">
-                        KES ${p.price.toLocaleString()} 
-                        ${p.old_price ? `<span class="text-xs text-red-400 line-through ml-1">${p.old_price.toLocaleString()}</span>` : ''}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm">
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" ${p.is_visible ? 'checked' : ''} class="sr-only peer" onchange="toggleVisibility('${p.id}', this.checked)">
-                            <div class="w-11 h-6 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                        </label>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div style="display:flex;align-items:center;gap:10px;justify-content:flex-end">
-                            <button onclick="copyProductLink('${p.id}')" class="text-white/50 hover:text-white transition-colors" title="Copy product link">🔗</button>
-                            <button onclick="openVariationManager('${p.id}')" class="text-white/70 hover:text-white transition-colors" title="Variations">⚙️</button>
-                            <button onclick="deleteProduct('${p.id}')" class="text-red-400 hover:text-red-500 transition-colors" title="Delete">🗑️</button>
-                            <button onclick="openProductLive('${p.id}')" class="text-white/50 hover:text-white transition-colors" title="View live page">👁️</button>
-                        </div>
+
+            function isFreeUser() {
+                try {
+                    const raw = (window.authUtils && window.authUtils.getLoggedInUser) ? window.authUtils.getLoggedInUser() : null;
+                    const user = (window.authUtils && window.authUtils.applyDefaultPackageSettings) ? window.authUtils.applyDefaultPackageSettings(raw) : raw;
+                    return user && String(user.package || '').toLowerCase() === 'free';
+                } catch (e) { return false; }
+            }
+
+            const isFree = isFreeUser();
+
+            // Update top "Create" button state based on free-user limit
+            try {
+                const topCreateBtn = document.querySelector('button[onclick="openProductModal()"]');
+                if (topCreateBtn) {
+                    if (isFree && products && products.length >= 15) {
+                        topCreateBtn.disabled = true;
+                        topCreateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                        topCreateBtn.title = 'Upgrade to add more products';
+                    } else {
+                        topCreateBtn.disabled = false;
+                        topCreateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                        topCreateBtn.title = '';
+                    }
+                }
+            } catch (e) { /* ignore */ }
+
+            if (!products || products.length === 0) {
+                list.innerHTML = `
+                <tr>
+                    <td colspan="4" class="px-6 py-12 text-center">
+                        <div class="text-lg font-semibold text-white mb-3">Create Your First Product Here!</div>
+                        <button onclick="openProductModal()" class="btn-primary text-white font-medium py-2 px-4 rounded-xl">
+                            <span class="text-lg">+</span>
+                            <span class="ml-2">Create New Product</span>
+                        </button>
                     </td>
                 </tr>
-            `}).join('');
+                `;
+                return;
+            }
+
+            // Build table rows using DOM so we can apply LQIP placeholders and lazy upgrade
+            list.innerHTML = '';
+
+            // Create a shared IntersectionObserver to upgrade images when they become visible
+            if (!window.__vv_image_observer) {
+                try {
+                    window.__vv_image_observer = new IntersectionObserver((entries) => {
+                        entries.forEach(ent => {
+                            if (ent.isIntersecting) {
+                                const img = ent.target;
+                                upgradeImageToHighRes(img);
+                                try { window.__vv_image_observer.unobserve(img); } catch(e) {}
+                            }
+                        });
+                    }, { rootMargin: '200px' });
+                } catch (e) {
+                    window.__vv_image_observer = null;
+                }
+            }
+
+            for (const p of products) {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-white/5 transition-colors';
+
+                // Column 1: thumbnail + title
+                const td1 = document.createElement('td');
+                td1.className = 'px-6 py-4 whitespace-nowrap flex items-center space-x-3';
+
+                const img = document.createElement('img');
+                img.className = 'w-10 h-10 rounded object-cover border border-white/10';
+                img.loading = 'lazy';
+                img.alt = p.title || 'Product image';
+
+                const imgRaw = p.images && p.images.length ? p.images[0] : null;
+                const imageUrl = getPublicImageUrl(imgRaw) || DATA_PLACEHOLDER_50;
+
+                // Set a tiny SVG placeholder immediately for layout stability
+                img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50"><rect width="100%" height="100%" fill="%23222"/></svg>';
+                img.onerror = () => { img.src = DATA_PLACEHOLDER_50; };
+
+                // Fill LQIP then mark high-res for upgrade
+                (async () => {
+                    const lq = await createLowQualityPlaceholder(imageUrl, 40, 0.45).catch(() => imageUrl);
+                    if (lq) {
+                        img.src = lq;
+                        img.dataset.high = imageUrl;
+                        // Observe for upgrade
+                        try { window.__vv_image_observer && window.__vv_image_observer.observe(img); } catch(e) {}
+                    } else {
+                        img.src = imageUrl;
+                    }
+                })();
+
+                const titleDiv = document.createElement('div');
+                titleDiv.className = 'text-sm font-medium text-white truncate max-w-[150px] md:max-w-none';
+                titleDiv.textContent = p.title || '';
+
+                td1.appendChild(img);
+                td1.appendChild(titleDiv);
+
+                // Column 2: price
+                const td2 = document.createElement('td');
+                td2.className = 'px-6 py-4 whitespace-nowrap text-sm text-white/70';
+                td2.innerHTML = `KES ${p.price.toLocaleString()} ${p.old_price ? `<span class="text-xs text-red-400 line-through ml-1">${p.old_price.toLocaleString()}</span>` : ''}`;
+
+                // Column 3: visibility toggle
+                const td3 = document.createElement('td');
+                td3.className = 'px-6 py-4 whitespace-nowrap text-sm';
+                td3.innerHTML = `<label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" ${p.is_visible ? 'checked' : ''} class="sr-only peer" onchange="toggleVisibility('${p.id}', this.checked)">
+                            <div class="w-11 h-6 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                        </label>`;
+
+                // Column 4: actions
+                const td4 = document.createElement('td');
+                td4.className = 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium';
+                const actionDiv = document.createElement('div');
+                actionDiv.style.display = 'flex';
+                actionDiv.style.alignItems = 'center';
+                actionDiv.style.gap = '10px';
+                actionDiv.style.justifyContent = 'flex-end';
+
+                const copyButtonHtml = isFree
+                    ? `<button onclick="promptUpgradeToShare()" class="text-white/30 cursor-not-allowed" title="Upgrade to share products">🔗</button>`
+                    : `<button onclick="copyProductLink('${p.id}')" class="text-white/50 hover:text-white transition-colors" title="Copy product link">🔗</button>`;
+
+                actionDiv.innerHTML = `${copyButtonHtml}
+                            <button onclick="openProductModalForEdit('${p.id}')" class="text-white/70 hover:text-white transition-colors" title="Edit product">✏️</button>
+                            <button onclick="openVariationManager('${p.id}')" class="text-white/70 hover:text-white transition-colors" title="Variations">⚙️</button>
+                            <button onclick="deleteProduct('${p.id}')" class="text-red-400 hover:text-red-500 transition-colors" title="Delete">🗑️</button>
+                            <button onclick="openProductLive('${p.id}')" class="text-white/50 hover:text-white transition-colors" title="View live page">👁️</button>`;
+
+                td4.appendChild(actionDiv);
+
+                tr.appendChild(td1);
+                tr.appendChild(td2);
+                tr.appendChild(td3);
+                tr.appendChild(td4);
+
+                list.appendChild(tr);
+            }
         }
 
         // Product Modal Logic
         function openProductModal() {
+            // openProductModal() default: create new product. To edit, pass productId as first arg.
             currentProductStep = 1;
+            currentEditingProductId = null;
             uploadedImageUrls = [];
             document.getElementById('image-preview').innerHTML = '';
             document.getElementById('product-images-upload').value = '';
@@ -809,10 +1027,53 @@
             document.getElementById('prod-price').value = '';
             document.getElementById('prod-old-price').value = '';
             document.getElementById('prod-stock').value = '';
-            
-            document.getElementById('product-publish-btn').classList.add('hidden');
+            document.getElementById('prod-visible').checked = true;
+
+            const pubBtn = document.getElementById('product-publish-btn');
+            pubBtn.textContent = 'Publish Product';
+            pubBtn.classList.add('hidden');
             document.getElementById('product-next-btn').classList.remove('hidden');
             changeProductStep(0); 
+            toggleModal('product-modal', true);
+        }
+
+        // Overloaded: openProductModalForEdit(productId) will open modal prefilled for editing
+        async function openProductModalForEdit(productId) {
+            if (!productId) return openProductModal();
+            const product = productsCache.find(p => p.id === productId);
+            if (!product) return alert('Product not found');
+
+            currentEditingProductId = productId;
+            currentProductStep = 1;
+            uploadedImageUrls = Array.isArray(product.images) ? [...product.images] : [];
+            document.getElementById('image-preview').innerHTML = '';
+            document.getElementById('product-images-upload').value = '';
+
+            document.getElementById('prod-title').value = product.title || '';
+            document.getElementById('prod-short-desc').value = product.description_short || '';
+            document.getElementById('prod-long-desc').value = product.description_long || '';
+            document.getElementById('prod-price').value = product.price || '';
+            document.getElementById('prod-old-price').value = product.old_price || '';
+            document.getElementById('prod-stock').value = product.stock_quantity || '';
+            document.getElementById('prod-visible').checked = !!product.is_visible;
+
+            // Populate previews for existing images
+            const preview = document.getElementById('image-preview');
+            for (const imgUrlRaw of uploadedImageUrls) {
+                const imgUrl = getPublicImageUrl(imgUrlRaw) || imgUrlRaw;
+                const img = document.createElement('img');
+                img.className = 'w-16 h-16 rounded-lg object-cover border-2 border-white/10 shrink-0';
+                img.src = imgUrl;
+                img.onerror = () => { img.src = DATA_PLACEHOLDER_100; };
+                preview.appendChild(img);
+            }
+
+            // Switch buttons: show publish/save immediately
+            const pubBtn = document.getElementById('product-publish-btn');
+            pubBtn.textContent = 'Save Changes';
+            pubBtn.classList.remove('hidden');
+            document.getElementById('product-next-btn').classList.add('hidden');
+            changeProductStep(0);
             toggleModal('product-modal', true);
         }
 
@@ -856,26 +1117,47 @@
         }
 
         async function uploadProductImages(e) {
-            const files = Array.from(e.target.files);
+            const files = Array.from(e.target.files || []);
             const preview = document.getElementById('image-preview');
-            
+
             for (const file of files) {
-                // Show local preview immediately
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    preview.innerHTML += `<img src="${ev.target.result}" class="w-16 h-16 rounded-lg object-cover border-2 border-white/10 shrink-0 opacity-50">`;
-                };
-                reader.readAsDataURL(file);
+                // Enforce 5MB limit
+                const maxBytes = 5 * 1024 * 1024;
+                if (file.size > maxBytes) {
+                    alert(`File "${file.name}" is larger than 5MB and will be skipped.`);
+                    continue;
+                }
+
+                // Create preview element immediately
+                const imgEl = document.createElement('img');
+                imgEl.className = 'w-16 h-16 rounded-lg object-cover border-2 border-white/10 shrink-0 opacity-50';
+                preview.appendChild(imgEl);
+
+                // Show local preview (dataURL)
+                try {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => { imgEl.src = ev.target.result; };
+                    reader.readAsDataURL(file);
+                } catch (err) {
+                    console.warn('preview read failed', err);
+                }
 
                 // Upload
-                const fileName = `products/${BUSINESS_ID}-${Date.now()}-${file.name}`;
-                const { error } = await supabase.storage.from('ecommerce-assets').upload(fileName, file);
-                
-                if (!error) {
-                    const { data } = supabase.storage.from('ecommerce-assets').getPublicUrl(fileName);
-                    uploadedImageUrls.push(data.publicUrl);
-                    // Update preview opacity to indicate success (rudimentary)
-                    preview.lastElementChild.classList.remove('opacity-50');
+                try {
+                    const fileName = `products/${BUSINESS_ID}-${Date.now()}-${file.name}`;
+                    const { error } = await supabase.storage.from('ecommerce-assets').upload(fileName, file);
+                    if (!error) {
+                        const { data } = supabase.storage.from('ecommerce-assets').getPublicUrl(fileName);
+                        const publicUrl = data.publicUrl;
+                        uploadedImageUrls.push(publicUrl);
+                        imgEl.classList.remove('opacity-50');
+                        imgEl.src = publicUrl; // replace dataURL with uploaded URL
+                    } else {
+                        console.warn('upload error', error);
+                        imgEl.classList.add('opacity-50');
+                    }
+                } catch (err) {
+                    console.error('uploadProductImages error', err);
                 }
             }
         }
@@ -884,31 +1166,40 @@
             const title = document.getElementById('prod-title').value;
             if (!title) return alert('Product Name is required');
 
-            // ID Generation: product-name-random
-            const cleanName = title.toLowerCase().replace(/[^a-z0-9]/g, '-').substring(0, 15);
-            const id = `product-${cleanName}-${Math.floor(1000 + Math.random() * 9000)}`;
-
             const payload = {
-                id: id,
                 business_id: BUSINESS_ID,
                 title: title,
                 description_short: document.getElementById('prod-short-desc').value,
                 description_long: document.getElementById('prod-long-desc').value,
                 price: parseFloat(document.getElementById('prod-price').value) || 0,
-                old_price: parseFloat(document.getElementById('prod-old-price').value) || null,
+                old_price: (document.getElementById('prod-old-price').value !== '') ? parseFloat(document.getElementById('prod-old-price').value) : null,
                 stock_quantity: parseInt(document.getElementById('prod-stock').value) || 0,
                 is_visible: document.getElementById('prod-visible').checked,
                 images: uploadedImageUrls,
-                variations: [] // Initial empty variations
+                variations: [] // keep existing variations when editing? current UI doesn't edit them here
             };
 
-            const { error } = await supabase.from('products').insert(payload);
-            
-            if (error) {
-                alert('Error saving product: ' + error.message);
-            } else {
+            try {
+                if (currentEditingProductId) {
+                    // Update existing product
+                    const { error } = await supabase.from('products').update(payload).eq('id', currentEditingProductId);
+                    if (error) return alert('Error updating product: ' + error.message);
+                } else {
+                    // ID Generation for new product
+                    const cleanName = title.toLowerCase().replace(/[^a-z0-9]/g, '-').substring(0, 15);
+                    const id = `product-${cleanName}-${Math.floor(1000 + Math.random() * 9000)}`;
+                    payload.id = id;
+                    const { error } = await supabase.from('products').insert(payload);
+                    if (error) return alert('Error saving product: ' + error.message);
+                }
+
                 toggleModal('product-modal', false);
+                // reset editing state
+                currentEditingProductId = null;
                 renderProducts();
+            } catch (err) {
+                console.error('saveProduct error', err);
+                alert('Error saving product');
             }
         }
 
@@ -940,11 +1231,55 @@
             }
         }
 
+        // Prompt free users to upgrade when they try to access sharing features
+        function promptUpgradeToShare() {
+            try {
+                if (window.openUpgradeFlow) return window.openUpgradeFlow();
+            } catch (e) {}
+            const want = confirm('Sharing products is a paid feature. Would you like to view upgrade plans?');
+            if (want) {
+                // Prefer opening in-app plans if available
+                if (window.openPlans) return window.openPlans();
+                // Fallback to navigate to plans page
+                window.location.href = 'plans.html';
+            }
+        }
+
         // Open the product live page in a new tab/window
-        function openProductLive(productId) {
+        async function openProductLive(productId) {
             if (!productId) return;
             const basePath = location.origin + location.pathname.substring(0, location.pathname.lastIndexOf('/') + 1);
-            const url = basePath + 'product.html?id=' + encodeURIComponent(productId);
+            let url = basePath + 'product.html?id=' + encodeURIComponent(productId);
+            try {
+                const user = (window.authUtils && window.authUtils.getLoggedInUser) ? window.authUtils.getLoggedInUser() : null;
+                const ident = user ? encodeURIComponent(user.id || user.email || '') : '';
+                if (ident) url += '&from_app=1&app_user=' + ident;
+            } catch (e) { /* ignore */ }
+            // If this is being opened from within the app (ecommerce page), navigate in the same tab
+            try {
+                const path = window.location.pathname || '';
+                const isApp = path.includes('ecommerce.html') || path.toLowerCase().includes('/ecommerce');
+                // Try to preload the main product image to warm the cache and improve product page load.
+                try {
+                    const product = productsCache.find(p => p.id === productId);
+                    const mainImgUrl = product ? getPublicImageUrl(product.images?.[0]) : null;
+                    if (isApp) {
+                        // For in-app navigation we await a short preload (bounded) before navigating to reduce perceived load time
+                        await preloadImage(mainImgUrl, 700);
+                        window.location.href = url;
+                        return;
+                    } else {
+                        // For external/new-tab open, start preload in background but don't block; gives browser a headstart
+                        preloadImage(mainImgUrl, 400).catch(() => {});
+                        // Continue to open in new tab below
+                    }
+                } catch (e) {
+                    // If preload fails, fall back to normal navigation behavior
+                    if (isApp) { window.location.href = url; return; }
+                }
+            } catch (e) {}
+
+            // Otherwise open in a new tab (external viewers)
             window.open(url, '_blank', 'noopener,noreferrer');
         }
 
@@ -972,41 +1307,26 @@
             const container = document.getElementById('current-variations-list');
             if (!vars || vars.length === 0) {
                 container.innerHTML = '<p class="text-sm text-white/40 italic">No variations added.</p>';
-            } else {
-                container.innerHTML = vars.map((v, i) => `
-                    <div class="bg-white/5 p-3 rounded-lg flex justify-between items-center">
-                        <div>
-                            <div class="font-bold text-sm text-white">${v.name}</div>
-                            <div class="text-xs text-white/60">${v.options.join(', ')}</div>
-                        </div>
-                        <button onclick="removeVariationFromProduct(${i})" class="text-red-400 hover:text-red-500 text-sm">Remove</button>
-                    </div>
-                `).join('');
+                return;
             }
-        }
 
-        async function addVariationToProduct() {
-            const name = document.getElementById('new-var-group-name').value;
-            const optsStr = document.getElementById('new-var-group-options').value;
-            if (!name || !optsStr) return;
-
-            const product = productsCache.find(p => p.id === currentEditingProductId);
-            const newVars = [...(product.variations || []), { name, options: optsStr.split(',').map(s => s.trim()) }];
-
-            await supabase.from('products').update({ variations: newVars }).eq('id', currentEditingProductId);
-            
-            // Update local cache and UI
-            product.variations = newVars;
-            renderVariations(newVars);
-            document.getElementById('new-var-group-name').value = '';
-            document.getElementById('new-var-group-options').value = '';
+            container.innerHTML = vars.map((v, i) => `
+                <div class="bg-white/5 p-3 rounded-lg flex justify-between items-center">
+                    <div>
+                        <div class="font-bold text-sm text-white">${v.name}</div>
+                        <div class="text-xs text-white/60">${(v.options || []).join(', ')}</div>
+                    </div>
+                    <button onclick="removeVariationFromProduct(${i})" class="text-red-400 hover:text-red-500 text-sm">Remove</button>
+                </div>
+            `).join('');
         }
 
         async function removeVariationFromProduct(index) {
             const product = productsCache.find(p => p.id === currentEditingProductId);
-            const newVars = [...product.variations];
+            if (!product) return;
+            const newVars = [...(product.variations || [])];
             newVars.splice(index, 1);
-            
+
             await supabase.from('products').update({ variations: newVars }).eq('id', currentEditingProductId);
             product.variations = newVars;
             renderVariations(newVars);
@@ -1025,7 +1345,21 @@
                 productsCache.map(p => `<option value="${p.id}">${p.title}</option>`).join('');
 
             const list = document.getElementById('offers-list');
-            list.innerHTML = offers.map(o => {
+            const safeOffers = offers || [];
+            if (safeOffers.length === 0) {
+                list.innerHTML = `
+                <tr>
+                    <td colspan="5" class="px-6 py-12 text-center">
+                        <div class="text-lg font-semibold text-white mb-3">Create Your First Offer Here!</div>
+                        <button onclick="openOfferModal()" class="btn-primary text-white font-medium py-2 px-4 rounded-xl">
+                            <span class="text-lg">🎉</span>
+                            <span class="ml-2">Create New Offer</span>
+                        </button>
+                    </td>
+                </tr>
+                `;
+            } else {
+                list.innerHTML = safeOffers.map(o => {
                 const prodName = productsCache.find(p => p.id === o.product_id)?.title || 'Unknown Product';
                 const discDisplay = o.discount_type === 'percent' ? `${o.discount_value}% OFF` : `KES ${o.discount_value} FIX`;
                 return `
@@ -1042,7 +1376,8 @@
                         <button class="text-white/70 hover:text-white" onclick="alert('Delete not implemented yet')">🗑️</button>
                     </td>
                 </tr>`;
-            }).join('');
+                }).join('');
+            }
         }
 
         async function createOffer() {
@@ -1066,6 +1401,17 @@
             const products = await fetchProducts();
             const list = document.getElementById('inventory-list');
             
+            if (!products || products.length === 0) {
+                list.innerHTML = `
+                <tr>
+                    <td colspan="4" class="px-6 py-12 text-center">
+                        <div class="text-lg font-semibold text-white">You will Manage the Inventory of Your Products Here.</div>
+                    </td>
+                </tr>
+                `;
+                return;
+            }
+
             list.innerHTML = products.map(p => {
                 const statusClass = p.stock_quantity > 5 ? 'text-green-400' : (p.stock_quantity > 0 ? 'text-orange-400' : 'text-red-500');
                 const statusText = p.stock_quantity > 5 ? 'In Stock' : (p.stock_quantity > 0 ? 'Low Stock' : 'Out of Stock');
