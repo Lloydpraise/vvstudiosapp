@@ -186,6 +186,16 @@
             </a>
         </li>
 
+        <!-- Ecommerce (Growth+) -->
+        <li class="mb-4" id="sidebar-ecommerce-item">
+            <a href="ecommerce.html"
+                class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                <i class="fa-solid fa-store w-5 h-5"></i>
+                <span>Ecommerce</span>
+                <span class="tooltip">Sell products, bundles and offers</span>
+            </a>
+        </li>
+
         <!-- Business Assistant (Copilot) - back to dashboard from Ads section -->
         <li class="mb-4">
             <!-- default href points back to dashboard; JS may switch this to copilot.html for Growth+ packages -->
@@ -250,6 +260,22 @@
     </ul>
 </nav>
 </aside>
+
+<script>
+// Ensure Ecommerce sidebar item always navigates to `ecommerce.html` (Ads page)
+(function(){
+    try {
+        const item = document.getElementById('sidebar-ecommerce-item');
+        if (!item) return;
+        const anchor = item.querySelector('a');
+        if (!anchor) return;
+        const existingLock = anchor.querySelector('.fa-lock'); if (existingLock) existingLock.remove();
+        anchor.classList.remove('text-white/30');
+        anchor.classList.add('text-white');
+        anchor.setAttribute('href', 'ecommerce.html');
+    } catch (err) { console.error(err); }
+})();
+</script>
 
             <main class="flex-1 overflow-y-auto p-8 lg:p-12">
                 <!-- Hamburger Menu Button for Mobile - Fixed at Top-Left -->

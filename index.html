@@ -474,12 +474,35 @@
 
                         async function openModal(e){
                             if (e) e.preventDefault();
-                            // Prefer backend loader
-                            const ok = await populateFromBackend();
-                            if (!ok) populateFromLocal();
+                            console.log('index: openModal called');
+                            // Prefer backend loader (guard and log so it can't block UI)
+                            let ok = false;
+                            try {
+                                console.log('index: attempting populateFromBackend (with timeout)');
+                                // Protect against a backend loader that never resolves by racing with a timeout
+                                ok = await Promise.race([
+                                    populateFromBackend(),
+                                    new Promise((_, reject) => setTimeout(() => reject(new Error('populateFromBackend timeout')), 6000))
+                                ]);
+                                console.log('index: populateFromBackend returned', ok);
+                            } catch (err) {
+                                console.warn('index: populateFromBackend threw or timed out', err);
+                                ok = false;
+                            }
+
+                            if (!ok) {
+                                try {
+                                    console.log('index: falling back to populateFromLocal');
+                                } catch (err) {
+                                    console.warn('index: populateFromLocal failed', err);
+                                }
+                            }
+
                             // snapshot for dirty-check
-                            businessProfileSnapshot = captureBusinessProfileSnapshot();
-                            if (modal) modal.classList.remove('hidden');
+                            try { businessProfileSnapshot = captureBusinessProfileSnapshot(); } catch(e){ console.warn('index: snapshot failed', e); }
+                            if (modal) {
+                                try { modal.classList.remove('hidden'); } catch(e){ console.warn('index: showing modal failed', e); }
+                            }
                             try { document.body.style.overflow = 'hidden'; } catch(e){}
                         }
 
@@ -752,6 +775,16 @@
             </a>
         </li>
 
+        <!-- Ecommerce (Growth+) -->
+        <li class="mb-4" id="sidebar-ecommerce-item">
+            <a href="ecommerce.html"
+                class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+                <i class="fa-solid fa-store w-5 h-5"></i>
+                <span>Ecommerce</span>
+                <span class="tooltip">Sell products, bundles and offers</span>
+            </a>
+        </li>
+
         <!-- Business Assistant (Copilot) -->
         <li class="mb-4">
             <a href="copilot.html"
@@ -817,6 +850,21 @@
     </ul>
 </nav>
             </aside>
+            <script>
+            // Ensure Ecommerce sidebar item always navigates to `ecommerce.html` (index page)
+            (function(){
+                try {
+                    const item = document.getElementById('sidebar-ecommerce-item');
+                    if (!item) return;
+                    const anchor = item.querySelector('a');
+                    if (!anchor) return;
+                    const existingLock = anchor.querySelector('.fa-lock'); if (existingLock) existingLock.remove();
+                    anchor.classList.remove('text-white/30');
+                    anchor.classList.add('text-white');
+                    anchor.setAttribute('href','ecommerce.html');
+                } catch(e) { console.error(e); }
+            })();
+            </script>
             <main class="flex-1 overflow-y-auto p-8 lg:p-12">
                 <div id="top-header" class="flex justify-between items-center mb-10 flex-wrap">
                     <div class="flex items-center w-full md:w-auto">
@@ -1470,14 +1518,44 @@
     if (!menuBtn || !sidebar) return;
 
     menuBtn.addEventListener("click", () => {
-        sidebar.classList.toggle("-translate-x-full");     // slide in/out
-        backdrop.classList.toggle("hidden");               // background blur
+        if (window.vv_toggleSidebarGuarded) window.vv_toggleSidebarGuarded();
     });
 
     backdrop.addEventListener("click", () => {
+        // Close immediately (use close helper if available)
+        if (window.vv_closeSidebarImmediate) {
+            window.vv_closeSidebarImmediate();
+            return;
+        }
         sidebar.classList.add("-translate-x-full");
+        sidebar.classList.remove("open");
         backdrop.classList.add("hidden");
+        const sbBackdrop = document.getElementById('sidebar-backdrop');
+        if (sbBackdrop) sbBackdrop.classList.remove('show');
     });
+
+    // Guarded toggle (prevent double-toggle from multiple scripts)
+    window.vv_toggleSidebarGuarded = function(){
+        if (window.__vv_sidebar_busy) return;
+        window.__vv_sidebar_busy = true;
+        try {
+            sidebar.classList.toggle("-translate-x-full");
+            sidebar.classList.toggle("open");
+            backdrop.classList.toggle("hidden");
+            const sbBackdrop = document.getElementById('sidebar-backdrop');
+            if (sbBackdrop) sbBackdrop.classList.toggle('show');
+        } finally {
+            setTimeout(()=>{ window.__vv_sidebar_busy = false; }, 350);
+        }
+    };
+
+    window.vv_closeSidebarImmediate = function(){
+        sidebar.classList.add("-translate-x-full");
+        sidebar.classList.remove("open");
+        backdrop.classList.add("hidden");
+        const sbBackdrop = document.getElementById('sidebar-backdrop');
+        if (sbBackdrop) sbBackdrop.classList.remove('show');
+    };
 });
 </script>
     <!-- Axios (no SRI here to avoid CORS issues when CDN doesn't provide cross-origin headers) -->

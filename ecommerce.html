@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Admin Dashboard</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        /* --- 1. Base Styling & Variables --- */
+        :root {
+            --bg-dark: #0f1115;
+            --card-dark: #1a1d23;
+            --border-dark: #2b2f3a;
+            --primary-color: #7c3aed; /* Default Primary (Purple) */
+            --secondary-color: #ea580c; /* Default Secondary (Orange) */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column; /* Mobile first: Column */
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        /* Desktop: Flex Row */
+        @media (min-width: 1024px) {
+            body {
+                flex-direction: row;
+            }
+        }
+
+        /* Utility for consistent card styling */
+        .card-base {
+            background-color: var(--card-dark);
+            border: 1px solid var(--border-dark);
+            border-radius: 1rem; /* rounded-xl */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Sidebar Styling */
+        .sidebar {
+            width: 280px;
+            flex-shrink: 0;
+            padding: 1.5rem;
+            height: 100vh; /* Full viewport height */
+            position: fixed; /* Fixed on mobile */
+            top: 0;
+            left: 0;
+            background-color: var(--bg-dark);
+            z-index: 50;
+            transform: translateX(-100%); /* Hidden by default on mobile */
+            transition: transform 0.3s ease;
+            border-right: 1px solid var(--border-dark);
+            overflow-y: auto;
+        }
+
+        /* Desktop Sidebar State */
+        @media (min-width: 1024px) {
+            .sidebar {
+                position: sticky;
+                transform: translateX(0); /* Always visible on desktop */
+                height: 100vh;
+                border-right: none;
+            }
+        }
+
+        /* Mobile Sidebar Open State */
+        .sidebar.open {
+            transform: translateX(0);
+            box-shadow: 4px 0 15px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Sidebar Backdrop for Mobile */
+        .sidebar-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 40;
+            display: none;
+        }
+        .sidebar-backdrop.show {
+            display: block;
+        }
+
+        /* Nav Item Active State */
+        .nav-item.active {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--primary-color);
+            border: 1px solid var(--border-dark);
+        }
+        
+        /* Button Primary */
+        .btn-primary {
+            background-color: var(--primary-color);
+            transition: background-color 0.3s ease, opacity 0.3s ease;
+        }
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+
+        /* Input Styling */
+        input[type="text"], input[type="number"], input[type="color"], input[type="date"], textarea, select {
+            background-color: var(--card-dark);
+            border: 1px solid var(--border-dark);
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.5rem;
+            color: white;
+            transition: border-color 0.3s;
+        }
+        input:focus, textarea:focus, select:focus {
+            border-color: var(--primary-color);
+            outline: none;
+        }
+
+        /* Modal Backdrop */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 60; /* Higher than sidebar */
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+        
+        /* Modal Card */
+        .modal-card {
+            background-color: var(--card-dark);
+            border-radius: 1.5rem;
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh; /* Prevent overflow on small screens */
+            overflow-y: auto; /* Internal scrolling */
+            padding: 1.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+            transform: scale(0.95);
+            opacity: 0;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+        .modal-backdrop.open .modal-card {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        /* Status Colors */
+        .low-stock { color: var(--secondary-color); font-weight: 600; }
+        .in-stock { color: #10b981; }
+
+        /* --- Analytics Specific Styles (Vanilla CSS Charts) --- */
+        .bar-chart-container {
+            display: flex;
+            align-items: flex-end;
+            height: 150px;
+            gap: 8px; /* Reduced gap for mobile */
+            padding-top: 20px;
+        }
+        .bar-group {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100%;
+            justify-content: flex-end;
+        }
+        .bar {
+            width: 100%;
+            border-radius: 4px 4px 0 0;
+            transition: height 0.5s ease;
+            min-height: 4px;
+        }
+        .bar-label {
+            margin-top: 8px;
+            font-size: 10px;
+            color: rgba(255,255,255,0.5);
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%; 
+        }
+        .progress-bar-bg {
+            background-color: rgba(255,255,255,0.1);
+            border-radius: 999px;
+            height: 8px;
+            width: 100%;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 999px;
+        }
+
+        /* Loader */
+        .loader {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid var(--primary-color);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div class="lg:hidden fixed top-0 left-0 right-0 p-4 card-base z-40 flex justify-between items-center h-16 rounded-none border-x-0 border-t-0 bg-[#0f1115]">
+        <h1 class="text-lg font-bold text-white">Admin Console</h1>
+        <button id="sidebar-toggle" class="text-white text-2xl px-2 focus:outline-none">☰</button>
+    </div>
+
+    <div id="sidebar-backdrop" class="sidebar-backdrop lg:hidden" onclick="toggleSidebar()"></div>
+
+    <aside id="sidebar" class="sidebar">
+        <div class="h-16 flex items-center mb-8 px-2 lg:px-0">
+            <h2 class="text-2xl font-bold text-white">Ecommerce</h2>
+        </div>
+
+        <nav class="space-y-3">
+            <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-xl transition-colors active" data-section="analytics">
+                <span class="text-lg">📈</span>
+                <span class="font-medium">Analytics</span>
+            </a>
+            <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-xl transition-colors hover:bg-white/5" data-section="products">
+                <span class="text-lg">📦</span>
+                <span class="font-medium">Products</span>
+            </a>
+            <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-xl transition-colors hover:bg-white/5" data-section="offers">
+                <span class="text-lg">🏷️</span>
+                <span class="font-medium">Offers</span>
+            </a>
+            <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-xl transition-colors hover:bg-white/5" data-section="inventory">
+                <span class="text-lg">📊</span>
+                <span class="font-medium">Inventory</span>
+            </a>
+        </nav>
+
+        <div class="pt-8 mt-8 border-t border-t-white/10">
+            <a href="#" class="nav-item flex items-center space-x-3 p-3 rounded-xl transition-colors hover:bg-white/5" data-section="settings">
+                <span class="text-lg">🛠️</span>
+                <span class="font-medium">Settings</span>
+            </a>
+        </div>
+    </aside>
+
+    <main id="main-content-area" class="flex-1 p-4 lg:p-8 mt-16 lg:mt-0 w-full max-w-[100vw] overflow-hidden">
+        
+        <section id="analytics" class="content-section">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-2">
+                <h1 class="text-2xl md:text-3xl font-bold">Analytics Dashboard</h1>
+                <div class="text-sm text-white/50" id="analytics-timestamp">Loading data...</div>
+            </div>
+
+            <div class="mb-10">
+                <h2 class="text-xl font-semibold mb-4 text-white/90">Product Performance</h2>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
+                    <div class="card-base p-5">
+                        <p class="text-white/60 text-xs uppercase tracking-wider">Total Views</p>
+                        <p class="text-3xl font-bold mt-1 text-white" id="stat-views">-</p>
+                        <div class="text-green-400 text-xs mt-2">All time</div>
+                    </div>
+                    <div class="card-base p-5">
+                        <p class="text-white/60 text-xs uppercase tracking-wider">Product Clicks</p>
+                        <p class="text-3xl font-bold mt-1 text-white" id="stat-clicks">-</p>
+                        <div class="text-green-400 text-xs mt-2">Interest</div>
+                    </div>
+                    <div class="card-base p-5">
+                        <p class="text-white/60 text-xs uppercase tracking-wider">WhatsApp Taps</p>
+                        <p class="text-3xl font-bold mt-1 text-white" id="stat-wa">-</p>
+                        <div class="text-green-400 text-xs mt-2">Direct Leads</div>
+                    </div>
+                    <div class="card-base p-5">
+                        <p class="text-white/60 text-xs uppercase tracking-wider">Conversion Rate</p>
+                        <p class="text-3xl font-bold mt-1 text-white" id="stat-conv">-</p>
+                        <div class="text-white/50 text-xs mt-2">Clicks to WA</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div class="card-base p-6">
+                        <h3 class="font-medium mb-4 text-white/80">Top Performing Products</h3>
+                        <ul class="space-y-4" id="top-products-list">
+                            <li class="text-sm text-white/50">Loading...</li>
+                        </ul>
+                    </div>
+                    <div class="card-base p-6">
+                        <h3 class="font-medium mb-4 text-white/80">Needs Attention (Low Views)</h3>
+                        <ul class="space-y-4" id="low-products-list">
+                            <li class="text-sm text-white/50">Loading...</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card-base overflow-x-auto">
+                    <table class="min-w-full divide-y divide-white/10">
+                        <thead class="bg-white/5">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider whitespace-nowrap">Product Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider whitespace-nowrap">Views</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider whitespace-nowrap">Clicks</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider whitespace-nowrap">WA Leads</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider whitespace-nowrap">Engagement</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/10 text-sm" id="analytics-table-body">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+                <div class="card-base p-6 lg:col-span-2">
+                    <h2 class="text-xl font-semibold mb-4 text-white/90">Offer Intelligence</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                        <div class="bg-white/5 p-4 rounded-xl border border-white/5">
+                            <div class="text-xs text-white/50 mb-1">Top Metric</div>
+                            <div class="font-bold text-lg text-primary">Conversion</div>
+                            <div class="text-sm text-white/70 mt-2">High WA tap rate on discounted items.</div>
+                        </div>
+                        <div class="bg-white/5 p-4 rounded-xl border border-white/5">
+                            <div class="text-xs text-white/50 mb-1">Observation</div>
+                            <div class="font-bold text-lg text-green-400">Stock Velocity</div>
+                            <div class="text-sm text-white/70 mt-2">Low stock items getting 2x clicks.</div>
+                        </div>
+                    </div>
+                    
+                    <h3 class="text-sm font-medium text-white/70 mb-2">Traffic Distribution</h3>
+                    <div class="bar-chart-container h-32 bg-white/5 rounded-xl px-4 border border-white/5">
+                        <div class="bar-group">
+                            <div class="bar bg-blue-500" style="height: 60%;"></div>
+                            <div class="bar-label">WhatsApp</div>
+                        </div>
+                        <div class="bar-group">
+                            <div class="bar bg-purple-500" style="height: 30%;"></div>
+                            <div class="bar-label">Direct</div>
+                        </div>
+                        <div class="bar-group">
+                            <div class="bar bg-orange-500" style="height: 10%;"></div>
+                            <div class="bar-label">Share</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-base p-6 bg-gradient-to-br from-[#1a1d23] to-[#252830]">
+                    <h2 class="text-xl font-semibold mb-4 text-white/90">💡 Insight</h2>
+                    <div class="space-y-4">
+                        <div class="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                            <p class="text-sm text-white/80"><span class="font-bold text-blue-400">Tip:</span> Ensure your high-view products have offers attached to convert traffic.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="products" class="content-section hidden">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                <h1 class="text-2xl md:text-3xl font-bold">Products</h1>
+                <button onclick="openProductModal()" class="btn-primary text-white font-medium py-2 px-4 rounded-xl flex items-center space-x-2 w-full md:w-auto justify-center">
+                    <span class="text-lg">+</span>
+                    <span>Create New Product</span>
+                </button>
+            </div>
+            
+            <div class="card-base p-4 overflow-x-auto">
+                <table class="min-w-full divide-y divide-white/10">
+                    <thead>
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider whitespace-nowrap">Product</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider whitespace-nowrap">Price</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider whitespace-nowrap">Visibility</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider whitespace-nowrap">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="products-list" class="divide-y divide-white/10">
+                        </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="offers" class="content-section hidden">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                <h1 class="text-2xl md:text-3xl font-bold">Offers & Promotions</h1>
+                <button onclick="openOfferModal()" class="btn-primary text-white font-medium py-2 px-4 rounded-xl flex items-center space-x-2 w-full md:w-auto justify-center">
+                    <span class="text-lg">🎉</span>
+                    <span>Create New Offer</span>
+                </button>
+            </div>
+            
+            <div class="card-base p-4 overflow-x-auto">
+                <table class="min-w-full divide-y divide-white/10">
+                    <thead>
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider whitespace-nowrap">Offer Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider whitespace-nowrap">Product</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider whitespace-nowrap">Discount</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider whitespace-nowrap">Status</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider whitespace-nowrap">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="offers-list" class="divide-y divide-white/10">
+                        </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="inventory" class="content-section hidden">
+            <h1 class="text-2xl md:text-3xl font-bold mb-6">Inventory Management</h1>
+            
+            <div class="card-base p-4 overflow-x-auto">
+                <table class="min-w-full divide-y divide-white/10">
+                    <thead>
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider whitespace-nowrap">Product</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider whitespace-nowrap">Stock</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-white/60 uppercase tracking-wider whitespace-nowrap">Status</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-white/60 uppercase tracking-wider whitespace-nowrap">Update</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventory-list" class="divide-y divide-white/10">
+                        </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="settings" class="content-section hidden">
+            <h1 class="text-2xl md:text-3xl font-bold mb-6">Business Settings</h1>
+            
+            <div class="card-base p-4 md:p-6 space-y-6 w-full max-w-2xl">
+                <h2 class="text-xl font-semibold border-b border-white/10 pb-3">General Information</h2>
+                
+                <div class="flex flex-col md:flex-row items-center md:space-x-4 space-y-4 md:space-y-0">
+                    <div class="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center overflow-hidden border border-white/20 shrink-0 relative">
+                         <span class="text-2xl" id="logo-placeholder">📷</span>
+                         <img id="logo-preview" class="w-full h-full object-cover hidden">
+                         <div id="logo-loading" class="absolute inset-0 bg-black/50 hidden flex items-center justify-center">
+                            <div class="loader"></div>
+                         </div>
+                    </div>
+                    <div class="w-full">
+                        <label class="block text-sm font-medium text-white/70 mb-1">Business Logo</label>
+                        <input type="file" id="setting-logo-upload" accept="image/*" class="w-full text-sm text-white/70 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-violet-600">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="setting-business-name" class="block text-sm font-medium text-white/70 mb-1">Business Name</label>
+                    <input type="text" id="setting-business-name" class="w-full" placeholder="Your Business">
+                </div>
+                <div>
+                    <label for="setting-whatsapp-number" class="block text-sm font-medium text-white/70 mb-1">WhatsApp Number (e.g., 2547XXXXXXXX)</label>
+                    <input type="text" id="setting-whatsapp-number" class="w-full" placeholder="2547...">
+                </div>
+
+                <h2 class="text-xl font-semibold border-b border-white/10 pb-3 pt-4">Brand Colors</h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                        <label for="setting-primary-color" class="block text-sm font-medium text-white/70 mb-1">Primary Color (Accent)</label>
+                        <div class="flex space-x-2">
+                            <input type="color" id="setting-primary-color" class="w-12 h-10 p-0.5 rounded-lg border-none shrink-0" oninput="updateBrandColor('--primary-color', this.value)" value="#7c3aed">
+                            <input type="text" id="setting-primary-color-hex" class="flex-1 w-full" value="#7c3aed" oninput="updateBrandColor('--primary-color', this.value)">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="setting-secondary-color" class="block text-sm font-medium text-white/70 mb-1">Secondary Color (Details)</label>
+                        <div class="flex space-x-2">
+                            <input type="color" id="setting-secondary-color" class="w-12 h-10 p-0.5 rounded-lg border-none shrink-0" oninput="updateBrandColor('--secondary-color', this.value)" value="#ea580c">
+                            <input type="text" id="setting-secondary-color-hex" class="flex-1 w-full" value="#ea580c" oninput="updateBrandColor('--secondary-color', this.value)">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="setting-bg-color" class="block text-sm font-medium text-white/70 mb-1">Background Color</label>
+                        <div class="flex space-x-2">
+                            <input type="color" id="setting-bg-color" class="w-12 h-10 p-0.5 rounded-lg border-none shrink-0" oninput="updateBrandColor('--bg-dark', this.value)" value="#0f1115">
+                            <input type="text" id="setting-bg-color-hex" class="flex-1 w-full" value="#0f1115" oninput="updateBrandColor('--bg-dark', this.value)">
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="saveBusinessSettings()" id="save-settings-btn" class="btn-primary text-white font-medium py-2 px-4 rounded-xl w-full">Save Settings</button>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="product-modal-backdrop" class="modal-backdrop">
+        <div class="modal-card" id="product-modal">
+            <h2 class="text-xl md:text-2xl font-bold mb-4">Create New Product</h2>
+            <div id="product-modal-steps" class="space-y-4">
+                <div data-step="1" class="product-step">
+                    <h3 class="font-semibold text-lg text-white/80 mb-3">Step 1: Images</h3>
+                    <p class="text-sm text-white/50 mb-4">Select images. They will upload automatically.</p>
+                    <input type="file" multiple accept="image/*" id="product-images-upload" class="w-full text-white/70 p-2 border border-dashed border-white/20 rounded-lg">
+                    <div id="image-preview" class="flex space-x-3 mt-4 overflow-x-auto pb-2 min-h-[80px]"></div>
+                </div>
+
+                <div data-step="2" class="product-step hidden">
+                    <h3 class="font-semibold text-lg text-white/80 mb-3">Step 2: Basics</h3>
+                    <input type="text" id="prod-title" placeholder="Product Name" class="w-full mb-3">
+                    <textarea id="prod-short-desc" rows="3" placeholder="Short description (bullets separated by commas)" class="w-full mb-3"></textarea>
+                    <textarea id="prod-long-desc" rows="5" placeholder="Long description (full details)" class="w-full mb-3"></textarea>
+                </div>
+
+                <div data-step="3" class="product-step hidden">
+                    <h3 class="font-semibold text-lg text-white/80 mb-3">Step 3: Pricing</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <input type="number" id="prod-price" placeholder="Price (KES)" class="w-full mb-3">
+                        <input type="number" id="prod-old-price" placeholder="Offer Price (optional)" class="w-full">
+                    </div>
+                </div>
+
+                <div data-step="4" class="product-step hidden">
+                    <h3 class="font-semibold text-lg text-white/80 mb-3">Step 4: Inventory & Publish</h3>
+                    <input type="number" id="prod-stock" placeholder="Initial Stock Quantity" class="w-full mb-4">
+                    <label class="flex items-center space-x-2 text-white/70">
+                        <input type="checkbox" id="prod-visible" checked>
+                        <span>Publish Product Immediately</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center mt-6 pt-4 border-t border-white/10">
+                <button onclick="changeProductStep(-1)" class="text-white/70 hover:text-white transition-colors py-2 px-4 rounded-lg" id="product-prev-btn">← Previous</button>
+                <button onclick="changeProductStep(1)" class="btn-primary text-white font-medium py-2 px-4 rounded-xl" id="product-next-btn">Next →</button>
+                <button onclick="saveProduct()" class="btn-primary text-white font-medium py-2 px-4 rounded-xl hidden" id="product-publish-btn">Publish Product</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="variation-manage-backdrop" class="modal-backdrop">
+        <div class="modal-card" id="variation-manage-modal">
+            <h2 class="text-xl md:text-2xl font-bold mb-4">Manage Variations</h2>
+            <p class="text-sm text-white/60 mb-4" id="variation-product-title">For Product: ...</p>
+            
+            <div id="current-variations-list" class="space-y-4 mb-6"></div>
+
+            <div class="border-t border-white/10 pt-4">
+                <h3 class="font-semibold text-lg mb-2">Add New Variation Group</h3>
+                <input type="text" id="new-var-group-name" placeholder="Group Name (e.g. Size, Color)" class="w-full mb-2">
+                <input type="text" id="new-var-group-options" placeholder="Options (comma separated, e.g. S,M,L)" class="w-full mb-2">
+                <button onclick="addVariationToProduct()" class="btn-primary text-white font-medium py-2 px-4 rounded-xl w-full">Add Group</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="offer-modal-backdrop" class="modal-backdrop">
+        <div class="modal-card" id="offer-modal">
+            <h2 class="text-xl md:text-2xl font-bold mb-4">Create New Offer</h2>
+            
+            <label for="offer-product-select" class="block text-sm font-medium text-white/70 mb-1">Select Product</label>
+            <select id="offer-product-select" class="w-full mb-4">
+                <option value="">-- Select a Product --</option>
+            </select>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label for="offer-discount-type" class="block text-sm font-medium text-white/70 mb-1">Discount Type</label>
+                    <select id="offer-discount-type" class="w-full">
+                        <option value="price">Fixed Price</option>
+                        <option value="percent">% Discount</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="offer-discount-value" class="block text-sm font-medium text-white/70 mb-1">Value</label>
+                    <input type="number" id="offer-discount-value" placeholder="e.g., 12000 or 20" class="w-full">
+                </div>
+            </div>
+
+            <div class="mb-4">
+                 <label class="block text-sm font-medium text-white/70 mb-1">Offer Name</label>
+                 <input type="text" id="offer-name" placeholder="Summer Sale" class="w-full">
+            </div>
+
+            <button onclick="createOffer()" class="btn-primary text-white font-medium py-2 px-4 rounded-xl w-full">Create Offer</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. CONFIGURATION & SUPABASE SETUP ---
+        const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co'; // Replace
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ'; // Replace
+        const BUSINESS_ID = 'fortunebooks12'; // Test ID
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // Helper: Convert storage path to public URL (no-op for absolute URLs)
+        function getPublicImageUrl(path) {
+            if (!path) return path;
+            if (path.startsWith('http') || path.startsWith('data:')) return path;
+            const { data } = supabase.storage.from('ecommerce-assets').getPublicUrl(path);
+            return data?.publicUrl || path;
+        }
+        
+        // --- 2. GLOBAL STATE ---
+        let productsCache = [];
+        let currentProductStep = 1;
+        let uploadedImageUrls = [];
+        let currentEditingProductId = null; // For variations
+
+        // --- 3. INIT & NAVIGATION ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadSettings(); // Apply theme first
+            showSection('analytics');
+            
+            // Listeners
+            document.getElementById('sidebar-toggle').addEventListener('click', toggleSidebar);
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showSection(item.getAttribute('data-section'));
+                    if (window.innerWidth < 1024) toggleSidebar();
+                });
+            });
+            document.getElementById('setting-logo-upload').addEventListener('change', uploadLogo);
+            document.getElementById('product-images-upload').addEventListener('change', uploadProductImages);
+            document.querySelectorAll('.modal-backdrop').forEach(b => {
+                b.addEventListener('click', (e) => {
+                    if (e.target === b) toggleModal(b.id.replace('-backdrop',''), false);
+                });
+            });
+        });
+
+        async function showSection(sectionId) {
+            document.querySelectorAll('.content-section').forEach(sec => sec.classList.add('hidden'));
+            document.getElementById(sectionId).classList.remove('hidden');
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            document.querySelector(`.nav-item[data-section="${sectionId}"]`)?.classList.add('active');
+
+            if (sectionId === 'analytics') renderAnalytics();
+            if (sectionId === 'products') renderProducts();
+            if (sectionId === 'inventory') renderInventory();
+            if (sectionId === 'offers') renderOffers();
+            if (sectionId === 'settings') loadSettings();
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            sidebar.classList.toggle('open');
+            sidebar.classList.toggle('-translate-x-full');
+            backdrop.classList.toggle('show');
+        }
+
+        function toggleModal(id, open) {
+            const backdrop = document.getElementById(id + '-backdrop');
+            if (open) {
+                backdrop.style.display = 'flex';
+                setTimeout(() => backdrop.classList.add('open'), 10);
+            } else {
+                backdrop.classList.remove('open');
+                setTimeout(() => backdrop.style.display = 'none', 300);
+            }
+        }
+
+        // --- 4. SETTINGS & BRANDING ---
+        async function loadSettings() {
+            const { data, error } = await supabase.from('business_settings').select('*').eq('business_id', BUSINESS_ID).single();
+            
+            if (data) {
+                // Apply Inputs
+                document.getElementById('setting-business-name').value = data.business_name || '';
+                document.getElementById('setting-whatsapp-number').value = data.whatsapp_number || '';
+                
+                // Apply Colors
+                const colors = data.brand_colors || {};
+                const primary = colors.primary || '#7c3aed';
+                const secondary = colors.secondary || '#ea580c';
+                const bg = colors.background || '#0f1115';
+
+                updateBrandColor('--primary-color', primary);
+                updateBrandColor('--secondary-color', secondary);
+                updateBrandColor('--bg-dark', bg);
+
+                // Update pickers
+                document.getElementById('setting-primary-color').value = primary;
+                document.getElementById('setting-primary-color-hex').value = primary;
+                document.getElementById('setting-secondary-color').value = secondary;
+                document.getElementById('setting-secondary-color-hex').value = secondary;
+                document.getElementById('setting-bg-color').value = bg;
+                document.getElementById('setting-bg-color-hex').value = bg;
+
+                // Logo
+                if (data.logo_url) {
+                    const publicUrl = getPublicImageUrl(data.logo_url);
+                    const img = document.getElementById('logo-preview');
+                    img.src = publicUrl;
+                    img.classList.remove('hidden');
+                    document.getElementById('logo-placeholder').classList.add('hidden');
+                }
+            }
+        }
+
+        function updateBrandColor(cssVar, hexValue) {
+            document.documentElement.style.setProperty(cssVar, hexValue);
+            // Sync text inputs if triggered by color picker
+            const idBase = cssVar.replace('--', 'setting-');
+            const hexInput = document.getElementById(idBase + '-hex');
+            const colorInput = document.getElementById(idBase);
+            if (hexInput && hexInput.value !== hexValue) hexInput.value = hexValue;
+            if (colorInput && colorInput.value !== hexValue) colorInput.value = hexValue;
+        }
+
+        async function saveBusinessSettings() {
+            const btn = document.getElementById('save-settings-btn');
+            btn.textContent = 'Saving...';
+            
+            const payload = {
+                business_id: BUSINESS_ID,
+                business_name: document.getElementById('setting-business-name').value,
+                whatsapp_number: document.getElementById('setting-whatsapp-number').value,
+                brand_colors: {
+                    primary: document.getElementById('setting-primary-color').value,
+                    secondary: document.getElementById('setting-secondary-color').value,
+                    background: document.getElementById('setting-bg-color').value
+                }
+            };
+
+            await supabase.from('business_settings').upsert(payload);
+            btn.textContent = 'Settings Saved!';
+            setTimeout(() => btn.textContent = 'Save Settings', 2000);
+        }
+
+        async function uploadLogo(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            document.getElementById('logo-loading').classList.remove('hidden');
+            const fileName = `logos/${BUSINESS_ID}-${Date.now()}`;
+            const { error } = await supabase.storage.from('ecommerce-assets').upload(fileName, file);
+            
+            if (!error) {
+                const { data } = supabase.storage.from('ecommerce-assets').getPublicUrl(fileName);
+                await supabase.from('business_settings').upsert({ business_id: BUSINESS_ID, logo_url: data.publicUrl });
+                document.getElementById('logo-preview').src = data.publicUrl;
+                document.getElementById('logo-preview').classList.remove('hidden');
+                document.getElementById('logo-placeholder').classList.add('hidden');
+            } else {
+                alert('Upload failed: ' + error.message);
+            }
+            document.getElementById('logo-loading').classList.add('hidden');
+        }
+
+        // --- 5. PRODUCTS ---
+        async function fetchProducts() {
+            const { data } = await supabase.from('products').select('*').eq('business_id', BUSINESS_ID).order('created_at', { ascending: false });
+            productsCache = data || [];
+            return productsCache;
+        }
+
+        async function renderProducts() {
+            const products = await fetchProducts();
+            const list = document.getElementById('products-list');
+            
+            list.innerHTML = products.map(p => {
+                const imageUrl = getPublicImageUrl(p.images?.[0]);
+                return `
+                <tr class="hover:bg-white/5 transition-colors">
+                    <td class="px-6 py-4 whitespace-nowrap flex items-center space-x-3">
+                            <img src="${imageUrl || 'https://via.placeholder.com/50?text=No+Img'}" onerror="this.src='https://via.placeholder.com/50?text=No+Img'" loading="lazy" class="w-10 h-10 rounded object-cover border border-white/10">
+                        <div class="text-sm font-medium text-white truncate max-w-[150px] md:max-w-none">${p.title}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-white/70">
+                        KES ${p.price.toLocaleString()} 
+                        ${p.old_price ? `<span class="text-xs text-red-400 line-through ml-1">${p.old_price.toLocaleString()}</span>` : ''}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" ${p.is_visible ? 'checked' : ''} class="sr-only peer" onchange="toggleVisibility('${p.id}', this.checked)">
+                            <div class="w-11 h-6 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                        </label>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div style="display:flex;align-items:center;gap:10px;justify-content:flex-end">
+                            <button onclick="copyProductLink('${p.id}')" class="text-white/50 hover:text-white transition-colors" title="Copy product link">🔗</button>
+                            <button onclick="openVariationManager('${p.id}')" class="text-white/70 hover:text-white transition-colors" title="Variations">⚙️</button>
+                            <button onclick="deleteProduct('${p.id}')" class="text-red-400 hover:text-red-500 transition-colors" title="Delete">🗑️</button>
+                            <button onclick="openProductLive('${p.id}')" class="text-white/50 hover:text-white transition-colors" title="View live page">👁️</button>
+                        </div>
+                    </td>
+                </tr>
+            `}).join('');
+        }
+
+        // Product Modal Logic
+        function openProductModal() {
+            currentProductStep = 1;
+            uploadedImageUrls = [];
+            document.getElementById('image-preview').innerHTML = '';
+            document.getElementById('product-images-upload').value = '';
+            document.getElementById('prod-title').value = '';
+            document.getElementById('prod-short-desc').value = '';
+            document.getElementById('prod-long-desc').value = '';
+            document.getElementById('prod-price').value = '';
+            document.getElementById('prod-old-price').value = '';
+            document.getElementById('prod-stock').value = '';
+            
+            document.getElementById('product-publish-btn').classList.add('hidden');
+            document.getElementById('product-next-btn').classList.remove('hidden');
+            changeProductStep(0); 
+            toggleModal('product-modal', true);
+        }
+
+        // Opens the Offer modal and resets form fields
+        function openOfferModal() {
+            const select = document.getElementById('offer-product-select');
+            if (select) select.value = '';
+            const type = document.getElementById('offer-discount-type');
+            if (type) type.value = 'price';
+            const val = document.getElementById('offer-discount-value');
+            if (val) val.value = '';
+            const name = document.getElementById('offer-name');
+            if (name) name.value = '';
+
+            // Ensure products list is up to date for selection
+            if (productsCache.length === 0) fetchProducts().then(() => renderOffers()).catch(() => {});
+
+            toggleModal('offer-modal', true);
+        }
+
+        function changeProductStep(direction) {
+            currentProductStep += direction;
+            const steps = document.querySelectorAll('.product-step');
+
+            if (currentProductStep < 1) currentProductStep = 1;
+            if (currentProductStep > steps.length) currentProductStep = steps.length;
+
+            steps.forEach((step, index) => {
+                step.classList.toggle('hidden', index + 1 !== currentProductStep);
+            });
+
+            document.getElementById('product-prev-btn').style.visibility = currentProductStep > 1 ? 'visible' : 'hidden';
+            
+            if (currentProductStep === steps.length) {
+                document.getElementById('product-next-btn').classList.add('hidden');
+                document.getElementById('product-publish-btn').classList.remove('hidden');
+            } else {
+                document.getElementById('product-next-btn').classList.remove('hidden');
+                document.getElementById('product-publish-btn').classList.add('hidden');
+            }
+        }
+
+        async function uploadProductImages(e) {
+            const files = Array.from(e.target.files);
+            const preview = document.getElementById('image-preview');
+            
+            for (const file of files) {
+                // Show local preview immediately
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    preview.innerHTML += `<img src="${ev.target.result}" class="w-16 h-16 rounded-lg object-cover border-2 border-white/10 shrink-0 opacity-50">`;
+                };
+                reader.readAsDataURL(file);
+
+                // Upload
+                const fileName = `products/${BUSINESS_ID}-${Date.now()}-${file.name}`;
+                const { error } = await supabase.storage.from('ecommerce-assets').upload(fileName, file);
+                
+                if (!error) {
+                    const { data } = supabase.storage.from('ecommerce-assets').getPublicUrl(fileName);
+                    uploadedImageUrls.push(data.publicUrl);
+                    // Update preview opacity to indicate success (rudimentary)
+                    preview.lastElementChild.classList.remove('opacity-50');
+                }
+            }
+        }
+
+        async function saveProduct() {
+            const title = document.getElementById('prod-title').value;
+            if (!title) return alert('Product Name is required');
+
+            // ID Generation: product-name-random
+            const cleanName = title.toLowerCase().replace(/[^a-z0-9]/g, '-').substring(0, 15);
+            const id = `product-${cleanName}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+            const payload = {
+                id: id,
+                business_id: BUSINESS_ID,
+                title: title,
+                description_short: document.getElementById('prod-short-desc').value,
+                description_long: document.getElementById('prod-long-desc').value,
+                price: parseFloat(document.getElementById('prod-price').value) || 0,
+                old_price: parseFloat(document.getElementById('prod-old-price').value) || null,
+                stock_quantity: parseInt(document.getElementById('prod-stock').value) || 0,
+                is_visible: document.getElementById('prod-visible').checked,
+                images: uploadedImageUrls,
+                variations: [] // Initial empty variations
+            };
+
+            const { error } = await supabase.from('products').insert(payload);
+            
+            if (error) {
+                alert('Error saving product: ' + error.message);
+            } else {
+                toggleModal('product-modal', false);
+                renderProducts();
+            }
+        }
+
+        // Construct full product URL based on current location and copy to clipboard
+        function copyProductLink(productId) {
+            if (!productId) return;
+            const basePath = location.origin + location.pathname.substring(0, location.pathname.lastIndexOf('/') + 1);
+            const url = basePath + 'product.html?id=' + encodeURIComponent(productId);
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(() => {
+                    alert('Product link copied to clipboard');
+                }).catch(() => {
+                    // Fallback
+                    const ta = document.createElement('textarea');
+                    ta.value = url;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    try { document.execCommand('copy'); alert('Product link copied to clipboard'); } catch (e) { prompt('Copy this link:', url); }
+                    ta.remove();
+                });
+            } else {
+                const ta = document.createElement('textarea');
+                ta.value = url;
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand('copy'); alert('Product link copied to clipboard'); } catch (e) { prompt('Copy this link:', url); }
+                ta.remove();
+            }
+        }
+
+        // Open the product live page in a new tab/window
+        function openProductLive(productId) {
+            if (!productId) return;
+            const basePath = location.origin + location.pathname.substring(0, location.pathname.lastIndexOf('/') + 1);
+            const url = basePath + 'product.html?id=' + encodeURIComponent(productId);
+            window.open(url, '_blank', 'noopener,noreferrer');
+        }
+
+        async function toggleVisibility(id, checked) {
+            await supabase.from('products').update({ is_visible: checked }).eq('id', id);
+        }
+
+        async function deleteProduct(id) {
+            if (confirm('Delete this product?')) {
+                await supabase.from('products').delete().eq('id', id);
+                renderProducts();
+            }
+        }
+
+        // --- 6. VARIATIONS ---
+        function openVariationManager(productId) {
+            currentEditingProductId = productId;
+            const product = productsCache.find(p => p.id === productId);
+            document.getElementById('variation-product-title').textContent = `For: ${product.title}`;
+            renderVariations(product.variations || []);
+            toggleModal('variation-manage', true);
+        }
+
+        function renderVariations(vars) {
+            const container = document.getElementById('current-variations-list');
+            if (!vars || vars.length === 0) {
+                container.innerHTML = '<p class="text-sm text-white/40 italic">No variations added.</p>';
+            } else {
+                container.innerHTML = vars.map((v, i) => `
+                    <div class="bg-white/5 p-3 rounded-lg flex justify-between items-center">
+                        <div>
+                            <div class="font-bold text-sm text-white">${v.name}</div>
+                            <div class="text-xs text-white/60">${v.options.join(', ')}</div>
+                        </div>
+                        <button onclick="removeVariationFromProduct(${i})" class="text-red-400 hover:text-red-500 text-sm">Remove</button>
+                    </div>
+                `).join('');
+            }
+        }
+
+        async function addVariationToProduct() {
+            const name = document.getElementById('new-var-group-name').value;
+            const optsStr = document.getElementById('new-var-group-options').value;
+            if (!name || !optsStr) return;
+
+            const product = productsCache.find(p => p.id === currentEditingProductId);
+            const newVars = [...(product.variations || []), { name, options: optsStr.split(',').map(s => s.trim()) }];
+
+            await supabase.from('products').update({ variations: newVars }).eq('id', currentEditingProductId);
+            
+            // Update local cache and UI
+            product.variations = newVars;
+            renderVariations(newVars);
+            document.getElementById('new-var-group-name').value = '';
+            document.getElementById('new-var-group-options').value = '';
+        }
+
+        async function removeVariationFromProduct(index) {
+            const product = productsCache.find(p => p.id === currentEditingProductId);
+            const newVars = [...product.variations];
+            newVars.splice(index, 1);
+            
+            await supabase.from('products').update({ variations: newVars }).eq('id', currentEditingProductId);
+            product.variations = newVars;
+            renderVariations(newVars);
+        }
+
+        // --- 7. OFFERS ---
+        async function renderOffers() {
+            // Need products for names
+            if (productsCache.length === 0) await fetchProducts();
+            
+            const { data: offers } = await supabase.from('offers').select('*').eq('business_id', BUSINESS_ID);
+            
+            // Populate select dropdown in modal
+            const select = document.getElementById('offer-product-select');
+            select.innerHTML = '<option value="">-- Select a Product --</option>' + 
+                productsCache.map(p => `<option value="${p.id}">${p.title}</option>`).join('');
+
+            const list = document.getElementById('offers-list');
+            list.innerHTML = offers.map(o => {
+                const prodName = productsCache.find(p => p.id === o.product_id)?.title || 'Unknown Product';
+                const discDisplay = o.discount_type === 'percent' ? `${o.discount_value}% OFF` : `KES ${o.discount_value} FIX`;
+                return `
+                <tr class="hover:bg-white/5 transition-colors">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">${o.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-white/70">${prodName}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-red-400">${discDisplay}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${o.is_active ? 'bg-green-100/10 text-green-400' : 'bg-red-100/10 text-red-400'}">
+                            ${o.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button class="text-white/70 hover:text-white" onclick="alert('Delete not implemented yet')">🗑️</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        async function createOffer() {
+            const payload = {
+                business_id: BUSINESS_ID,
+                product_id: document.getElementById('offer-product-select').value,
+                name: document.getElementById('offer-name').value,
+                discount_type: document.getElementById('offer-discount-type').value,
+                discount_value: parseFloat(document.getElementById('offer-discount-value').value),
+                is_active: true
+            };
+            const { error } = await supabase.from('offers').insert(payload);
+            if (!error) {
+                toggleModal('offer-modal', false);
+                renderOffers();
+            }
+        }
+
+        // --- 8. INVENTORY ---
+        async function renderInventory() {
+            const products = await fetchProducts();
+            const list = document.getElementById('inventory-list');
+            
+            list.innerHTML = products.map(p => {
+                const statusClass = p.stock_quantity > 5 ? 'text-green-400' : (p.stock_quantity > 0 ? 'text-orange-400' : 'text-red-500');
+                const statusText = p.stock_quantity > 5 ? 'In Stock' : (p.stock_quantity > 0 ? 'Low Stock' : 'Out of Stock');
+                
+                return `
+                <tr class="hover:bg-white/5 transition-colors">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">${p.title}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <input type="number" id="stock-${p.id}" value="${p.stock_quantity}" class="w-20 text-center text-sm bg-card-dark border border-white/20 rounded">
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm ${statusClass} font-medium">${statusText}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button onclick="updateStock('${p.id}')" class="text-white/70 hover:text-white transition-colors py-1 px-3 rounded-lg bg-white/5 border border-white/10">💾 Save</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        async function updateStock(id) {
+            const val = document.getElementById(`stock-${id}`).value;
+            await supabase.from('products').update({ stock_quantity: val }).eq('id', id);
+            renderInventory(); // Refresh labels
+        }
+
+        // --- 9. ANALYTICS ---
+        async function renderAnalytics() {
+            // Fetch Products for names
+            if (productsCache.length === 0) await fetchProducts();
+
+            // Fetch Analytics Data
+            const { data } = await supabase.from('product_analytics_daily')
+                .select('*')
+                .eq('business_id', BUSINESS_ID);
+            
+            if (!data) return;
+
+            // Aggregation
+            let totalViews = 0;
+            let totalClicks = 0;
+            let totalWA = 0;
+            const productStats = {};
+
+            data.forEach(row => {
+                totalViews += row.views_count || 0;
+                totalClicks += row.clicks_count || 0;
+                totalWA += row.whatsapp_taps || 0;
+                
+                if (!productStats[row.product_id]) {
+                    productStats[row.product_id] = { v: 0, c: 0, w: 0 };
+                }
+                productStats[row.product_id].v += row.views_count || 0;
+                productStats[row.product_id].c += row.clicks_count || 0;
+                productStats[row.product_id].w += row.whatsapp_taps || 0;
+            });
+
+            // Update KPI Cards
+            document.getElementById('stat-views').innerText = totalViews.toLocaleString();
+            document.getElementById('stat-clicks').innerText = totalClicks.toLocaleString();
+            document.getElementById('stat-wa').innerText = totalWA.toLocaleString();
+            const conversion = totalClicks > 0 ? ((totalWA / totalClicks) * 100).toFixed(1) : 0;
+            document.getElementById('stat-conv').innerText = `${conversion}%`;
+            document.getElementById('analytics-timestamp').innerText = `Last updated: ${new Date().toLocaleTimeString()}`;
+
+            // Sort Products
+            const sortedProdIds = Object.keys(productStats).sort((a, b) => productStats[b].v - productStats[a].v);
+
+            // Update Top Performing List
+            const topList = document.getElementById('top-products-list');
+            topList.innerHTML = sortedProdIds.slice(0, 3).map((pid, idx) => {
+                const prod = productsCache.find(p => p.id === pid);
+                return `
+                <li class="flex items-center justify-between text-sm md:text-base">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded bg-white/10 flex items-center justify-center text-xs shrink-0">${idx + 1}</div>
+                        <span class="truncate max-w-[150px] md:max-w-none">${prod ? prod.title : 'Unknown'}</span>
+                    </div>
+                    <span class="text-green-400 font-medium">${productStats[pid].v} Views</span>
+                </li>`;
+            }).join('') || '<li class="text-white/50">No data available</li>';
+
+            // Update Low Performing List
+            const lowList = document.getElementById('low-products-list');
+            lowList.innerHTML = sortedProdIds.slice(-3).reverse().map((pid, idx) => {
+                const prod = productsCache.find(p => p.id === pid);
+                return `
+                <li class="flex items-center justify-between opacity-70 text-sm md:text-base">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded bg-white/5 flex items-center justify-center text-xs shrink-0">!</div>
+                        <span class="truncate max-w-[150px] md:max-w-none">${prod ? prod.title : 'Unknown'}</span>
+                    </div>
+                    <span class="text-red-400 font-medium">${productStats[pid].v} Views</span>
+                </li>`;
+            }).join('') || '<li class="text-white/50">No data available</li>';
+
+            // Update Main Table
+            const tableBody = document.getElementById('analytics-table-body');
+            tableBody.innerHTML = sortedProdIds.map(pid => {
+                const prod = productsCache.find(p => p.id === pid);
+                const stats = productStats[pid];
+                const eng = stats.v > 0 ? ((stats.c / stats.v) * 100).toFixed(1) : 0;
+                
+                return `
+                <tr>
+                    <td class="px-6 py-4 font-medium whitespace-nowrap">${prod ? prod.title : pid}</td>
+                    <td class="px-6 py-4 text-white/70 whitespace-nowrap">${stats.v}</td>
+                    <td class="px-6 py-4 text-white/70 whitespace-nowrap">${stats.c}</td>
+                    <td class="px-6 py-4 text-green-400 font-medium whitespace-nowrap">${stats.w}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs w-8">${eng}%</span>
+                            <div class="progress-bar-bg w-24"><div class="progress-bar-fill bg-blue-500" style="width: ${Math.min(eng, 100)}%"></div></div>
+                        </div>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+    </script>
+</body>
+</html>

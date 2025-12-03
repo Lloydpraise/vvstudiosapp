@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Loading Product...</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        /* --- Dynamic Theme Variables (Will be overwritten by JS) --- */
+        :root {
+            --bg-page: #0f1115;
+            --card-bg: #1a1d23;
+            --text-main: #ffffff;
+            --text-muted: #9ca3af;
+            --primary-color: #7c3aed; 
+            --secondary-color: #ea580c; 
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+        /* Utility */
+        .btn-primary {
+            background-color: var(--primary-color);
+            transition: opacity 0.3s ease, transform 0.1s;
+        }
+        .btn-primary:active { transform: scale(0.98); }
+        .text-primary { color: var(--primary-color); }
+        .border-primary { border-color: var(--primary-color); }
+
+        /* Gallery Styles */
+        .gallery-thumb.active {
+            border-color: var(--primary-color);
+            opacity: 1;
+        }
+        
+        /* Variation Selectors */
+        .var-btn.selected {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        /* Loading Spinner */
+        .loader {
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Strike-through for offers */
+        .old-price {
+            text-decoration: line-through;
+            color: var(--secondary-color);
+            font-size: 0.9em;
+            margin-right: 8px;
+        }
+
+        /* Additional header / review styles copied from oldproduct.html */
+        .font-brand { font-family: 'Inter', sans-serif; letter-spacing: 0.05em; }
+        .card-animate { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .card-animate:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        .mobile-sticky-btn {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(15, 17, 21, 0.95);
+            backdrop-filter: blur(8px);
+            border-top: 1px solid rgba(43,47,58,1);
+            padding: 16px;
+            z-index: 50;
+            display: block;
+        }
+        @media (min-width: 768px) { .mobile-sticky-btn { display: none; } }
+        /* Mobile adjustments: hide availability text, keep sticky WhatsApp visible, avoid overlap */
+        @media (max-width: 767px) {
+            /* Hide the availability row (text like "In Stock") on small screens */
+            #purchase-panel .availability-row { display: none; }
+            /* Hide the in-block whatsapp button on mobile so the sticky one is used */
+            #purchase-panel .inblock-whatsapp { display: none !important; }
+            /* Prevent the main content from being covered by the sticky button */
+            #main-content { padding-bottom: 140px; }
+            .mobile-sticky-btn { z-index: 60; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0f1115]">
+        <div class="loader mb-4"></div>
+        <p class="text-white/50 animate-pulse">Loading Product Details...</p>
+    </div>
+
+    <div class="mobile-sticky-btn">
+        <button onclick="handleWhatsAppPurchase()" class="w-full bg-[#25D366] text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform">
+            <i class="fa-brands fa-whatsapp text-xl"></i>
+            <span>Proceed to WhatsApp to Order</span>
+        </button>
+    </div>
+
+    <div id="error-screen" class="hidden fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0f1115] p-6 text-center">
+        <div class="text-4xl mb-4">😕</div>
+        <h2 class="text-xl font-bold mb-2">Product Not Found</h2>
+        <p class="text-white/50 max-w-md">The product you are looking for might have been removed or the link is incorrect.</p>
+    </div>
+
+    <div id="main-content" class="hidden max-w-7xl mx-auto px-4 py-6 lg:py-12">
+        
+        <header class="w-full max-w-6xl px-4 py-4 flex items-center justify-between relative mb-2">
+            <div class="absolute left-4 top-1/2 -translate-y-1/2">
+                <img id="biz-logo" src="" alt="Logo" class="h-10 w-auto object-contain hidden"> 
+                <div id="logo-placeholder" class="h-10 w-10 bg-white/10 rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-store text-white/50"></i>
+                </div>
+            </div>
+
+            <div class="w-full text-center">
+                <h1 id="biz-name" class="font-brand font-semibold text-lg text-white/90 uppercase tracking-widest">
+                    Store
+                </h1>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16">
+            
+            <div class="space-y-4">
+                <div class="aspect-square w-full rounded-2xl overflow-hidden bg-white/5 relative group">
+                    <img id="main-image" src="" alt="Product Image" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
+                    <div id="offer-badge" class="hidden absolute top-4 left-4 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+                        SALE
+                    </div>
+                </div>
+                <div id="image-thumbnails" class="flex space-x-3 overflow-x-auto pb-2">
+                    </div>
+            </div>
+
+            <div class="flex flex-col">
+                <div class="mb-6">
+                    <h1 id="product-title" class="text-3xl md:text-4xl font-bold mb-3">...</h1>
+                    <div class="flex items-center text-2xl">
+                        <span id="price-old" class="hidden old-price"></span>
+                        <span id="price-current" class="font-bold text-primary">...</span>
+                    </div>
+                </div>
+
+                <div class="prose prose-invert mb-8">
+                    <p id="product-desc-short" class="text-lg text-white/80 leading-relaxed">...</p>
+                </div>
+
+                <div class="mt-4 bg-[var(--card-bg)] border border-white/10 rounded-2xl overflow-hidden">
+                    <button id="desc-toggle" class="w-full px-6 py-4 flex justify-between items-center hover:bg-white/5 transition-colors">
+                        <span class="font-semibold text-white/90">Description & Details</span>
+                        <i class="fa-solid fa-chevron-down transition-transform text-white/50" id="desc-chevron"></i>
+                    </button>
+                    <div id="desc-content" class="collapsible-content bg-[#14161a]">
+                        <div class="p-6 text-white/70 text-sm leading-relaxed" id="product-desc-long"></div>
+                    </div>
+                </div>
+
+                <div id="variations-container" class="space-y-6 mb-8">
+                    </div>
+
+                <div id="purchase-panel" class="mt-auto bg-white/5 p-6 rounded-2xl border border-white/10">
+                    <div class="flex items-center justify-between mb-4 availability-row">
+                        <span class="text-sm text-white/60">Availability</span>
+                        <span id="stock-status" class="font-medium text-green-400">Checking...</span>
+                    </div>
+
+                    <div class="flex gap-4">
+                        <button id="btn-whatsapp" onclick="handleWhatsAppPurchase()" class="inblock-whatsapp flex-1 bg-[#25D366] hover:opacity-90 text-white font-bold py-4 px-6 rounded-xl flex items-center justify-center space-x-2 transition-all">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.008-.57-.008-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                            <span>Order on WhatsApp</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Customer Reviews (copied from oldproduct.html) -->
+        <section class="mb-12 bg-[var(--card-bg)] border border-white/10 rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold">Customer Reviews</h2>
+                <div class="text-orange-500 flex items-center gap-1">
+                    <i class="fa-solid fa-star"></i>
+                    <span class="font-bold text-white" id="avg-rating">0.0</span>
+                </div>
+            </div>
+            <div id="reviews-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </section>
+
+        <div class="flex justify-center mb-10">
+            <button id="help-btn" onclick="handleHelpClick()" class="px-6 py-3 rounded-xl border border-white/10 text-white/40 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all text-sm font-medium flex items-center gap-2">
+                <i class="fa-regular fa-circle-question"></i>
+                Unable to Place Order Now? Click Here
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co'; // Replace with yours
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ'; // Replace with yours
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Helper: Convert storage path to public URL (no-op for absolute URLs)
+        function getPublicImageUrl(path) {
+            if (!path) return path;
+            if (path.startsWith('http') || path.startsWith('data:')) return path;
+            const { data } = supabase.storage.from('ecommerce-assets').getPublicUrl(path);
+            return data?.publicUrl || path;
+        }
+
+        // --- STATE ---
+        let productData = null;
+        let businessData = null;
+        let selectedVariations = {}; // { Size: 'M', Color: 'Red' }
+        let currentPrice = 0;
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 1. Get ID from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const productId = urlParams.get('id');
+
+            if (!productId) return showError();
+
+            try {
+                // 2. Fetch Data
+                await loadProduct(productId);
+                
+                // 3. Track View (RSC-like Server Action via RPC)
+                trackAnalytics('view');
+
+            } catch (err) {
+                console.error(err);
+                showError();
+            }
+            // Attach description toggle handler (safe if element missing)
+            const descToggle = document.getElementById('desc-toggle');
+            if (descToggle) {
+                descToggle.addEventListener('click', () => {
+                    const content = document.getElementById('desc-content');
+                    const icon = document.getElementById('desc-chevron');
+                    if (!content) return;
+                    if (content.classList.contains('open')) {
+                        content.classList.remove('open');
+                        if (icon) icon.style.transform = 'rotate(0deg)';
+                    } else {
+                        content.classList.add('open');
+                        if (icon) icon.style.transform = 'rotate(180deg)';
+                    }
+                });
+            }
+        });
+
+        // --- CORE FUNCTIONS ---
+
+        async function loadProduct(productId) {
+            // Fetch Product
+            const { data: product, error: prodError } = await supabase
+                .from('products')
+                .select('*')
+                .eq('id', productId)
+                .single();
+
+            if (prodError || !product || !product.is_visible) throw new Error("Product not found");
+            productData = product;
+
+            // Fetch Business Settings (Colors, Logo, Phone)
+            const { data: biz, error: bizError } = await supabase
+                .from('business_settings')
+                .select('*')
+                .eq('business_id', product.business_id)
+                .single();
+            
+            if (bizError) console.warn("Business settings not found, using defaults");
+            businessData = biz || { brand_colors: {} };
+
+            // Fetch Active Offers for this product
+            const { data: offers } = await supabase
+                .from('offers')
+                .select('*')
+                .eq('product_id', productId)
+                .eq('is_active', true)
+                .gte('end_date', new Date().toISOString());
+
+            const activeOffer = offers && offers.length > 0 ? offers[0] : null;
+
+            renderPage(product, businessData, activeOffer);
+        }
+
+        function renderPage(product, biz, offer) {
+            // 1. Apply Theme
+            const colors = biz.brand_colors || {};
+            const root = document.documentElement;
+            if(colors.primary) root.style.setProperty('--primary-color', colors.primary);
+            if(colors.secondary) root.style.setProperty('--secondary-color', colors.secondary);
+            if(colors.background) root.style.setProperty('--bg-page', colors.background);
+
+            // 2. Header Details
+            if (biz.logo_url) {
+                const logo = document.getElementById('biz-logo');
+                logo.src = getPublicImageUrl(biz.logo_url);
+                logo.classList.remove('hidden');
+            }
+            if (biz.business_name) document.getElementById('biz-name').textContent = biz.business_name;
+            document.title = `${product.title} | ${biz.business_name || 'Store'}`;
+
+            // 3. Product Details
+            document.getElementById('product-title').innerText = product.title;
+            document.getElementById('product-desc-short').innerText = product.description_short || '';
+            document.getElementById('product-desc-long').innerHTML = (product.description_long || '').replace(/\n/g, '<br>');
+
+            // 4. Images
+            const images = product.images || [];
+            if (images.length > 0) {
+                // Convert storage paths to public URLs where necessary
+                const publicUrls = images.map(getPublicImageUrl);
+                const mainImg = document.getElementById('main-image');
+                mainImg.src = publicUrls[0];
+                mainImg.onerror = () => { mainImg.src = 'https://via.placeholder.com/800x800?text=No+Image'; };
+                const thumbContainer = document.getElementById('image-thumbnails');
+                thumbContainer.innerHTML = '';
+
+                publicUrls.forEach((url, idx) => {
+                    const thumb = document.createElement('img');
+                    thumb.src = url;
+                    thumb.className = `w-16 h-16 rounded-lg object-cover border-2 border-transparent cursor-pointer gallery-thumb ${idx === 0 ? 'active' : ''}`;
+                    thumb.loading = 'lazy';
+                    thumb.onerror = () => { thumb.src = 'https://via.placeholder.com/100x100?text=No+Image'; };
+                    thumb.onclick = () => {
+                        document.getElementById('main-image').src = url;
+                        document.querySelectorAll('.gallery-thumb').forEach(t => t.classList.remove('active'));
+                        thumb.classList.add('active');
+                        trackAnalytics('click'); // Interaction tracked
+                    };
+                    thumbContainer.appendChild(thumb);
+                });
+            }
+
+            // 5. Pricing & Offers
+            let price = product.price;
+            currentPrice = price; // Base price
+            
+            if (offer) {
+                document.getElementById('offer-badge').classList.remove('hidden');
+                document.getElementById('offer-badge').innerText = offer.discount_type === 'percent' ? `-${offer.discount_value}% OFF` : 'SALE';
+                
+                // Calculate discounted price
+                const discount = offer.discount_type === 'percent' 
+                    ? price * (offer.discount_value / 100) 
+                    : offer.discount_value; // Assuming fixed discount
+                
+                // If it's fixed price override (based on previous logic), usually specific logic applies. 
+                // Here assuming discount_value is AMOUNT OFF or PERCENT OFF based on standard ecommerce.
+                // If your logic was "New Fixed Price", adjust calculation here.
+                let finalPrice = price - discount;
+                if(offer.discount_type === 'price') finalPrice = offer.discount_value; // If value acts as new price
+
+                document.getElementById('price-old').innerText = `KES ${price.toLocaleString()}`;
+                document.getElementById('price-old').classList.remove('hidden');
+                document.getElementById('price-current').innerText = `KES ${finalPrice.toLocaleString()}`;
+                currentPrice = finalPrice;
+            } else {
+                if (product.old_price && product.old_price > price) {
+                    document.getElementById('price-old').innerText = `KES ${product.old_price.toLocaleString()}`;
+                    document.getElementById('price-old').classList.remove('hidden');
+                }
+                document.getElementById('price-current').innerText = `KES ${price.toLocaleString()}`;
+            }
+
+            // 6. Variations
+            const varContainer = document.getElementById('variations-container');
+            const variations = product.variations || []; // JSONB: [{name: "Size", options: ["S", "M"]}]
+            
+            variations.forEach(v => {
+                const group = document.createElement('div');
+                group.innerHTML = `<h3 class="text-sm font-medium text-white/70 mb-2 uppercase tracking-wide">${v.name}</h3>`;
+                
+                const optsDiv = document.createElement('div');
+                optsDiv.className = 'flex flex-wrap gap-2';
+                
+                v.options.forEach((opt, i) => {
+                    const btn = document.createElement('button');
+                    btn.className = `var-btn px-4 py-2 rounded-lg border border-white/20 hover:border-white/50 transition-colors text-sm ${i===0 ? 'selected' : ''}`;
+                    btn.innerText = opt;
+                    
+                    // Default selection
+                    if(i===0) selectedVariations[v.name] = opt;
+
+                    btn.onclick = () => {
+                        // Deselect siblings
+                        Array.from(optsDiv.children).forEach(c => c.classList.remove('selected'));
+                        btn.classList.add('selected');
+                        selectedVariations[v.name] = opt;
+                        trackAnalytics('click');
+                    };
+                    optsDiv.appendChild(btn);
+                });
+                group.appendChild(optsDiv);
+                varContainer.appendChild(group);
+            });
+
+            // 7. Stock
+            const stockEl = document.getElementById('stock-status');
+            const btn = document.getElementById('btn-whatsapp');
+            
+            if (product.stock_quantity > 5) {
+                stockEl.innerText = "In Stock";
+                stockEl.className = "font-medium text-green-400";
+            } else if (product.stock_quantity > 0) {
+                stockEl.innerText = `Low Stock (${product.stock_quantity} left)`;
+                stockEl.className = "font-medium text-[#ea580c]";
+            } else {
+                stockEl.innerText = "Out of Stock";
+                stockEl.className = "font-medium text-red-500";
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+                btn.innerText = "Sold Out";
+            }
+
+            // Reveal Page
+            document.getElementById('loading-screen').classList.add('hidden');
+            document.getElementById('main-content').classList.remove('hidden');
+
+            // Render reviews if present
+            try {
+                renderReviews(product.reviews || []);
+            } catch (err) {
+                console.warn('renderReviews error:', err);
+            }
+        }
+
+        // --- ACTIONS ---
+
+        async function handleWhatsAppPurchase() {
+            if (!productData || !businessData) return;
+
+            // 1. Track the "Conversion" intent
+            trackAnalytics('whatsapp');
+
+            // 2. Construct Message
+            const phone = businessData.whatsapp_number || ''; 
+            // Ensure phone has no +, just digits. 
+            const cleanPhone = phone.replace(/[^0-9]/g, '');
+
+            let message = `Hello, I'm interested in *${productData.title}*.\n`;
+            message += `Price: KES ${currentPrice.toLocaleString()}\n`;
+            
+            // Add selected variations
+            if (Object.keys(selectedVariations).length > 0) {
+                message += `Selected Options: ${Object.entries(selectedVariations).map(([k,v]) => `${k}: ${v}`).join(', ')}\n`;
+            }
+            
+            message += `Link: ${window.location.href}`;
+
+            // 3. Open WhatsApp
+            const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+            window.open(url, '_blank');
+        }
+
+        // --- ANALYTICS ENGINE (RSC Logic) ---
+        
+        async function trackAnalytics(eventType) {
+            // eventType: 'view', 'click', 'whatsapp'
+            if (!productData) return;
+
+            // We use the SQL Function created earlier to handle the logic securely on the server
+            // This prevents race conditions if 100 people view at once.
+            const { error } = await supabase.rpc('track_product_event', {
+                p_product_id: productData.id,
+                p_business_id: productData.business_id,
+                p_event_type: eventType
+            });
+
+            if (error) console.error("Analytics Error:", error);
+        }
+
+        function showError() {
+            document.getElementById('loading-screen').classList.add('hidden');
+            document.getElementById('error-screen').classList.remove('hidden');
+        }
+
+        // --- Reviews Renderer (copied & adapted from oldproduct.html) ---
+        function renderReviews(reviews) {
+            const grid = document.getElementById('reviews-grid');
+            if (!grid) return;
+            if (!reviews || !reviews.length) {
+                grid.innerHTML = '<div class="col-span-full text-center text-white/30 italic">No reviews yet.</div>';
+                document.getElementById('avg-rating') && (document.getElementById('avg-rating').textContent = '0.0');
+                return;
+            }
+            // Update average
+            const avg = (reviews.reduce((a, b) => a + (b.rating || 0), 0) / reviews.length).toFixed(1);
+            document.getElementById('avg-rating') && (document.getElementById('avg-rating').textContent = avg);
+
+            grid.innerHTML = reviews.map(r => `
+                <div class="bg-[#14161a] border border-[#2b2f3a] rounded-xl p-5 card-animate">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="font-bold text-white text-sm">${r.name || 'Anonymous'}</div>
+                        <div class="text-xs text-white/30">${r.date || ''}</div>
+                    </div>
+                    <div class="text-orange-500 text-[12px] mb-2">
+                        ${'<i class="fa-solid fa-star"></i>'.repeat(r.rating || 0)}
+                    </div>
+                    <p class="text-white/60 text-sm leading-relaxed">${r.comment || ''}</p>
+                </div>
+            `).join('');
+        }
+
+        function handleHelpClick() {
+            alert("This will open a support form or chat in the future.");
+        }
+
+        // Keep mobile sticky WhatsApp in sync with the in-panel button and ensure help button visible
+        (function syncMobileUI(){
+            const sticky = document.querySelector('.mobile-sticky-btn');
+            const inblock = document.getElementById('btn-whatsapp');
+            const helpBtn = document.getElementById('help-btn');
+
+            function updateStickyVisibility(){
+                if (!sticky) return;
+                // If inblock button exists and is enabled and visible on desktop, hide sticky on larger screens via CSS already.
+                // On mobile we rely on CSS to hide inblock; ensure sticky shows when inblock is disabled (sold out)
+                if (inblock && inblock.disabled) {
+                    sticky.style.display = 'none';
+                } else {
+                    sticky.style.display = '';
+                }
+            }
+
+            // Try to scroll help button into view if it's being clipped by the sticky footer on mobile
+            function ensureHelpVisible(){
+                if (!helpBtn) return;
+                // Only on small screens
+                if (window.innerWidth <= 767) {
+                    // Add a small scroll-margin so element is not hidden behind sticky
+                    helpBtn.style.scrollMarginBottom = '160px';
+                    // If the help button is below the fold, scroll it a tiny bit so it's visible
+                    const rect = helpBtn.getBoundingClientRect();
+                    if (rect.bottom > window.innerHeight - 80) {
+                        window.scrollBy({ top: rect.bottom - (window.innerHeight - 80) + 16, behavior: 'smooth' });
+                    }
+                }
+            }
+
+            // Run once on DOM ready and also when resize
+            document.addEventListener('DOMContentLoaded', updateStickyVisibility);
+            window.addEventListener('resize', updateStickyVisibility);
+            // Slight delay to allow layout to settle
+            setTimeout(() => { updateStickyVisibility(); ensureHelpVisible(); }, 600);
+        })();
+
+    </script>
+</body>
+</html>

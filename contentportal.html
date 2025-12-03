@@ -142,12 +142,33 @@
 
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         
-        // Simulating the logged in business
-        const CURRENT_BUSINESS_ID = 'fortunebooks12';
+        // Determine current business id from localStorage (consistent with other pages)
+        function getCurrentBusinessId() {
+            try {
+                const saved = localStorage.getItem('vvUser');
+                const user = saved ? JSON.parse(saved) : null;
+                return user ? (user.business_id || user['business id'] || null) : null;
+            } catch (e) {
+                console.warn('Error reading vvUser from localStorage', e);
+                return null;
+            }
+        }
 
         // --- 2. FETCH DATA ---
         async function fetchOrders() {
             try {
+                // Resolve current business id (from localStorage)
+                const CURRENT_BUSINESS_ID = getCurrentBusinessId();
+
+                // If there's no business id, don't query — show the empty UI texts
+                if (!CURRENT_BUSINESS_ID) {
+                    console.warn('No business id found in localStorage; skipping orders query.');
+                    document.getElementById('loader-ordered').style.display = 'none';
+                    renderPendingCards([]);
+                    renderCompletedCards([]);
+                    return;
+                }
+
                 // Fetch all orders for this business
                 const { data, error } = await supabase
                     .from('content_orders')

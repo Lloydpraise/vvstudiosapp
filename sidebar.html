@@ -32,6 +32,14 @@
             <span class="tooltip">Track and manage your customers easily</span>
         </a>
     </li>
+    <li class="mb-4" id="sidebar-ecommerce-item">
+        <a href="ecommerce.html"
+            class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+            <i class="fa-solid fa-store w-5 h-5"></i>
+            <span>Ecommerce</span>
+            <span class="tooltip">Sell products, bundles and offers</span>
+        </a>
+    </li>
 
     <li class="mb-4">
         <a href="copilot.html"
@@ -80,6 +88,7 @@
         </a>
     </li>
 
+
     <li class="mb-4">
         <a href="#"
             class="flex items-center space-x-3 text-white/30 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
@@ -97,3 +106,23 @@
         </button>
     </div>
 </aside>
+<script>
+// Ensure Ecommerce sidebar item always navigates to `ecommerce.html`
+(function(){
+    try {
+        const item = document.getElementById('sidebar-ecommerce-item');
+        if (!item) return;
+        const anchor = item.querySelector('a');
+        if (!anchor) return;
+
+        // Remove any existing lock icon
+        const existingLock = anchor.querySelector('.fa-lock');
+        if (existingLock) existingLock.remove();
+
+        // Make the link active and point to ecommerce landing
+        anchor.classList.remove('text-white/30');
+        anchor.classList.add('text-white');
+        anchor.setAttribute('href', 'ecommerce.html');
+    } catch (err) { console.error(err); }
+})();
+</script>
