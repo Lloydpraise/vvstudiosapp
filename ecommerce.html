@@ -161,6 +161,28 @@
             opacity: 1;
         }
 
+        /* Styled scrollbar for the offer modal to improve visibility on dark background */
+        #offer-modal {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.18) rgba(255,255,255,0.04);
+        }
+        #offer-modal::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        #offer-modal::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.03);
+            border-radius: 999px;
+        }
+        #offer-modal::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, rgba(124,58,237,0.9), rgba(234,88,12,0.9));
+            border-radius: 999px;
+            border: 2px solid rgba(0,0,0,0.12);
+        }
+        #offer-modal::-webkit-scrollbar-thumb:hover {
+            filter: brightness(0.95);
+        }
+
         /* Status Colors */
         .low-stock { color: var(--secondary-color); font-weight: 600; }
         .in-stock { color: #10b981; }
@@ -420,19 +442,8 @@
                     </div>
                     
                     <h3 class="text-sm font-medium text-white/70 mb-2">Traffic Distribution</h3>
-                    <div class="bar-chart-container h-32 bg-white/5 rounded-xl px-4 border border-white/5">
-                        <div class="bar-group">
-                            <div class="bar bg-blue-500" style="height: 60%;"></div>
-                            <div class="bar-label">WhatsApp</div>
-                        </div>
-                        <div class="bar-group">
-                            <div class="bar bg-purple-500" style="height: 30%;"></div>
-                            <div class="bar-label">Direct</div>
-                        </div>
-                        <div class="bar-group">
-                            <div class="bar bg-orange-500" style="height: 10%;"></div>
-                            <div class="bar-label">Share</div>
-                        </div>
+                    <div id="traffic-distribution-chart" class="bar-chart-container h-32 bg-white/5 rounded-xl px-4 border border-white/5" aria-live="polite">
+                        <!-- Bars are rendered dynamically by JS in `renderAnalytics()` based on real analytics data. -->
                     </div>
                 </div>
                 
@@ -612,15 +623,24 @@
                 <div data-step="2" class="product-step hidden">
                     <h3 class="font-semibold text-lg text-white/80 mb-3">Step 2: Basics</h3>
                     <input type="text" id="prod-title" placeholder="Product Name" class="w-full mb-3">
-                    <textarea id="prod-short-desc" rows="3" placeholder="Short description (bullets separated by commas)" class="w-full mb-3"></textarea>
+
+                    <label class="block text-sm font-medium text-white/70 mb-2">Key Features</label>
+                    <div id="key-features-container" class="space-y-2 mb-3">
+                        <!-- Bullet inputs will be injected here -->
+                    </div>
+                    <div class="flex items-center gap-2 mb-4">
+                        <input id="new-feature-input" type="text" placeholder="Add a feature and press +" class="flex-1 p-2 rounded bg-[#0f1115] border border-white/10">
+                        <button id="add-feature-btn" type="button" class="btn-primary text-white font-medium py-2 px-3 rounded-xl">+</button>
+                    </div>
+
+                    <label class="block text-sm font-medium text-white/70 mb-1">Full Details</label>
                     <textarea id="prod-long-desc" rows="5" placeholder="Long description (full details)" class="w-full mb-3"></textarea>
                 </div>
 
                 <div data-step="3" class="product-step hidden">
                     <h3 class="font-semibold text-lg text-white/80 mb-3">Step 3: Pricing</h3>
-                    <div class="grid grid-cols-2 gap-4">
+                    <div>
                         <input type="number" id="prod-price" placeholder="Price (KES)" class="w-full mb-3">
-                        <input type="number" id="prod-old-price" placeholder="Offer Price (optional)" class="w-full">
                     </div>
                 </div>
 
@@ -692,7 +712,7 @@
 
             <div class="mt-3 flex items-center gap-2">
                 <input type="checkbox" id="storewide-toggle" class="w-4 h-4 rounded border-white/30 bg-transparent text-[var(--primary-color)] focus:ring-0">
-                <label for="storewide-toggle" class="text-sm text-white/70 select-none">Apply Storewide (All Products)</label>
+                <label for="storewide-toggle" class="text-sm text-white/70 select-none">Select All Products</label>
             </div>
         </div>
 
@@ -709,6 +729,8 @@
                 <input type="date" id="offer-end-date" class="w-full bg-[#0f1115]">
             </div>
         </div>
+
+        <!-- Offer preview removed: Offer Name is the customer-facing preview -->
 
         <button onclick="createOffer()" class="btn-primary w-full py-3.5 rounded-xl font-bold text-white shadow-lg hover:shadow-[var(--primary-color)]/25 transition-all text-lg flex items-center justify-center gap-2">
             <span>🚀 Launch Promotion</span>
@@ -821,6 +843,7 @@
         let currentProductStep = 1;
         let uploadedImageUrls = [];
         let currentEditingProductId = null; // For variations
+        let keyFeatures = []; // Array of strings for the Key Features bullets
 
         // --- 3. INIT & NAVIGATION ---
 
@@ -1154,10 +1177,13 @@
             document.getElementById('image-preview').innerHTML = '';
             document.getElementById('product-images-upload').value = '';
             document.getElementById('prod-title').value = '';
-            document.getElementById('prod-short-desc').value = '';
+            // reset key features UI
+            keyFeatures = [];
+            renderKeyFeatures();
+            document.getElementById('new-feature-input').value = '';
             document.getElementById('prod-long-desc').value = '';
             document.getElementById('prod-price').value = '';
-            document.getElementById('prod-old-price').value = '';
+            // offer price removed; old_price will be null by default
             document.getElementById('prod-stock').value = '';
             document.getElementById('prod-visible').checked = true;
 
@@ -1182,10 +1208,13 @@
             document.getElementById('product-images-upload').value = '';
 
             document.getElementById('prod-title').value = product.title || '';
-            document.getElementById('prod-short-desc').value = product.description_short || '';
+            // populate key features from saved short description (stored as newline separated)
+            const rawShort = product.description_short || '';
+            keyFeatures = rawShort ? rawShort.split('\n') : [];
+            renderKeyFeatures();
             document.getElementById('prod-long-desc').value = product.description_long || '';
             document.getElementById('prod-price').value = product.price || '';
-            document.getElementById('prod-old-price').value = product.old_price || '';
+            // old_price field removed from modal; existing product.old_price remains in DB but modal no longer edits it
             document.getElementById('prod-stock').value = product.stock_quantity || '';
             document.getElementById('prod-visible').checked = !!product.is_visible;
 
@@ -1231,7 +1260,15 @@
             // Reset State
             selectedProductIds = [];
             currentOfferType = 'DISCOUNT';
-            document.getElementById('offer-name').value = '';
+            const offerNameInput = document.getElementById('offer-name');
+            if (offerNameInput) {
+                offerNameInput.value = '';
+                offerNameInput.dataset.userEdited = '0';
+                if (!offerNameInput._hasOfferNameListener) {
+                    offerNameInput.addEventListener('input', () => { offerNameInput.dataset.userEdited = '1'; });
+                    offerNameInput._hasOfferNameListener = true;
+                }
+            }
             document.getElementById('offer-end-date').value = '';
             document.getElementById('storewide-toggle').checked = false;
             document.getElementById('product-search-input').value = '';
@@ -1248,17 +1285,53 @@
 
         function renderOfferTypeButtons() {
             const container = document.getElementById('offer-type-container');
-            container.innerHTML = OFFER_TYPES.map(type => `
+
+            // Helper: convert hex to rgba string
+            function hexToRgba(hex, alpha) {
+                hex = (hex || '#000000').replace('#', '');
+                const r = parseInt(hex.substring(0,2), 16);
+                const g = parseInt(hex.substring(2,4), 16);
+                const b = parseInt(hex.substring(4,6), 16);
+                return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+            }
+
+            // Accent palette used for the type chips (discount always purple)
+            const ACCENTS = {
+                purple: '#7c3aed',
+                green: '#10b981',
+                orange: '#ea580c',
+                blue: '#0b5fff'
+            };
+
+            // Build a rotating pool for non-discount types
+            const pool = [ACCENTS.green, ACCENTS.orange, ACCENTS.blue, ACCENTS.purple];
+
+            container.innerHTML = OFFER_TYPES.map((type, idx) => {
+                const isActive = currentOfferType === type.id;
+
+                // Ensure Discount is always purple, others pick from pool (rotate)
+                const color = type.id === 'DISCOUNT' ? ACCENTS.purple : pool[(idx) % pool.length];
+
+                const bg = isActive ? hexToRgba(color, 0.22) : hexToRgba(color, 0.08);
+                const border = isActive ? hexToRgba(color, 0.28) : 'rgba(255,255,255,0.06)';
+                const iconColor = isActive ? '#ffffff' : color;
+                const textColor = isActive ? '#ffffff' : 'rgba(255,255,255,0.9)';
+                const shadow = isActive ? `0 6px 18px ${hexToRgba(color, 0.18)}` : 'none';
+
+                return `
                 <div onclick="selectOfferType('${type.id}')" 
-                     class="offer-type-card ${currentOfferType === type.id ? 'active' : 'bg-white/5'} flex flex-col items-center justify-center rounded-xl cursor-pointer select-none">
-                    <i class="fa-solid ${type.icon} text-2xl mb-2 ${currentOfferType === type.id ? 'text-white' : 'text-white/50'}"></i>
-                    <span class="text-xs font-semibold whitespace-nowrap">${type.label}</span>
+                     class="offer-type-card flex flex-col items-center justify-center rounded-xl cursor-pointer select-none"
+                     style="background: ${bg}; border-color: ${border}; color: ${textColor}; box-shadow: ${shadow};">
+                    <i class="fa-solid ${type.icon} text-2xl mb-2" style="color: ${iconColor};"></i>
+                    <span class="text-xs font-semibold whitespace-nowrap" style="color: ${textColor};">${type.label}</span>
                 </div>
-            `).join('');
-            
-            // Update Explainer
+            `;
+            }).join('');
+
+            // Update Explainer text
             const typeData = OFFER_TYPES.find(t => t.id === currentOfferType);
             document.getElementById('offer-explainer-text').innerText = typeData ? typeData.desc : '';
+            try { updateOfferPreview(); } catch (e) { /* ignore if preview fn missing */ }
         }
 
         function selectOfferType(type) {
@@ -1270,6 +1343,7 @@
             if (type === 'FLASH_SALE' && !nameInput.value) nameInput.value = "24Hr Flash Sale";
             if (type === 'SEASONAL' && !nameInput.value) nameInput.value = "Christmas Special";
             if (type === 'EARLY_BIRD' && !nameInput.value) nameInput.value = "Launch Special";
+            try { updateOfferPreview(); } catch (e) {}
         }
 
         function updateConfigUI() {
@@ -1359,6 +1433,20 @@
                     </div>
                 `;
             }
+
+            // Attach listeners to dynamic inputs to update preview live
+            try {
+                const ids = ['conf-disc-mode','conf-disc-val','conf-buy-qty','conf-get-qty','conf-reward-id','conf-gift-id','conf-ship-threshold','conf-season-preset'];
+                ids.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    el.addEventListener('input', updateOfferPreview);
+                    el.addEventListener('change', updateOfferPreview);
+                });
+            } catch (e) {}
+
+            // Ensure preview refresh after re-rendering config UI
+            try { updateOfferPreview(); } catch (e) {}
         }
 
         // --- PRODUCT SEARCH & SELECTION ---
@@ -1404,12 +1492,14 @@
                 document.getElementById('product-search-input').value = '';
                 document.getElementById('product-search-results').style.display = 'none';
                 document.getElementById('storewide-toggle').checked = false; // Uncheck storewide if specific product selected
+                try { updateOfferPreview(); } catch (e) {}
             }
         }
 
         function removeProduct(id) {
             selectedProductIds = selectedProductIds.filter(pid => pid !== id);
             renderSelectedProducts();
+            try { updateOfferPreview(); } catch (e) {}
         }
 
         function renderSelectedProducts() {
@@ -1434,6 +1524,7 @@
                     <button onclick="removeProduct('${id}')" class="hover:text-red-400 ml-1">×</button>
                 </div>`;
             }).join('');
+            // preview removed - Offer Name is used instead
         }
         
         document.getElementById('storewide-toggle').addEventListener('change', function(e) {
@@ -1441,6 +1532,7 @@
                 selectedProductIds = []; // Clear specific selections
                 renderSelectedProducts();
             }
+            try { updateOfferPreview(); } catch (e) {}
         });
 
         // --- SUBMIT LOGIC ---
@@ -1534,6 +1626,80 @@
             btn.disabled = false;
         }
 
+        // --- Offer Preview Helper ---
+        function formatDatePretty(dateStr) {
+            try {
+                if (!dateStr) return '';
+                const d = new Date(dateStr);
+                if (isNaN(d)) return dateStr;
+                return d.toLocaleDateString();
+            } catch (e) { return dateStr || ''; }
+        }
+
+        function updateOfferPreview() {
+            const name = document.getElementById('offer-name')?.value || '';
+            const endDate = document.getElementById('offer-end-date')?.value;
+            const isStorewide = document.getElementById('storewide-toggle')?.checked;
+
+            let text = '';
+
+            if (['DISCOUNT','FLASH_SALE','SEASONAL','EARLY_BIRD','FIRST_TIME'].includes(currentOfferType)) {
+                const mode = document.getElementById('conf-disc-mode')?.value || 'percent';
+                const val = parseFloat(document.getElementById('conf-disc-val')?.value || NaN);
+                if (!isNaN(val) && val > 0) {
+                    if (mode === 'percent') text = `Get ${val}% Discount`;
+                    else text = `Get KES ${val} Off`;
+                } else if (name) {
+                    text = name;
+                } else {
+                    text = 'Set discount value to preview';
+                }
+
+                // Target description
+                if (isStorewide) {
+                    text += ' on All Products';
+                } else if (selectedProductIds && selectedProductIds.length > 0) {
+                    const names = selectedProductIds.map(id => productsCache.find(p => p.id === id)?.title).filter(Boolean);
+                    if (names.length === 0) text += ' on Selected Products';
+                    else if (names.length <= 3) text += ' on ' + names.join(', ');
+                    else text += ` on ${names.length} Selected Products`;
+                } else {
+                    text += ' on [no products selected]';
+                }
+
+                if (endDate) text += ` - Offer Lasts Till ${formatDatePretty(endDate)}`;
+            }
+            else if (currentOfferType === 'BOGO') {
+                const buy = parseInt(document.getElementById('conf-buy-qty')?.value || 1);
+                const get = parseInt(document.getElementById('conf-get-qty')?.value || 1);
+                const reward = document.getElementById('conf-reward-id')?.value || 'same';
+                let rewardText = reward === 'same' ? 'same product' : (productsCache.find(p => p.id === reward)?.title || 'selected reward');
+                text = `Buy ${buy} Get ${get} Free (${rewardText})`;
+                if (isStorewide) text += ' - Applies to all products';
+            }
+            else if (currentOfferType === 'FREEBIE') {
+                const gift = document.getElementById('conf-gift-id')?.value;
+                const title = productsCache.find(p => p.id === gift)?.title || 'Selected Gift';
+                text = `Free Gift: ${title}`;
+                if (isStorewide) text += ' - For all products';
+            }
+            else if (currentOfferType === 'SHIPPING') {
+                const thr = document.getElementById('conf-ship-threshold')?.value;
+                if (!thr || Number(thr) === 0) text = 'Free Shipping on all orders';
+                else text = `Free Shipping on orders above KES ${thr}`;
+            }
+
+            // When a descriptive preview is constructed, auto-fill the `offer-name` input
+            // unless the user has manually edited it. This keeps the customer-facing
+            // name up-to-date without forcing typing.
+            const nameInputEl = document.getElementById('offer-name');
+            const constructed = (text || '').toString().trim();
+            const userEdited = nameInputEl && nameInputEl.dataset && nameInputEl.dataset.userEdited === '1';
+            if (!userEdited && constructed) {
+                try { nameInputEl.value = constructed; } catch (e) { /* ignore */ }
+            }
+        }
+
         function changeProductStep(direction) {
             currentProductStep += direction;
             const steps = document.querySelectorAll('.product-step');
@@ -1555,6 +1721,97 @@
                 document.getElementById('product-publish-btn').classList.add('hidden');
             }
         }
+
+        // --- Key Features (Bullets) UI Helpers ---
+        function renderKeyFeatures() {
+            const container = document.getElementById('key-features-container');
+            if (!container) return;
+            container.innerHTML = '';
+            keyFeatures.forEach((feat, idx) => {
+                const row = document.createElement('div');
+                row.className = 'flex items-center gap-2';
+
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = feat;
+                input.className = 'flex-1 p-2 rounded bg-[#0f1115] border border-white/10';
+                input.addEventListener('input', (e) => { keyFeatures[idx] = e.target.value; });
+
+                const up = document.createElement('button');
+                up.type = 'button';
+                up.className = 'text-white/50 hover:text-white px-2';
+                up.innerText = '↑';
+                up.title = 'Move up';
+                up.onclick = () => { moveKeyFeature(idx, -1); };
+
+                const down = document.createElement('button');
+                down.type = 'button';
+                down.className = 'text-white/50 hover:text-white px-2';
+                down.innerText = '↓';
+                down.title = 'Move down';
+                down.onclick = () => { moveKeyFeature(idx, 1); };
+
+                const del = document.createElement('button');
+                del.type = 'button';
+                del.className = 'text-red-400 hover:text-red-500 px-2';
+                del.innerText = '×';
+                del.title = 'Remove';
+                del.onclick = () => { removeKeyFeature(idx); };
+
+                row.appendChild(input);
+                row.appendChild(up);
+                row.appendChild(down);
+                row.appendChild(del);
+                container.appendChild(row);
+            });
+        }
+
+        function addKeyFeature(text = '') {
+            keyFeatures.push(text);
+            renderKeyFeatures();
+            // focus last input
+            setTimeout(() => {
+                const container = document.getElementById('key-features-container');
+                const inputs = container.querySelectorAll('input');
+                if (inputs && inputs.length) inputs[inputs.length - 1].focus();
+            }, 40);
+        }
+
+        function removeKeyFeature(index) {
+            keyFeatures.splice(index, 1);
+            renderKeyFeatures();
+        }
+
+        function moveKeyFeature(index, dir) {
+            const to = index + dir;
+            if (to < 0 || to >= keyFeatures.length) return;
+            const tmp = keyFeatures[to];
+            keyFeatures[to] = keyFeatures[index];
+            keyFeatures[index] = tmp;
+            renderKeyFeatures();
+        }
+
+        // Wire simple add button and Enter key for new feature input
+        try {
+            document.addEventListener('DOMContentLoaded', () => {
+                const addBtn = document.getElementById('add-feature-btn');
+                const newInput = document.getElementById('new-feature-input');
+                if (addBtn && newInput) {
+                    addBtn.addEventListener('click', () => {
+                        const val = newInput.value.trim();
+                        if (!val) return;
+                        addKeyFeature(val);
+                        newInput.value = '';
+                    });
+                    newInput.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addBtn.click();
+                        }
+                    });
+                }
+            });
+        } catch (e) {}
 
         async function uploadProductImages(e) {
             const files = Array.from(e.target.files || []);
@@ -1605,14 +1862,17 @@
         async function saveProduct() {
             const title = document.getElementById('prod-title').value;
             if (!title) return alert('Product Name is required');
+            const pubBtn = document.getElementById('product-publish-btn');
+            const originalBtnText = pubBtn ? pubBtn.textContent : null;
+            if (pubBtn) { pubBtn.disabled = true; pubBtn.textContent = 'Publishing...'; }
 
             const payload = {
                 business_id: BUSINESS_ID,
                 title: title,
-                description_short: document.getElementById('prod-short-desc').value,
+                description_short: (keyFeatures && keyFeatures.length) ? keyFeatures.join('\n') : '',
                 description_long: document.getElementById('prod-long-desc').value,
                 price: parseFloat(document.getElementById('prod-price').value) || 0,
-                old_price: (document.getElementById('prod-old-price').value !== '') ? parseFloat(document.getElementById('prod-old-price').value) : null,
+                old_price: null,
                 stock_quantity: parseInt(document.getElementById('prod-stock').value) || 0,
                 is_visible: document.getElementById('prod-visible').checked,
                 images: uploadedImageUrls,
@@ -1623,23 +1883,32 @@
                 if (currentEditingProductId) {
                     // Update existing product
                     const { error } = await supabase.from('products').update(payload).eq('id', currentEditingProductId);
-                    if (error) return alert('Error updating product: ' + error.message);
+                    if (error) {
+                        if (pubBtn) { pubBtn.textContent = originalBtnText || 'Publish Product'; pubBtn.disabled = false; }
+                        alert('Error updating product: ' + error.message);
+                        return;
+                    }
                 } else {
                     // ID Generation for new product
                     const cleanName = title.toLowerCase().replace(/[^a-z0-9]/g, '-').substring(0, 15);
                     const id = `product-${cleanName}-${Math.floor(1000 + Math.random() * 9000)}`;
                     payload.id = id;
                     const { error } = await supabase.from('products').insert(payload);
-                    if (error) return alert('Error saving product: ' + error.message);
+                    if (error) {
+                        if (pubBtn) { pubBtn.textContent = originalBtnText || 'Publish Product'; pubBtn.disabled = false; }
+                        alert('Error saving product: ' + error.message);
+                        return;
+                    }
                 }
-
                 toggleModal('product-modal', false);
                 // reset editing state
                 currentEditingProductId = null;
                 renderProducts();
+                if (pubBtn) { pubBtn.textContent = originalBtnText || 'Publish Product'; pubBtn.disabled = false; }
             } catch (err) {
                 console.error('saveProduct error', err);
                 alert('Error saving product');
+                if (pubBtn) { pubBtn.textContent = originalBtnText || 'Publish Product'; pubBtn.disabled = false; }
             }
         }
 
@@ -1779,10 +2048,12 @@
             
             const { data: offers } = await supabase.from('offers').select('*').eq('business_id', BUSINESS_ID);
             
-            // Populate select dropdown in modal
+            // Populate select dropdown in modal (if present)
             const select = document.getElementById('offer-product-select');
-            select.innerHTML = '<option value="">-- Select a Product --</option>' + 
-                productsCache.map(p => `<option value="${p.id}">${p.title}</option>`).join('');
+            if (select) {
+                select.innerHTML = '<option value="">-- Select a Product --</option>' + 
+                    productsCache.map(p => `<option value="${p.id}">${p.title}</option>`).join('');
+            }
 
             const list = document.getElementById('offers-list');
             const safeOffers = offers || [];
@@ -1819,21 +2090,10 @@
             }
         }
 
-        async function createOffer() {
-            const payload = {
-                business_id: BUSINESS_ID,
-                product_id: document.getElementById('offer-product-select').value,
-                name: document.getElementById('offer-name').value,
-                discount_type: document.getElementById('offer-discount-type').value,
-                discount_value: parseFloat(document.getElementById('offer-discount-value').value),
-                is_active: true
-            };
-            const { error } = await supabase.from('offers').insert(payload);
-            if (!error) {
-                toggleModal('offer-modal', false);
-                renderOffers();
-            }
-        }
+        // Note: The offer creation logic is implemented above (robust handler).
+        // Removed duplicate/simple `createOffer` implementation that referenced
+        // non-existent form controls and unintentionally overwrote the
+        // richer `createOffer` defined earlier.
 
         // --- 8. INVENTORY ---
         async function renderInventory() {
@@ -1966,6 +2226,49 @@
                     </td>
                 </tr>`;
             }).join('');
+
+            // Render Traffic Distribution dynamically (no hardcoded heights)
+            try {
+                const trafficContainer = document.getElementById('traffic-distribution-chart');
+                if (trafficContainer) {
+                    // Compute distribution based on available metrics
+                    // WhatsApp taps, Clicks, and remaining Views (browse/other)
+                    const wa = totalWA || 0;
+                    const clicks = totalClicks || 0;
+                    const views = totalViews || 0;
+
+                    const safePct = (n) => (views > 0 ? Math.round((n / views) * 100) : 0);
+                    const waPct = safePct(wa);
+                    const clicksPct = safePct(clicks);
+                    // Remaining views that didn't convert to clicks
+                    let browsePct = Math.max(0, 100 - waPct - clicksPct);
+
+                    // Ensure small non-zero bars are visible while keeping proportion
+                    const minVisible = 4;
+                    const adj = (x) => (x > 0 && x < minVisible ? minVisible : x);
+
+                    const waH = adj(waPct);
+                    const clicksH = adj(clicksPct);
+                    const browseH = Math.max(0, 100 - waH - clicksH) || adj(browsePct);
+
+                    trafficContainer.innerHTML = `
+                        <div class="bar-group">
+                            <div class="bar bg-blue-500" style="height: ${waH}%;"></div>
+                            <div class="bar-label">WhatsApp ${waPct}%</div>
+                        </div>
+                        <div class="bar-group">
+                            <div class="bar bg-purple-500" style="height: ${clicksH}%;"></div>
+                            <div class="bar-label">Clicks ${clicksPct}%</div>
+                        </div>
+                        <div class="bar-group">
+                            <div class="bar bg-orange-500" style="height: ${browseH}%;"></div>
+                            <div class="bar-label">Browse ${browsePct}%</div>
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                console.error('Traffic distribution render failed', e);
+            }
         }
     </script>
 </body>

@@ -45,20 +45,23 @@
         .old-price { text-decoration: line-through; color: var(--secondary-color); font-size: 0.9em; margin-right: 8px; opacity: 0.8; }
         .flash-badge { background-color: var(--secondary-color); color: white; }
         
-        /* Mobile Sticky Button */
+        /* Mobile Sticky Button (mobile only by default) */
         .mobile-sticky-btn {
             position: fixed; bottom: 0; left: 0; width: 100%;
             background: rgba(15, 17, 21, 0.95); backdrop-filter: blur(8px);
             border-top: 1px solid rgba(43,47,58,1); padding: 16px; z-index: 50; display: block;
         }
         @media (min-width: 768px) { .mobile-sticky-btn { display: none; } }
+
         @media (max-width: 767px) {
             #purchase-panel .availability-row { display: none; }
             #purchase-panel .inblock-whatsapp { display: none !important; }
-            #main-content { padding-bottom: 140px; }
             header { padding-left: 72px; padding-right: 72px; }
             #biz-name { margin-top: 6px; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(100% - 32px); }
             #biz-logo { height: 36px; }
+
+            /* Prevent the main content from being covered by the sticky button on small screens */
+            #main-content { padding-bottom: 140px; }
         }
 
         /* Announcement Bar */
@@ -66,6 +69,25 @@
             background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
             color: white; text-align: center; padding: 8px; font-size: 0.85rem; font-weight: 600;
             display: none; /* Hidden by default */
+        }
+
+        /* Desktop: position the purchase panel higher and make WhatsApp button compact */
+        @media (min-width: 768px) {
+            /* Make the purchase panel sit nearer the top of the right column */
+            #purchase-panel { align-self: flex-start; margin-top: 1rem; }
+
+            /* Make the in-panel WhatsApp button fill the purchase panel on desktop */
+            /* Force full width inside the purchase panel regardless of flex container */
+            #purchase-panel > div { display: flex; }
+            #purchase-panel .inblock-whatsapp { flex: none !important; display: block !important; width: 100% !important; min-width: 0; }
+            #purchase-panel .inblock-whatsapp i { margin-right: 0.5rem; }
+
+            /* If the panel has inner padding, nudge the button to span edge-to-edge visually */
+            #purchase-panel .inblock-whatsapp.full-span {
+                width: calc(100% + 48px) !important;
+                margin-left: -24px !important;
+                border-radius: 0.75rem !important;
+            }
         }
     </style>
 </head>
@@ -151,9 +173,20 @@
                     </div>
                 </div>
 
+                <!-- Full Details (collapsible) -->
+                <div class="mt-4 bg-[var(--card-bg)] border border-white/10 rounded-2xl overflow-hidden">
+                    <button id="desc-toggle" class="w-full px-6 py-4 flex justify-between items-center hover:bg-white/5 transition-colors">
+                        <span class="font-semibold text-white/90">Full Details</span>
+                        <i class="fa-solid fa-chevron-down transition-transform text-white/50" id="desc-chevron"></i>
+                    </button>
+                    <div id="desc-content" class="hidden bg-[#14161a]">
+                        <div class="p-6 text-white/70 text-sm leading-relaxed" id="product-desc-long"></div>
+                    </div>
+                </div>
+
                 <div id="variations-container" class="space-y-6 mb-8"></div>
 
-                <div id="purchase-panel" class="mt-auto bg-white/5 p-6 rounded-2xl border border-white/10">
+                <div id="purchase-panel" class="bg-white/5 p-6 rounded-2xl border border-white/10">
                     <div class="flex items-center justify-between mb-4 availability-row">
                         <span class="text-sm text-white/60">Availability</span>
                         <span id="stock-status" class="font-medium text-green-400">Checking...</span>
@@ -167,17 +200,28 @@
                     </div>
                 </div>
 
-                <div class="mt-8 bg-[var(--card-bg)] border border-white/10 rounded-2xl overflow-hidden">
-                    <button id="desc-toggle" class="w-full px-6 py-4 flex justify-between items-center hover:bg-white/5 transition-colors">
-                        <span class="font-semibold text-white/90">Full Details</span>
-                        <i class="fa-solid fa-chevron-down transition-transform text-white/50" id="desc-chevron"></i>
-                    </button>
-                    <div id="desc-content" class="hidden bg-[#14161a]">
-                        <div class="p-6 text-white/70 text-sm leading-relaxed" id="product-desc-long"></div>
-                    </div>
-                </div>
+                
 
             </div>
+        </div>
+
+        <!-- Customer Reviews -->
+        <section class="mb-12 bg-[var(--card-bg)] border border-white/10 rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold">Customer Reviews</h2>
+                <div class="text-orange-500 flex items-center gap-1">
+                    <i class="fa-solid fa-star"></i>
+                    <span class="font-bold text-white" id="avg-rating">0.0</span>
+                </div>
+            </div>
+            <div id="reviews-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </section>
+
+        <div class="flex justify-center mt-6 mb-16">
+            <button id="help-btn" onclick="handleHelpClick()" class="px-6 py-3 rounded-xl border border-white/10 text-white/40 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all text-sm font-medium flex items-center gap-2">
+                <i class="fa-regular fa-circle-question"></i>
+                Unable to Place Order Now? Click Here
+            </button>
         </div>
     </div>
 
@@ -232,12 +276,17 @@
                 showError();
             }
 
-            // Desc Toggle
-            document.getElementById('desc-toggle').onclick = () => {
-                const c = document.getElementById('desc-content');
-                c.classList.toggle('hidden');
-                document.getElementById('desc-chevron').style.transform = c.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
-            }
+                // Desc Toggle (safe attach)
+                const descToggle = document.getElementById('desc-toggle');
+                if (descToggle) {
+                    descToggle.addEventListener('click', () => {
+                        const c = document.getElementById('desc-content');
+                        if (!c) return;
+                        c.classList.toggle('hidden');
+                        const chevron = document.getElementById('desc-chevron');
+                        if (chevron) chevron.style.transform = c.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+                    });
+                }
         });
 
         // --- CORE FUNCTIONS ---
@@ -292,14 +341,22 @@
             const images = product.images || [];
             if (images.length > 0) {
                 document.getElementById('main-image').src = getPublicImageUrl(images[0]);
-                // Thumbnails logic
+                // Thumbnails logic (support multiple images and active state)
                 const tCon = document.getElementById('image-thumbnails');
+                tCon.innerHTML = '';
                 images.forEach((img, i) => {
                     const thumb = document.createElement('img');
                     thumb.src = getPublicImageUrl(img);
-                    thumb.className = `w-14 h-14 rounded-md object-cover border border-transparent cursor-pointer hover:border-white/50 ${i===0?'border-[var(--primary-color)]':''}`;
+                    thumb.alt = `${product.title} - ${i+1}`;
+                    thumb.dataset.src = img;
+                    thumb.className = `gallery-thumb w-14 h-14 rounded-md object-cover border border-transparent cursor-pointer hover:border-white/50 opacity-90`;
+                    if (i === 0) thumb.classList.add('active');
                     thumb.onclick = () => {
+                        // update main image
                         document.getElementById('main-image').src = getPublicImageUrl(img);
+                        // update active marker
+                        Array.from(tCon.children).forEach(c => c.classList.remove('active'));
+                        thumb.classList.add('active');
                     };
                     tCon.appendChild(thumb);
                 });
@@ -408,7 +465,10 @@
                     text.innerText = secondaryOffer.name || "FREE SHIPPING ON THIS ITEM";
                 }
                 // Push header down slightly so bar doesn't overlap logo
-               // document.querySelector('header').style.marginTop = '10px';
+                try {
+                    const headerEl = document.querySelector('header');
+                    if (headerEl) headerEl.style.marginTop = `${bar.offsetHeight}px`;
+                } catch(e){}
             }
 
             // --- Variations ---
@@ -435,9 +495,19 @@
             });
 
             // Reveal Page
+            // Ensure offer elements are placed correctly relative to layout changes
+            placeOfferElements(primaryOffer, secondaryOffer);
+
             document.getElementById('loading-screen').classList.add('hidden');
             document.getElementById('main-content').classList.remove('hidden');
-            
+
+            // Render reviews if present
+            try {
+                renderReviews(product.reviews || []);
+            } catch (err) {
+                console.warn('renderReviews error:', err);
+            }
+
             // Stock Logic
             const stockEl = document.getElementById('stock-status');
             if(product.stock_quantity <= 0) {
@@ -462,6 +532,72 @@
                     document.getElementById('bundle-img').src = getPublicImageUrl(data.images[0]);
                 }
             }
+        }
+
+    // Ensure offer UI elements are placed into the correct containers after layout changes
+    function placeOfferElements(primaryOffer, secondaryOffer) {
+        try {
+            // 1. Offer badge should live inside the image container for visibility
+            const badge = document.getElementById('offer-badge');
+            const imageContainer = document.querySelector('.aspect-square') || document.getElementById('main-image')?.parentElement;
+            if (badge && imageContainer && badge.parentElement !== imageContainer) {
+                imageContainer.appendChild(badge);
+            }
+
+            // 2. Offer timer should appear near the price/current price area
+            const timer = document.getElementById('offer-timer');
+            const priceEl = document.getElementById('price-current');
+            if (timer && priceEl) {
+                const priceContainer = priceEl.parentElement;
+                if (priceContainer && timer.parentElement !== priceContainer) {
+                    priceContainer.appendChild(timer);
+                }
+            }
+
+            // 3. Bundle container: place before variations so it's visible above selectors
+            const bundle = document.getElementById('bundle-container');
+            const variations = document.getElementById('variations-container');
+            if (bundle && variations && bundle.nextElementSibling !== variations) {
+                variations.parentElement.insertBefore(bundle, variations);
+            }
+
+            // 4. Announcement bar handled where it's shown — ensure header has margin adjusted
+            const bar = document.getElementById('announcement-bar');
+            const headerEl = document.querySelector('header');
+            if (bar && headerEl) {
+                if (bar.style.display && bar.style.display !== 'none') headerEl.style.marginTop = `${bar.offsetHeight}px`;
+                else headerEl.style.marginTop = '';
+            }
+        } catch (e) {
+            console.warn('placeOfferElements error', e);
+        }
+    }
+
+        // --- Reviews Renderer (from old product page) ---
+        function renderReviews(reviews) {
+            const grid = document.getElementById('reviews-grid');
+            if (!grid) return;
+            if (!reviews || !reviews.length) {
+                grid.innerHTML = '<div class="col-span-full text-center text-white/30 italic">No reviews yet.</div>';
+                document.getElementById('avg-rating') && (document.getElementById('avg-rating').textContent = '0.0');
+                return;
+            }
+            // Update average
+            const avg = (reviews.reduce((a, b) => a + (b.rating || 0), 0) / reviews.length).toFixed(1);
+            document.getElementById('avg-rating') && (document.getElementById('avg-rating').textContent = avg);
+
+            grid.innerHTML = reviews.map(r => `
+                <div class="bg-[#14161a] border border-[#2b2f3a] rounded-xl p-5 card-animate">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="font-bold text-white text-sm">${r.name || 'Anonymous'}</div>
+                        <div class="text-xs text-white/30">${r.date || ''}</div>
+                    </div>
+                    <div class="text-orange-500 text-[12px] mb-2">
+                        ${'<i class="fa-solid fa-star"></i>'.repeat(r.rating || 0)}
+                    </div>
+                    <p class="text-white/60 text-sm leading-relaxed">${r.comment || ''}</p>
+                </div>
+            `).join('');
         }
 
         function startTimer(endDate) {
@@ -509,6 +645,42 @@
             window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
         }
 
+        function handleHelpClick() {
+            alert("This will open a support form or chat in the future.");
+        }
+
+        // Keep mobile sticky WhatsApp in sync with the in-panel button and ensure help button visible
+        (function syncMobileUI(){
+            const sticky = document.querySelector('.mobile-sticky-btn');
+            const inblock = document.getElementById('btn-whatsapp');
+            const helpBtn = document.getElementById('help-btn');
+
+            function updateStickyVisibility(){
+                if (!sticky) return;
+                if (inblock && inblock.disabled) {
+                    sticky.style.display = 'none';
+                } else {
+                    sticky.style.display = '';
+                }
+            }
+
+            function ensureHelpVisible(){
+                if (!helpBtn) return;
+                if (window.innerWidth <= 767) {
+                    helpBtn.style.scrollMarginBottom = '160px';
+                    const rect = helpBtn.getBoundingClientRect();
+                    if (rect.bottom > window.innerHeight - 80) {
+                        window.scrollBy({ top: rect.bottom - (window.innerHeight - 80) + 16, behavior: 'smooth' });
+                    }
+                }
+            }
+
+            document.addEventListener('DOMContentLoaded', updateStickyVisibility);
+            window.addEventListener('resize', updateStickyVisibility);
+            setTimeout(() => { updateStickyVisibility(); ensureHelpVisible(); }, 600);
+        })();
     </script>
+
+    <script src="product.js" defer></script>
 </body>
 </html>
