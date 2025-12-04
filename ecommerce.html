@@ -219,6 +219,73 @@
             animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+       /* --- Offer Creator Specific Styles --- */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Offer Type Cards */
+.offer-type-card {
+    min-width: 100px;
+    height: 90px;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+.offer-type-card:hover {
+    background-color: rgba(255,255,255,0.05);
+    transform: translateY(-2px);
+}
+.offer-type-card.active {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+}
+
+/* Product Search Dropdown */
+.search-results-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: #1a1d23;
+    border: 1px solid #2b2f3a;
+    border-radius: 0.5rem;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 50;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    display: none;
+}
+.search-result-item {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    transition: background-color 0.2s;
+}
+.search-result-item:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+/* Product Chips */
+.prod-chip {
+    background-color: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
     </style>
 </head>
 <body>
@@ -592,36 +659,62 @@
     </div>
 
     <div id="offer-modal-backdrop" class="modal-backdrop">
-        <div class="modal-card" id="offer-modal">
-            <h2 class="text-xl md:text-2xl font-bold mb-4">Create New Offer</h2>
-            
-            <label for="offer-product-select" class="block text-sm font-medium text-white/70 mb-1">Select Product</label>
-            <select id="offer-product-select" class="w-full mb-4">
-                <option value="">-- Select a Product --</option>
-            </select>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                    <label for="offer-discount-type" class="block text-sm font-medium text-white/70 mb-1">Discount Type</label>
-                    <select id="offer-discount-type" class="w-full">
-                        <option value="price">Fixed Price</option>
-                        <option value="percent">% Discount</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="offer-discount-value" class="block text-sm font-medium text-white/70 mb-1">Value</label>
-                    <input type="number" id="offer-discount-value" placeholder="e.g., 12000 or 20" class="w-full">
-                </div>
+    <div class="modal-card max-w-3xl" id="offer-modal">
+        <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-4">
+            <div>
+                <h2 class="text-xl md:text-2xl font-bold">✨ Create Promotion</h2>
+                <p class="text-xs text-white/50 mt-1">Design offers that convert visitors into customers.</p>
             </div>
-
-            <div class="mb-4">
-                 <label class="block text-sm font-medium text-white/70 mb-1">Offer Name</label>
-                 <input type="text" id="offer-name" placeholder="Summer Sale" class="w-full">
-            </div>
-
-            <button onclick="createOffer()" class="btn-primary text-white font-medium py-2 px-4 rounded-xl w-full">Create Offer</button>
+            <button onclick="toggleModal('offer-modal', false)" class="text-white/50 hover:text-white text-xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10">✕</button>
         </div>
+
+        <div class="mb-2">
+            <div class="flex gap-3 overflow-x-auto no-scrollbar pb-2" id="offer-type-container">
+                </div>
+        </div>
+        
+        <div id="offer-explainer" class="bg-blue-500/10 border border-blue-500/20 text-blue-200 text-xs px-4 py-2 rounded-lg mb-6 flex items-center gap-2">
+            <i class="fa-solid fa-circle-info"></i>
+            <span id="offer-explainer-text">Select an offer type to begin.</span>
+        </div>
+
+        <div class="mb-6 bg-black/20 p-4 rounded-xl border border-white/5 relative">
+            <label class="block text-xs font-bold text-white/50 uppercase tracking-wider mb-2">Target Products</label>
+            
+            <div id="selected-products-container" class="flex flex-wrap gap-2 mb-2"></div>
+            
+            <div class="relative">
+                <input type="text" id="product-search-input" placeholder="Search products..." class="w-full pl-10 bg-[#0f1115] border border-white/20 rounded-lg focus:border-[var(--primary-color)] transition-colors">
+                <i class="fa-solid fa-search absolute left-3 top-3 text-white/30"></i>
+                
+                <div id="product-search-results" class="search-results-dropdown"></div>
+            </div>
+
+            <div class="mt-3 flex items-center gap-2">
+                <input type="checkbox" id="storewide-toggle" class="w-4 h-4 rounded border-white/30 bg-transparent text-[var(--primary-color)] focus:ring-0">
+                <label for="storewide-toggle" class="text-sm text-white/70 select-none">Apply Storewide (All Products)</label>
+            </div>
+        </div>
+
+        <div id="offer-config-section" class="bg-[#1a1d23] border border-white/10 rounded-xl p-5 mb-6 shadow-inner">
+            </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+                <label class="block text-xs text-white/50 uppercase font-bold mb-1">Offer Name</label>
+                <input type="text" id="offer-name" placeholder="e.g., Weekend Flash Sale" class="w-full bg-[#0f1115]">
+            </div>
+            <div>
+                <label class="block text-xs text-white/50 uppercase font-bold mb-1">End Date (Required for Flash Sale)</label>
+                <input type="date" id="offer-end-date" class="w-full bg-[#0f1115]">
+            </div>
+        </div>
+
+        <button onclick="createOffer()" class="btn-primary w-full py-3.5 rounded-xl font-bold text-white shadow-lg hover:shadow-[var(--primary-color)]/25 transition-all text-lg flex items-center justify-center gap-2">
+            <span>🚀 Launch Promotion</span>
+        </button>
     </div>
+</div>
     <script src="auth.js"></script>
 
     <script>
@@ -1116,21 +1209,329 @@
             toggleModal('product-modal', true);
         }
 
-        // Opens the Offer modal and resets form fields
+        // --- 7. ROBUST OFFERS LOGIC ---
+// --- 7. ROBUST OFFERS LOGIC (Updated) ---
+
+        // Config Definitions
+        const OFFER_TYPES = [
+            { id: 'DISCOUNT', label: 'Discount', icon: 'fa-tag', desc: 'Standard percentage or fixed amount off.' },
+            { id: 'FLASH_SALE', label: 'Flash Sale', icon: 'fa-bolt', desc: 'Urgent limited-time discount with a countdown timer.' },
+            { id: 'BOGO', label: 'Get Free', icon: 'fa-box-open', desc: 'Customer buys specific items to get others for free.' },
+            { id: 'SHIPPING', label: 'Shipping', icon: 'fa-truck-fast', desc: 'Free shipping based on order total or specific items.' },
+            { id: 'SEASONAL', label: 'Seasonal', icon: 'fa-gift', desc: 'Special deals for holidays (Christmas, Black Friday).' },
+            { id: 'FREEBIE', label: 'Free Gift', icon: 'fa-gifts', desc: 'Give a free item (e.g. accessories) with a purchase.' },
+            { id: 'EARLY_BIRD', label: 'Early Bird', icon: 'fa-clock', desc: 'Launch discount for new products.' },
+            { id: 'FIRST_TIME', label: 'New Buyer', icon: 'fa-user-tag', desc: 'Special price for first-time customers.' }
+        ];
+
+        let currentOfferType = 'DISCOUNT';
+        let selectedProductIds = []; // Array of IDs
+
         function openOfferModal() {
-            const select = document.getElementById('offer-product-select');
-            if (select) select.value = '';
-            const type = document.getElementById('offer-discount-type');
-            if (type) type.value = 'price';
-            const val = document.getElementById('offer-discount-value');
-            if (val) val.value = '';
-            const name = document.getElementById('offer-name');
-            if (name) name.value = '';
-
-            // Ensure products list is up to date for selection
-            if (productsCache.length === 0) fetchProducts().then(() => renderOffers()).catch(() => {});
-
+            // Reset State
+            selectedProductIds = [];
+            currentOfferType = 'DISCOUNT';
+            document.getElementById('offer-name').value = '';
+            document.getElementById('offer-end-date').value = '';
+            document.getElementById('storewide-toggle').checked = false;
+            document.getElementById('product-search-input').value = '';
+            
+            // Render UI Components
+            renderOfferTypeButtons();
+            renderSelectedProducts();
+            updateConfigUI();
+            
             toggleModal('offer-modal', true);
+        }
+
+        // --- UI RENDERERS ---
+
+        function renderOfferTypeButtons() {
+            const container = document.getElementById('offer-type-container');
+            container.innerHTML = OFFER_TYPES.map(type => `
+                <div onclick="selectOfferType('${type.id}')" 
+                     class="offer-type-card ${currentOfferType === type.id ? 'active' : 'bg-white/5'} flex flex-col items-center justify-center rounded-xl cursor-pointer select-none">
+                    <i class="fa-solid ${type.icon} text-2xl mb-2 ${currentOfferType === type.id ? 'text-white' : 'text-white/50'}"></i>
+                    <span class="text-xs font-semibold whitespace-nowrap">${type.label}</span>
+                </div>
+            `).join('');
+            
+            // Update Explainer
+            const typeData = OFFER_TYPES.find(t => t.id === currentOfferType);
+            document.getElementById('offer-explainer-text').innerText = typeData ? typeData.desc : '';
+        }
+
+        function selectOfferType(type) {
+            currentOfferType = type;
+            renderOfferTypeButtons();
+            updateConfigUI();
+            // Auto-fill name for seasonal/flash
+            const nameInput = document.getElementById('offer-name');
+            if (type === 'FLASH_SALE' && !nameInput.value) nameInput.value = "24Hr Flash Sale";
+            if (type === 'SEASONAL' && !nameInput.value) nameInput.value = "Christmas Special";
+            if (type === 'EARLY_BIRD' && !nameInput.value) nameInput.value = "Launch Special";
+        }
+
+        function updateConfigUI() {
+            const container = document.getElementById('offer-config-section');
+            container.innerHTML = ''; // Clear previous inputs
+
+            if (['DISCOUNT', 'FLASH_SALE', 'EARLY_BIRD', 'FIRST_TIME'].includes(currentOfferType)) {
+                container.innerHTML = `
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-white/50 uppercase font-bold mb-1">Discount Type</label>
+                            <select id="conf-disc-mode" class="w-full bg-[#0f1115] p-2 rounded border border-white/20">
+                                <option value="percent">Percentage (%)</option>
+                                <option value="amount">Fixed Amount (KES)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-white/50 uppercase font-bold mb-1">Value</label>
+                            <input type="number" id="conf-disc-val" class="w-full bg-[#0f1115] p-2 rounded border border-white/20" placeholder="e.g. 20">
+                        </div>
+                    </div>
+                `;
+            } 
+            else if (currentOfferType === 'SEASONAL') {
+                container.innerHTML = `
+                    <div class="mb-3">
+                        <label class="block text-xs text-white/50 uppercase font-bold mb-1">Select Season</label>
+                        <select id="conf-season-preset" class="w-full bg-[#0f1115] p-2 rounded border border-white/20" onchange="document.getElementById('offer-name').value = this.value + ' Deal'">
+                            <option value="Christmas">🎄 Christmas</option>
+                            <option value="Black Friday">🖤 Black Friday</option>
+                            <option value="Easter">🐰 Easter</option>
+                            <option value="New Year">🎆 New Year</option>
+                            <option value="Back to School">🎒 Back to School</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-white/50 uppercase font-bold mb-1">Discount %</label>
+                            <input type="number" id="conf-disc-val" class="w-full bg-[#0f1115] p-2 rounded border border-white/20" placeholder="20">
+                            <input type="hidden" id="conf-disc-mode" value="percent">
+                        </div>
+                    </div>
+                `;
+            }
+            else if (currentOfferType === 'BOGO') {
+                // Get Free Logic: Buy X (Target Products) Get Y (Reward Product)
+                const productOptions = productsCache.map(p => `<option value="${p.id}">${p.title}</option>`).join('');
+                container.innerHTML = `
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="flex-1">
+                            <label class="block text-xs text-white/50 uppercase font-bold mb-1">Buy Quantity</label>
+                            <input type="number" id="conf-buy-qty" value="1" class="w-full bg-[#0f1115] p-2 rounded border border-white/20">
+                        </div>
+                        <div class="pt-5 font-bold text-white/30">➜</div>
+                        <div class="flex-1">
+                            <label class="block text-xs text-white/50 uppercase font-bold mb-1">Get Free Qty</label>
+                            <input type="number" id="conf-get-qty" value="1" class="w-full bg-[#0f1115] p-2 rounded border border-white/20">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-white/50 uppercase font-bold mb-1">Reward Product (What they get free)</label>
+                        <select id="conf-reward-id" class="w-full bg-[#0f1115] p-2 rounded border border-white/20">
+                            <option value="same">Same as purchased product</option>
+                            ${productOptions}
+                        </select>
+                    </div>
+                `;
+            } 
+            else if (currentOfferType === 'FREEBIE') {
+                 const productOptions = productsCache.map(p => `<option value="${p.id}">${p.title}</option>`).join('');
+                 container.innerHTML = `
+                    <div>
+                        <label class="block text-xs text-white/50 uppercase font-bold mb-1">Select Free Gift Item</label>
+                        <select id="conf-gift-id" class="w-full bg-[#0f1115] p-2 rounded border border-white/20">
+                            ${productOptions}
+                        </select>
+                        <p class="text-[10px] text-white/40 mt-1">This item will appear as a "Free Gift" badge.</p>
+                    </div>
+                `;
+            }
+            else if (currentOfferType === 'SHIPPING') {
+                container.innerHTML = `
+                    <div>
+                        <label class="block text-xs text-white/50 uppercase font-bold mb-1">Free Shipping Threshold (KES)</label>
+                        <input type="number" id="conf-ship-threshold" class="w-full bg-[#0f1115] p-2 rounded border border-white/20" placeholder="e.g. 3000 (Leave 0 for always free)">
+                        <p class="text-[10px] text-white/40 mt-1">Order must be above this amount to qualify.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // --- PRODUCT SEARCH & SELECTION ---
+
+        // Setup Search Listener
+        document.getElementById('product-search-input').addEventListener('input', function(e) {
+            const term = e.target.value.toLowerCase();
+            const dropdown = document.getElementById('product-search-results');
+            
+            if (term.length < 1) {
+                dropdown.style.display = 'none';
+                return;
+            }
+
+            const matches = productsCache.filter(p => p.title.toLowerCase().includes(term) && !selectedProductIds.includes(p.id));
+            
+            if (matches.length > 0) {
+                dropdown.innerHTML = matches.map(p => `
+                    <div class="search-result-item" onclick="selectProduct('${p.id}')">
+                        <div class="font-medium text-sm">${p.title}</div>
+                        <div class="text-xs text-white/50">KES ${p.price}</div>
+                    </div>
+                `).join('');
+                dropdown.style.display = 'block';
+            } else {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        // Hide dropdown on click outside
+        document.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('product-search-results');
+            const input = document.getElementById('product-search-input');
+            if (e.target !== dropdown && e.target !== input) {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        function selectProduct(id) {
+            if (!selectedProductIds.includes(id)) {
+                selectedProductIds.push(id);
+                renderSelectedProducts();
+                document.getElementById('product-search-input').value = '';
+                document.getElementById('product-search-results').style.display = 'none';
+                document.getElementById('storewide-toggle').checked = false; // Uncheck storewide if specific product selected
+            }
+        }
+
+        function removeProduct(id) {
+            selectedProductIds = selectedProductIds.filter(pid => pid !== id);
+            renderSelectedProducts();
+        }
+
+        function renderSelectedProducts() {
+            const container = document.getElementById('selected-products-container');
+            const isStorewide = document.getElementById('storewide-toggle').checked;
+            
+            if (isStorewide) {
+                container.innerHTML = `<span class="prod-chip text-[var(--primary-color)] border-[var(--primary-color)]">ALL PRODUCTS SELECTED</span>`;
+                return;
+            }
+
+            if (selectedProductIds.length === 0) {
+                container.innerHTML = '<span class="text-xs text-white/30 italic">No products selected yet...</span>';
+                return;
+            }
+
+            container.innerHTML = selectedProductIds.map(id => {
+                const p = productsCache.find(prod => prod.id === id);
+                return `
+                <div class="prod-chip">
+                    <span>${p ? p.title : 'Unknown'}</span>
+                    <button onclick="removeProduct('${id}')" class="hover:text-red-400 ml-1">×</button>
+                </div>`;
+            }).join('');
+        }
+        
+        document.getElementById('storewide-toggle').addEventListener('change', function(e) {
+            if(e.target.checked) {
+                selectedProductIds = []; // Clear specific selections
+                renderSelectedProducts();
+            }
+        });
+
+        // --- SUBMIT LOGIC ---
+
+        async function createOffer() {
+            const name = document.getElementById('offer-name').value;
+            const endDate = document.getElementById('offer-end-date').value;
+            const isStorewide = document.getElementById('storewide-toggle').checked;
+
+            // 1. Validation
+            if (!name) return alert("Please name your offer.");
+            if (currentOfferType === 'FLASH_SALE' && !endDate) return alert("Flash Sales require an End Date.");
+            
+            let targetIds = [];
+            if (isStorewide) {
+                // Get all product IDs
+                if(productsCache.length === 0) await fetchProducts();
+                targetIds = productsCache.map(p => p.id);
+            } else {
+                targetIds = [...selectedProductIds];
+            }
+
+            if (targetIds.length === 0) return alert("Please select at least one product (or check Apply Storewide).");
+
+            // 2. Build Config Object
+            let config = {};
+            let priority = 2; // Default priority
+            let discountType = null;
+            let discountValue = 0;
+
+            if (['DISCOUNT', 'FLASH_SALE', 'SEASONAL', 'EARLY_BIRD', 'FIRST_TIME'].includes(currentOfferType)) {
+                const mode = document.getElementById('conf-disc-mode').value;
+                const val = parseFloat(document.getElementById('conf-disc-val').value);
+                if (!val) return alert("Enter discount value.");
+                config = mode === 'percent' ? { percent: val } : { amount: val };
+                
+                // Legacy support
+                discountType = mode;
+                discountValue = val;
+                if(currentOfferType === 'FLASH_SALE') priority = 1; // Highest priority
+            }
+            else if (currentOfferType === 'BOGO') {
+                config = {
+                    buy_qty: parseInt(document.getElementById('conf-buy-qty').value),
+                    get_qty: parseInt(document.getElementById('conf-get-qty').value),
+                    reward_product_id: document.getElementById('conf-reward-id').value // 'same' or UUID
+                };
+            }
+            else if (currentOfferType === 'FREEBIE') {
+                config = { gift_product_id: document.getElementById('conf-gift-id').value };
+            }
+            else if (currentOfferType === 'SHIPPING') {
+                const threshold = document.getElementById('conf-ship-threshold').value;
+                config = { threshold: threshold ? parseFloat(threshold) : 0 };
+            }
+
+            // 3. Create Payload(s) - Loop through products
+            // Note: Since the DB expects one row per product (based on current schema), we loop.
+            const payloads = targetIds.map(prodId => ({
+                business_id: BUSINESS_ID,
+                product_id: prodId,
+                name: name,
+                offer_type: currentOfferType,
+                configuration: config,
+                priority: priority,
+                is_active: true,
+                start_date: new Date().toISOString(),
+                end_date: endDate ? new Date(endDate).toISOString() : null,
+                discount_type: discountType || 'price', // fallback
+                discount_value: discountValue || 0
+            }));
+
+            // 4. Batch Insert
+            const btn = document.querySelector('#offer-modal .btn-primary');
+            const originalText = btn.innerHTML;
+            btn.innerText = "Creating...";
+            btn.disabled = true;
+
+            const { error } = await supabase.from('offers').insert(payloads);
+
+            if (error) {
+                console.error(error);
+                alert("Error creating offer: " + error.message);
+            } else {
+                toggleModal('offer-modal', false);
+                renderOffers();
+                // Optionally show toast success
+            }
+            
+            btn.innerHTML = originalText;
+            btn.disabled = false;
         }
 
         function changeProductStep(direction) {
