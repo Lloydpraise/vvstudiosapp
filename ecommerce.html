@@ -316,7 +316,7 @@
 
     <div class="lg:hidden fixed top-0 left-0 right-0 p-4 card-base z-40 flex justify-between items-center h-16 rounded-none border-x-0 border-t-0 bg-[#0f1115]">
         <div class="flex items-center space-x-3">
-            <button id="back-button" onclick="history.back()" class="text-white text-2xl px-2 focus:outline-none lg:hidden" aria-label="Back">←</button>
+            <button id="back-button" onclick="goBackOrHome(event)" class="text-white text-2xl px-2 focus:outline-none lg:hidden" aria-label="Back">←</button>
             <h1 class="text-lg font-bold text-white">Ecommerce</h1>
         </div>
         <button id="sidebar-toggle" class="text-white text-2xl px-2 focus:outline-none">☰</button>
@@ -362,7 +362,7 @@
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-2">
                 <h1 class="text-2xl md:text-3xl font-bold">Analytics Dashboard</h1>
                 <div class="flex flex-col items-end space-y-2">
-                    <button id="ecom-back-btn" onclick="history.back()" class="hidden lg:inline-flex text-sm text-white/80 bg-white/3 hover:bg-white/5 py-1 px-3 rounded-lg" aria-label="Back">← Back</button>
+                    <button id="ecom-back-btn" onclick="goBackOrHome(event)" class="hidden lg:inline-flex text-sm text-white/80 bg-white/3 hover:bg-white/5 py-1 px-3 rounded-lg" aria-label="Back">← Back</button>
                     <div class="text-sm text-white/50" id="analytics-timestamp">Loading data...</div>
                 </div>
             </div>
@@ -389,7 +389,7 @@
                     <div class="card-base p-5">
                         <p class="text-white/60 text-xs uppercase tracking-wider">Conversion Rate</p>
                         <p class="text-3xl font-bold mt-1 text-white" id="stat-conv">-</p>
-                        <div class="text-white/50 text-xs mt-2">Clicks to WA</div>
+                        <div class="text-white/50 text-xs mt-2">Clicks to WhatsApp</div>
                     </div>
                 </div>
 
@@ -2083,7 +2083,7 @@
                         </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button class="text-white/70 hover:text-white" onclick="alert('Delete not implemented yet')">🗑️</button>
+                        <button class="text-white/70 hover:text-white" onclick="deleteOffer('${o.id}')">🗑️</button>
                     </td>
                 </tr>`;
                 }).join('');
@@ -2094,6 +2094,13 @@
         // Removed duplicate/simple `createOffer` implementation that referenced
         // non-existent form controls and unintentionally overwrote the
         // richer `createOffer` defined earlier.
+
+        async function deleteOffer(id) {
+            if (confirm('Delete this offer?')) {
+                await supabase.from('offers').delete().eq('id', id);
+                renderOffers();
+            }
+        }
 
         // --- 8. INVENTORY ---
         async function renderInventory() {
@@ -2270,6 +2277,38 @@
                 console.error('Traffic distribution render failed', e);
             }
         }
+    </script>
+    <script>
+        (function(){
+            function goBackOrHome(e) {
+                try { if (e && e.preventDefault) e.preventDefault(); } catch (_) {}
+                // If there is browsing history, go back
+                if (window.history && window.history.length > 1) {
+                    window.history.back();
+                    return;
+                }
+                // If there is a referrer, use it
+                if (document.referrer) {
+                    window.location.href = document.referrer;
+                    return;
+                }
+                // If a lightweight SPA loader exists, try to navigate to the index
+                if (window.go && typeof window.go === 'function') {
+                    try { window.go('index'); return; } catch (_) {}
+                }
+                // Fallback to a safe default
+                window.location.href = 'index.html';
+            }
+
+            // Expose globally for inline handlers and attach as a listener
+            window.goBackOrHome = goBackOrHome;
+            document.addEventListener('DOMContentLoaded', function(){
+                var b = document.getElementById('back-button');
+                if (b) b.addEventListener('click', goBackOrHome);
+                var eb = document.getElementById('ecom-back-btn');
+                if (eb) eb.addEventListener('click', goBackOrHome);
+            });
+        })();
     </script>
 </body>
 </html>

@@ -738,10 +738,15 @@
 
             <!-- Sidebar -->
             <aside id="sidebar" class="w-64 bg-[#14161a] p-6 flex-shrink-0 fixed inset-y-0 left-0 transform -translate-x-full transition-transform duration-300 z-50 lg:relative lg:translate-x-0">
-                <div class="flex flex-col items-center space-y-2 mb-8">
+                <div class="flex flex-col items-center space-y-2 mb-8 relative">
                     <img src="assets/logo.png" alt="VV Studios Logo" class="w-16 h-16">
                     <span class="text-xl font-bold">VV Studios</span>
                     <span class="text-sm text-white/60">Client Portal</span>
+                    <button id="sidebar-close-button" class="absolute top-2 right-2 lg:hidden text-white focus:outline-none">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
                 </div>
                 <nav>
     <ul class="space-y-2">
@@ -1510,16 +1515,31 @@
         </div>
     </div>
     <script>
-        document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", () => {
     const menuBtn = document.getElementById("mobile-menu-button");
     const sidebar = document.getElementById("sidebar");
     const backdrop = document.getElementById("mobile-menu-backdrop");
+    const closeBtn = document.getElementById("sidebar-close-button");
 
     if (!menuBtn || !sidebar) return;
 
     menuBtn.addEventListener("click", () => {
         if (window.vv_toggleSidebarGuarded) window.vv_toggleSidebarGuarded();
     });
+
+    if (closeBtn) {
+        closeBtn.addEventListener("click", () => {
+            if (window.vv_closeSidebarImmediate) {
+                window.vv_closeSidebarImmediate();
+            } else {
+                sidebar.classList.add("-translate-x-full");
+                sidebar.classList.remove("open");
+                backdrop.classList.add("hidden");
+                const sbBackdrop = document.getElementById('sidebar-backdrop');
+                if (sbBackdrop) sbBackdrop.classList.remove('show');
+            }
+        });
+    }
 
     backdrop.addEventListener("click", () => {
         // Close immediately (use close helper if available)
@@ -1560,8 +1580,8 @@
 </script>
     <!-- Axios (no SRI here to avoid CORS issues when CDN doesn't provide cross-origin headers) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.4.0/axios.min.js"></script>
-    <!-- Supabase (ES module) -->
-    <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"></script>
+    <!-- Supabase (UMD build for better mobile compatibility) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js"></script>
     <script src="theme-toggle.js" defer></script>
     <script src="router.js"></script>
     <script src="auth.js"></script>

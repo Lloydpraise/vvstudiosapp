@@ -860,7 +860,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } else {
                     console.log('[DEBUG] User not found in database');
                     if (errorMessage) {
-                        errorMessage.textContent = 'Phone number not registered. Please check the number or contact support.';
+                        errorMessage.textContent = 'seems there is no account associated with these logins. sign up below.';
                         errorMessage.style.display = 'block';
                     }
                     localStorage.removeItem('vvUser');
