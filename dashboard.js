@@ -1,15 +1,14 @@
 // sales-logic removed: metrics computed inline below
 
-// CRITICAL FIX (Working): Reverting to the standard '+esm' CDN URL but using a namespace import 
-// to resolve the 'createClient is undefined' error that happens with direct destructuring.
-import * as Supabase from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+// Updated import to use esm.sh for better compatibility and to resolve AuthClient null error
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // --- SUPABASE CONFIGURATION ---
-const supabaseUrl = 'https://xgtnbxdxbbywvzrttixf.supabase.co'; 
+const supabaseUrl = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
 
-// Access createClient from the Supabase namespace object
-const supabase = Supabase.createClient(supabaseUrl, supabaseKey);
+// Create Supabase client directly
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Global state variables
 let loggedInUser = null;
