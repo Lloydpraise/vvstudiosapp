@@ -94,7 +94,57 @@ let dealsData = [];   // loaded from deals_pipeline_view (mapped)
 let followUps = [];   // loaded from supabase.follow_ups
 let meetingsData = []; // NEW: Loaded meetings data
 let afterSaleGroupedCache = [];
+// Selected products while composing a deal (client-side)
+let dealSelectedProducts = [];
+let _manualDealNameEdit = false; // tracks if user manually edited deal name
 let mobileAddSubMenu = null;
+// Cache for generated low-quality thumbnails (object URLs)
+const _thumbCache = new Map();
+
+// Create a low-quality/resized thumbnail from a remote image URL to reduce bandwidth/render cost.
+// Returns an object URL (cached) or the original URL on failure.
+async function makeLowQualityThumb(url, maxDim = 300, quality = 0.65) {
+  if (!url) return url;
+  try {
+    if (_thumbCache.has(url)) return _thumbCache.get(url);
+    const resp = await fetch(url, { mode: 'cors' });
+    if (!resp.ok) throw new Error('fetch failed');
+    const blob = await resp.blob();
+
+    // Use createImageBitmap if available (faster, off-main-thread)
+    if (typeof createImageBitmap === 'function') {
+      const options = { resizeWidth: maxDim, resizeHeight: maxDim, resizeQuality: 'medium' };
+      let bitmap;
+      try { bitmap = await createImageBitmap(blob, options); } catch (e) { bitmap = null; }
+      const canvas = document.createElement('canvas');
+      if (bitmap) {
+        const ratio = Math.min(1, maxDim / Math.max(bitmap.width || maxDim, bitmap.height || maxDim));
+        canvas.width = Math.max(1, Math.round((bitmap.width || maxDim) * ratio));
+        canvas.height = Math.max(1, Math.round((bitmap.height || maxDim) * ratio));
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      } else {
+        // fallback to Image element
+        const img = await new Promise((res, rej) => {
+          const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(blob);
+        });
+        const ratio = Math.min(1, maxDim / Math.max(img.width || maxDim, img.height || maxDim));
+        canvas.width = Math.max(1, Math.round((img.width || maxDim) * ratio));
+        canvas.height = Math.max(1, Math.round((img.height || maxDim) * ratio));
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      }
+
+      const outBlob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', quality));
+      const obj = URL.createObjectURL(outBlob);
+      _thumbCache.set(url, obj);
+      return obj;
+    }
+  } catch (e) {
+    console.warn('makeLowQualityThumb failed for', url, e);
+  }
+  return url;
+}
 // Track context for the current WhatsApp modal session
 let currentWhatsAppContext = {
   type: null,            // "followup", "deal", "meeting", "referral", "review", etc
@@ -1112,6 +1162,9 @@ async function loadDeals() {
       id: d.id,
       dealName: d.deal_name,
       contactId: d.contact_id,
+      // normalize products/offer from db view if present
+      products: d.products || (d.products_json ? JSON.parse(d.products_json) : []),
+      offerId: d.offer_id || d.offerId || null,
       contactName: d.contact_name || '',
       contactPhone: d.contact_phone || '',
       stage: d.stage,
@@ -1324,6 +1377,245 @@ async function deleteAfterSale(contactId) {
     throw err;
   }
 }
+
+/* ------------------ Deal Product Selector & Auto-name ------------------ */
+async function initDealProductSelector() {
+  try {
+    const search = document.getElementById('deal-product-search');
+    const results = document.getElementById('deal-product-results');
+    const selContainer = document.getElementById('deal-selected-products');
+    const hidden = document.getElementById('new-deal-products');
+    const offerSelect = document.getElementById('new-deal-offer');
+    if (!search || !results || !selContainer || !hidden) return;
+
+    // helper: build image url from product images or path
+    async function getProductImageUrl(imgField) {
+      try {
+        if (!imgField) return '';
+        // if it's an array, prefer first
+        const path = Array.isArray(imgField) ? imgField[0] : imgField;
+        if (!path) return '';
+        if (String(path).startsWith('http') || String(path).startsWith('//')) return path;
+        // attempt Supabase storage public url (common pattern)
+        try {
+          const bucket = 'ecommerce-assets';
+          const clean = String(path).replace(new RegExp(`^${bucket}\/`), '');
+          const { data } = client.storage.from(bucket).getPublicUrl(clean);
+          if (data && data.publicUrl) return data.publicUrl;
+        } catch (e) {
+          // ignore
+        }
+        return '';
+      } catch (e) { return ''; }
+    }
+
+    // debounce search
+    const doSearch = debounce(async (ev) => {
+      const q = (ev.target.value || '').trim();
+      // show initial list when query empty
+      if (!q) {
+        // show cached initial products if present
+        if (initProducts && initProducts.length) {
+          renderProductResults(initProducts);
+          return;
+        }
+        results.classList.add('hidden'); results.innerHTML = ''; return;
+      }
+      try {
+        const { data, error } = await client.from('products').select('*').ilike('title', `%${q}%`).eq('business_id', BUSINESS_ID).limit(10);
+        if (error) throw error;
+        results.innerHTML = '';
+        if (!data || data.length === 0) { results.innerHTML = `<div class="p-2 text-white/40">No products found</div>`; results.classList.remove('hidden'); return; }
+        renderProductResults(data);
+      } catch (err) { console.error('Product search failed', err); }
+    }, 250);
+
+    search.addEventListener('input', doSearch);
+
+    // click outside to hide
+    document.addEventListener('click', (ev) => {
+      if (!results) return;
+      if (!ev.target.closest) return;
+      if (!ev.target.closest('#deal-product-search') && !ev.target.closest('#deal-product-results')) {
+        results.classList.add('hidden');
+      }
+    });
+
+    // when user edits deal name directly, mark manual
+    const nameInput = document.getElementById('new-deal-name');
+    if (nameInput && !nameInput._handlerAttached) {
+      nameInput.addEventListener('input', () => { _manualDealNameEdit = true; });
+      nameInput._handlerAttached = true;
+    }
+
+    function refreshSelectedUI(){
+      selContainer.innerHTML = '';
+      if (!dealSelectedProducts || dealSelectedProducts.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'text-white/40 italic';
+        empty.textContent = 'No products yet';
+        selContainer.appendChild(empty);
+      } else {
+        dealSelectedProducts.forEach((p, i) => {
+        const chip = document.createElement('div');
+        chip.className = 'px-3 py-1 rounded-full bg-white/5 text-sm text-white/90 flex items-center gap-2';
+        chip.innerHTML = `<span>${escapeHtml(p.title || p.name || 'Product')}</span><button type="button" class="remove-product text-white/40 hover:text-white" data-index="${i}" style="background:none;border:none;padding:0;margin-left:6px">✕</button>`;
+        chip.querySelector('.remove-product').addEventListener('click', (ev) => { removeProductFromDeal(i); });
+        selContainer.appendChild(chip);
+        });
+      }
+      hidden.value = JSON.stringify(dealSelectedProducts.map(p => ({ id: p.id, title: p.title || p.name, price: p.price || 0 })));
+      // populate offers based on first selected product (if any)
+      if (offerSelect) {
+        offerSelect.innerHTML = '<option value="">(No offer)</option>';
+        if (dealSelectedProducts.length > 0) {
+          const pid = dealSelectedProducts[0].id;
+          // fetch active offers for this product
+          client.from('offers').select('*').eq('product_id', pid).then(({ data, error }) => {
+            if (!error && data && data.length) {
+              data.forEach(o => {
+                const opt = document.createElement('option'); opt.value = o.id; opt.textContent = o.name || (o.offer_type || 'Offer');
+                offerSelect.appendChild(opt);
+              });
+            }
+          }).catch(e => console.warn('offer load failed', e));
+        }
+      }
+      // attempt to auto-generate deal name if not manually edited
+      try { maybeAutoGenerateDealName(); } catch(e){}
+      // update amount field based on selected products and offer
+      try { updateAmountFromSelection(); } catch(e) { /* non-fatal */ }
+    }
+
+    window.addProductToDeal = addProductToDeal;
+    function addProductToDeal(product){
+      if (!product) return;
+      // avoid duplicates
+      if (dealSelectedProducts.find(p => p.id === product.id)) return;
+      dealSelectedProducts.push(product);
+      refreshSelectedUI();
+    }
+
+    function removeProductFromDeal(index){
+      dealSelectedProducts.splice(index,1);
+      refreshSelectedUI();
+    }
+
+    // Compute adjusted amount based on selected products and selected offer
+    function computeOfferAdjustedAmount() {
+      // sum product prices
+      const sum = dealSelectedProducts.reduce((acc, p) => acc + (Number(p.price || 0) || 0), 0);
+      const offerId = offerSelect?.value || null;
+      if (!offerId) return sum;
+      // fetch the offer record to compute discount
+      return (async () => {
+        try {
+          const { data: offer, error } = await client.from('offers').select('*').eq('id', offerId).single();
+          if (error || !offer) return sum;
+          const cfg = offer.configuration || {};
+          let final = sum;
+          if (cfg && (cfg.percent || cfg.amount)) {
+            if (cfg.percent) final = sum * (1 - Number(cfg.percent) / 100);
+            else final = sum - Number(cfg.amount || 0);
+          } else if (offer.discount_value) {
+            if (offer.discount_type === 'percent') final = sum * (1 - Number(offer.discount_value) / 100);
+            else final = sum - Number(offer.discount_value || 0);
+          }
+          return Math.max(0, final);
+        } catch (e) { return sum; }
+      })();
+    }
+
+    // Update the amount input based on selection and offer (handles async offer fetch)
+    async function updateAmountFromSelection(){
+      const amountInput = document.getElementById('new-deal-amount');
+      if (!amountInput) return;
+      // compute adjusted amount (may be async)
+      const adjusted = await computeOfferAdjustedAmount();
+      const value = Number(adjusted || 0) || 0;
+      amountInput.value = value;
+    }
+
+    // when offer changes, update amount
+    if (offerSelect && !offerSelect._changeAttached) {
+      offerSelect.addEventListener('change', () => { try { updateAmountFromSelection(); } catch(e){} });
+      offerSelect._changeAttached = true;
+    }
+
+    // Attempt to auto-generate deal name when contact or products change
+    window.maybeAutoGenerateDealName = function(){
+      const nameEl = document.getElementById('new-deal-name');
+      if (!nameEl) return;
+      if (_manualDealNameEdit) return; // don't override manual edits
+      const contactId = parseInt(document.getElementById('new-deal-contact-id')?.value || '0',10) || null;
+      const contact = contacts.find(c => c.id === contactId) || selectedDealContact;
+      const contactName = contact ? (contact.name || contact.contactName || '') : '';
+      const prod = dealSelectedProducts[0];
+      const prodName = prod ? (prod.title || prod.name || '') : '';
+      if (contactName && prodName) {
+        nameEl.value = `${contactName} ${prodName}`.trim();
+      } else if (prodName) {
+        nameEl.value = prodName;
+      }
+    }
+    // --- initial load: show 'loading products' then recent products for business ---
+    let initProducts = [];
+    results.innerHTML = `<div class="p-3 text-white/60">Loading products...</div>`;
+    results.classList.remove('hidden');
+    try {
+      const { data } = await client.from('products').select('*').eq('business_id', BUSINESS_ID).order('created_at', { ascending: false }).limit(10);
+      initProducts = data || [];
+      if (initProducts.length === 0) results.innerHTML = `<div class="p-2 text-white/40">No products available</div>`;
+      else renderProductResults(initProducts);
+    } catch (e) {
+      console.warn('initial products load failed', e);
+      results.innerHTML = `<div class="p-2 text-white/40">Failed to load products</div>`;
+    }
+
+    // render helper for product cards
+    function renderProductResults(items) {
+      results.innerHTML = '';
+      if (!items || !items.length) { results.innerHTML = `<div class="p-2 text-white/40">No products found</div>`; results.classList.remove('hidden'); return; }
+      const selectedIds = new Set((dealSelectedProducts || []).map(x => x.id));
+      items.filter(p => !selectedIds.has(p.id)).forEach(async (p) => {
+        const el = document.createElement('div');
+        el.className = 'p-2 cursor-pointer hover:bg-white/5 flex items-center gap-3';
+        const imgSrc = await getProductImageUrl(p.images || p.image || null);
+        // attempt to generate a smaller, lower-quality thumbnail for faster loads
+        let thumbSrc = imgSrc ? await makeLowQualityThumb(imgSrc, 300, 0.6) : '';
+        el.innerHTML = `
+          <div style="width:46px;height:46px;flex-shrink:0;overflow:hidden;border-radius:8px;background:#0b1220;display:inline-block">
+            ${thumbSrc ? `<img src="${thumbSrc}" loading="lazy" decoding="async" alt="" style="width:100%;height:100%;object-fit:cover">` : `<div style=\"width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:12px\">No Image</div>`}
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;color:var(--tw-text-opacity,1) white;" class="text-white text-sm">${escapeHtml(p.title || p.name || 'Untitled')}</div>
+            <div style="font-size:0.85rem;color:#FFD700;font-weight:700">KES ${Number(p.price||0).toLocaleString()}</div>
+          </div>
+        `;
+        el.addEventListener('click', () => { addProductToDeal(p); results.classList.add('hidden'); search.value = ''; try{ document.getElementById('deal-product-search')?.focus(); }catch(e){} });
+        results.appendChild(el);
+      });
+      results.classList.remove('hidden');
+    }
+
+    // --- load business-wide offers into the offer dropdown ---
+    if (offerSelect) {
+      try {
+        offerSelect.innerHTML = '<option value="">(No offer)</option>';
+        const { data: offers } = await client.from('offers').select('*').eq('business_id', BUSINESS_ID).eq('is_active', true).order('priority', { ascending: true }).limit(50);
+        if (offers && offers.length) {
+          offers.forEach(o => {
+            const opt = document.createElement('option'); opt.value = o.id; opt.textContent = o.name || (o.offer_type || 'Offer');
+            offerSelect.appendChild(opt);
+          });
+        }
+      } catch (e) { console.warn('load business offers failed', e); }
+    }
+
+  } catch (e) { console.warn('initDealProductSelector failed', e); }
+}
+  // expose to global so callers outside this file can access safely
+  try { if (typeof window !== 'undefined') window.initDealProductSelector = initDealProductSelector; } catch (e) {}
 
 // Attach mobile swipe handlers and delete wiring to after-sale cards
 function attachMobileAfterSaleSwipeHandlers() {
@@ -1881,7 +2173,10 @@ async function createDeal(event) {
   if (!dealName) { showInAppAlert('Please provide a product or service'); return; }
   if (!contactId) { showInAppAlert('Please select a contact'); return; }
 
-  const payload = { deal_name: dealName, contact_id: contactId, stage, amount, close_date: closeDate, notes, business_id: BUSINESS_ID };
+  // include selected products and offer if any
+  const productsPayload = dealSelectedProducts.map(p => ({ id: p.id, title: p.title || p.name, price: p.price || 0 }));
+  const selectedOfferId = document.getElementById('new-deal-offer')?.value || null;
+  const payload = { deal_name: dealName, contact_id: contactId, stage, amount, close_date: closeDate, notes, business_id: BUSINESS_ID, products: productsPayload, offer_id: selectedOfferId };
     const { data, error } = await client.from('deals').insert([payload]).select().single();
     if (error) throw error;
     logStep('Deal created', data);
@@ -1901,6 +2196,10 @@ async function createDeal(event) {
       closeModal('add-main-modal');
     }
     document.getElementById('add-deal-form')?.reset();
+    // clear client-side selected products and offer
+    dealSelectedProducts = [];
+    document.getElementById('deal-selected-products') && (document.getElementById('deal-selected-products').innerHTML = '');
+    document.getElementById('new-deal-offer') && (document.getElementById('new-deal-offer').innerHTML = '<option value="">(No offer)</option>');
     document.getElementById('deal-contact-search') && (document.getElementById('deal-contact-search').value = '');
     selectedDealContact = null;
   showInAppAlert(`Deal "${dealName}" created`);
@@ -2446,6 +2745,13 @@ initWhatsAppOpenerInference();
 function updateWhatsAppNotesDisplay(notes) {
   const modal = document.getElementById('whatsapp-modal');
   if (!modal) return;
+  // When any modal opens, remove/clear transient toasts so they don't overlap the modal
+  try {
+    // hide autosave toast (fast)
+    try { hideAutoSaveToast(0); } catch (e) {}
+    // remove any generic toast elements that may be present
+    Array.from(document.querySelectorAll('.toast, .toasts, #autosave-toast')).forEach(el => { try { el.remove(); } catch (e) {} });
+  } catch (e) { /* non-fatal */ }
 
   // Try to find an existing notes display area
   let display = modal.querySelector('#whatsapp-modal-notes-display');
@@ -2842,6 +3148,16 @@ async function handleSaveEdit(event, id, type, field) {
       else updates.closeDate = null;
     }
     if (field === 'notes') updates.notes = newValue;
+    if (field === 'products') {
+      // attempt to parse product list from text content -- not ideal, recommend using the edit UI
+      try {
+        const parsed = JSON.parse(newValue);
+        updates.products = parsed;
+      } catch (e) {
+        // leave as plain text in notes if parse fails
+        updates.products = [{ title: newValue }];
+      }
+    }
     await updateDeal(id, updates);
   }
 }
@@ -3845,9 +4161,11 @@ function renderDealsList(deals = dealsData.filter(d => PIPELINE_STAGES.includes(
     row.innerHTML = `
       <div></div>
       <div class="text-white/80 font-semibold">${dealNumber}</div>
-      <div class="edit-cell">
-        <span class="editable-content" contenteditable="false" data-field="dealName" data-id="${deal.id}">${deal.dealName}</span>
-        <i class="fa-solid fa-pen-to-square text-white/50 hover:text-white edit-icon cursor-pointer" data-id="${deal.id}" data-field="dealName" data-type="deal"></i>
+      <div class="edit-cell text-white/70">
+        <span class="editable-content" contenteditable="false" data-field="products" data-id="${deal.id}">
+          ${Array.isArray(deal.products) && deal.products.length ? deal.products.map(p => `<span class=\"block text-sm font-medium\">${escapeHtml(p.title || p.name || JSON.stringify(p))}</span>`).join('') : '<span class="text-white/40">(no products)</span>'}
+        </span>
+        <i class="fa-solid fa-pen-to-square text-white/50 hover:text-white edit-icon cursor-pointer" data-id="${deal.id}" data-field="products" data-type="deal"></i>
       </div>
       <div class="edit-cell text-white/70">
         <span class="editable-content" contenteditable="false" data-field="contactName" data-id="${deal.id}">
@@ -4615,6 +4933,12 @@ function switchAddForm(formName) {
   if (formName === 'deal') {
     populateDealStageSelect();
     initDealContactSearch();
+    // initialize product selector when showing deal form (guard in case function not yet defined)
+    try {
+      if (typeof initDealProductSelector === 'function') initDealProductSelector();
+      else if (window && typeof window.initDealProductSelector === 'function') window.initDealProductSelector();
+      else console.warn('initDealProductSelector not available yet');
+    } catch(e) { console.warn('initDealProductSelector error', e); }
     document.getElementById('new-deal-close-date') && (document.getElementById('new-deal-close-date').value = new Date().toISOString().slice(0,10));
   } else if (formName === 'follow-up') {
     initFollowUpDealSearch();
@@ -6102,11 +6426,9 @@ document.getElementById('ai-assist-btn')?.addEventListener('click', async () => 
           tplBlock.id = 'whatsapp-template-after-notes';
           tplBlock.className = 'mb-4';
           tplBlock.innerHTML = `
-            <label class="block text-sm font-medium text-white/70 mb-1">Template:</label>
+            <label class="block text-sm font-medium text-white/70 mb-1">Offer:</label>
             <select id="whatsapp-template-select" class="w-full bg-bg-dark border border-border-dark rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-blue-500">
-              <option value="ai_follow_up">AI Follow Up</option>
-              <option value="manual">Manual</option>
-              <option value="custom">Custom</option>
+              <option value="">(No offer)</option>
             </select>
           `;
         }
@@ -6119,12 +6441,22 @@ document.getElementById('ai-assist-btn')?.addEventListener('click', async () => 
           if (messageBody && messageBody.closest('div') && !document.getElementById('whatsapp-template-after-notes')) messageBody.closest('div').parentNode.insertBefore(tplBlock, messageBody.closest('div'));
         }
 
-        // set selected value from context if present
+        // populate offers into the select and set selected value from context if present
         try {
           const sel = document.getElementById('whatsapp-template-select');
-          if (sel && window.currentWhatsAppContext && window.currentWhatsAppContext.selected_template) sel.value = window.currentWhatsAppContext.selected_template;
-          if (sel && !sel._listenerAttached) { sel.addEventListener('change', (ev) => { window.currentWhatsAppContext = window.currentWhatsAppContext || {}; window.currentWhatsAppContext.selected_template = ev.target.value; }); sel._listenerAttached = true; }
-        } catch (e) {}
+          if (sel) {
+            // load business offers
+            client.from('offers').select('*').eq('business_id', BUSINESS_ID).eq('is_active', true).order('priority', { ascending: true }).then(({ data: offers = [] }) => {
+              offers.forEach(o => {
+                const opt = document.createElement('option'); opt.value = o.id; opt.textContent = o.name || (o.offer_type || 'Offer');
+                sel.appendChild(opt);
+              });
+              // set selected if context present
+              if (window.currentWhatsAppContext && window.currentWhatsAppContext.selected_template) sel.value = window.currentWhatsAppContext.selected_template;
+            }).catch(e => console.warn('Failed to load offers for whatsapp template select', e));
+            if (!sel._listenerAttached) { sel.addEventListener('change', (ev) => { window.currentWhatsAppContext = window.currentWhatsAppContext || {}; window.currentWhatsAppContext.selected_template = ev.target.value; }); sel._listenerAttached = true; }
+          }
+        } catch (e) { console.warn('whatsapp template select init failed', e); }
       } catch (e) { /* ignore */ }
 
     } else {
@@ -6617,6 +6949,9 @@ function showModal(modalId) {
   const modal = document.getElementById(modalId);
   if (!modal) return;
 
+  // Hide transient notes (e.g., "Just a sec…") so they don't overlap modals
+  try { hideTransientNote(); } catch (e) {}
+
   if (typeof mobileAddSubMenu === 'function') {
     try { mobileAddSubMenu(false); } catch (err) { console.warn('⚠️ mobileAddSubMenu failed silently:', err); }
   }
@@ -6670,6 +7005,8 @@ function closeModal(modalId) {
 function openModal(modalId, formName = 'contact') {
   const modal = document.getElementById(modalId);
   if (!modal) return;
+  // Ensure transient notes are hidden before showing modal (prevents overlap)
+  try { hideTransientNote(); } catch (e) {}
   // Ensure modal is displayed and visible
   try {
     // Prefer to respect the modal's layout class: if it is a flex container in markup
@@ -6681,6 +7018,19 @@ function openModal(modalId, formName = 'contact') {
   } catch (e) {}
   // Show modal container
   modal.classList.remove('hidden');
+
+  // If opening the WhatsApp modal, ensure transient toasts are cleared
+  try {
+    if (modalId && modalId.toString().toLowerCase().includes('whatsapp')) {
+      try { hideAutoSaveToast(0); } catch (e) {}
+      try { Array.from(document.querySelectorAll('.toast, .toasts, #autosave-toast')).forEach(el => { try { el.remove(); } catch (e) {} }); } catch (e) {}
+      // Some toasts may be shown right after opening; remove them shortly after as well
+      setTimeout(() => {
+        try { hideAutoSaveToast(0); } catch (e) {}
+        try { Array.from(document.querySelectorAll('.toast, .toasts, #autosave-toast')).forEach(el => { try { el.remove(); } catch (e) {} }); } catch (e) {}
+      }, 250);
+    }
+  } catch (e) {}
 
   // If on mobile, toggle a class that hides the left selector so the form spans the modal
   const addModalContentEl = document.getElementById('add-main-modal-content');

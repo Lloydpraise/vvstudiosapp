@@ -231,6 +231,65 @@ function proceedToDashboard(userData, rawPhone) {
     }, 50);
 }
 
+/**
+ * Authenticate a user by phone number (normalizes to 2547... form), optionally validates first name,
+ * saves a complete `vvUser` to localStorage and proceeds to the dashboard.
+ * Returns an object { success: boolean, reason?: string }
+ */
+export async function authenticateByPhone(phoneInput, enteredFirstName) {
+    try {
+        if (!phoneInput) return { success: false, reason: 'no_phone' };
+        const normalized = normalizePhoneNumber(phoneInput);
+        console.log('[DEBUG] authenticateByPhone: querying for phone_number=', normalized);
+        const { data: userDataArray, error } = await supabase
+            .from('logins')
+            .select('*')
+            .eq('phone_number', normalized)
+            .limit(1);
+
+        if (error) {
+            console.error('[DEBUG] Supabase error during authenticateByPhone:', error.message || error);
+            return { success: false, reason: 'db_error' };
+        }
+
+        const userData = userDataArray ? userDataArray[0] : null;
+        if (!userData) {
+            console.log('[DEBUG] authenticateByPhone: no user found for phone');
+            localStorage.removeItem('vvUser');
+            return { success: false, reason: 'not_found' };
+        }
+
+        // Optional first-name check if provided
+        if (enteredFirstName) {
+            const adminName = userData.admin_name || '';
+            if (String(adminName).trim().toLowerCase() !== String(enteredFirstName).trim().toLowerCase()) {
+                console.log('[DEBUG] authenticateByPhone: first-name mismatch');
+                localStorage.removeItem('vvUser');
+                return { success: false, reason: 'name_mismatch' };
+            }
+        }
+
+        // Build final user object compatible with other modules
+        const fullUserData = Object.assign({}, userData, {
+            business_id: userData['business id'] || userData.business_id || null,
+            phone_number: userData.phone_number || normalized,
+            phone: phoneInput,
+            admin_first_name: userData.admin_first_name || (userData.admin_name ? String(userData.admin_name).split(' ')[0] : '')
+        });
+
+        fullUserData.firstName = fullUserData.admin_first_name || (fullUserData.admin_name ? String(fullUserData.admin_name).split(' ')[0] : '') || '';
+
+        try { localStorage.setItem('vvUser', JSON.stringify(fullUserData)); } catch (e) { console.warn('Failed saving vvUser', e); }
+
+        // Proceed to dashboard
+        proceedToDashboard(userData, phoneInput);
+        return { success: true };
+    } catch (e) {
+        console.error('[DEBUG] Exception in authenticateByPhone:', e);
+        return { success: false, reason: 'exception' };
+    }
+}
+
 
 /**
  * Handles auto-login on page load. Fetches data based on localStorage and calls proceedToDashboard.
@@ -246,8 +305,24 @@ export async function loadUserData() {
     const savedUser = JSON.parse(savedUserString);
 
     // Require explicit business_id in savedUser for lookup; do not fallback to phone-derived id
+    // Prefer lookup by business_id, but if it's missing try to recover using the saved phone number.
     if (!savedUser.business_id && !savedUser['business id']) {
-        console.error('[DEBUG] Saved user missing explicit business id — clearing storage to force fresh login.');
+        const phoneToTry = savedUser.phone_number || savedUser.phone || savedUser.phoneNumber || '';
+        if (phoneToTry) {
+            try {
+                const res = await authenticateByPhone(phoneToTry, savedUser.firstName || savedUser.admin_first_name || savedUser.admin_name || '');
+                if (res && res.success) {
+                    // authenticateByPhone already proceeded to dashboard
+                    return;
+                }
+                // If authenticateByPhone returned failure, fall through to clearing storage below
+            } catch (e) {
+                console.error('[DEBUG] Exception during phone fallback lookup:', e);
+                localStorage.removeItem('vvUser');
+                return;
+            }
+        }
+        console.error('[DEBUG] Saved user missing explicit business id and no phone available — clearing storage.');
         localStorage.removeItem('vvUser');
         return;
     }
@@ -837,34 +912,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             const enteredFirstName = document.getElementById('firstName').value;
 
             if (!phone) { return; }
-            const normalizedNumber = normalizePhoneNumber(phone);
 
             try {
-                // SUPABASE CALL: Query to authenticate - fetch full row so we can derive package and expiry
-                const { data: userDataArray, error } = await supabase
-                    .from('logins')
-                    .select('*')
-                    .eq('phone_number', normalizedNumber)
-                    .limit(1);
-
-                if (error) throw error;
-                const userData = userDataArray ? userDataArray[0] : null;
-
-                if (userData) {
-                    console.log('[DEBUG] User found, successfully logged in.');
-                    if (errorMessage) errorMessage.style.display = 'none';
-
-                    // Non-recursive call to switch UI and save state
-                    proceedToDashboard(userData, phone); 
-
-                } else {
-                    console.log('[DEBUG] User not found in database');
-                    if (errorMessage) {
-                        errorMessage.textContent = 'seems there is no account associated with these logins. sign up below.';
-                        errorMessage.style.display = 'block';
+                const res = await authenticateByPhone(phone, enteredFirstName);
+                if (!res || !res.success) {
+                    // Show contextual errors where possible
+                    if (res && res.reason === 'name_mismatch') {
+                        if (errorMessage) { errorMessage.textContent = 'Invalid first name for this phone number.'; errorMessage.style.display = 'block'; }
+                    } else if (res && res.reason === 'not_found') {
+                        if (errorMessage) { errorMessage.textContent = 'seems there is no account associated with these logins. sign up below.'; errorMessage.style.display = 'block'; }
+                    } else {
+                        if (errorMessage) { errorMessage.textContent = 'Error connecting to the service. Please try again.'; errorMessage.style.display = 'block'; }
                     }
                     localStorage.removeItem('vvUser');
                 }
+                // On success authenticateByPhone calls proceedToDashboard
             } catch (error) {
                 console.error('[DEBUG] Error during login:', error);
                 if (errorMessage) {

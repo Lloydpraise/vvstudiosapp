@@ -12,11 +12,11 @@
                 function updateViewport() {
                     var w = window.innerWidth || document.documentElement.clientWidth || 1024;
                     if (w < 768) {
-                        vp.setAttribute('content', 'width=device-width, initial-scale=0.8, minimum-scale=0.8, maximum-scale=0.8, user-scalable=no');
-                    } else {
-                        // Desktop: use 0.8 to match requested desktop scale
-                        vp.setAttribute('content', 'width=device-width, initial-scale=0.8, minimum-scale=0.8, maximum-scale=0.8, user-scalable=yes');
-                    }
+                            vp.setAttribute('content', 'width=device-width, initial-scale=0.8, minimum-scale=0.8, maximum-scale=0.8, user-scalable=no');
+                        } else {
+                            // Desktop: use 1.0 so desktop layout doesn't appear zoomed in
+                            vp.setAttribute('content', 'width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=yes');
+                        }
                 }
                 updateViewport();
                 window.addEventListener('resize', function(){ try { updateViewport(); } catch(e){} });
@@ -191,9 +191,9 @@
             transition: background-color 0.2s;
         }
         
-        /* Specific layout for Deal List (7 columns: Index, Deal Name, Contact, Stage, Amount, Date, Action) */
+        /* Specific layout for Deal List (8 columns: Index, #, Deal Name, Products, Contact, Stage, Amount, Date, Action) */
         .deal-list-row {
-            grid-template-columns: 40px 40px minmax(150px, 1.5fr) minmax(150px, 1.5fr) minmax(120px, 1fr) minmax(100px, 1fr) minmax(120px, 1fr); 
+            grid-template-columns: 40px 40px minmax(150px, 1.5fr) minmax(180px, 2fr) minmax(150px, 1.5fr) minmax(120px, 1fr) minmax(100px, 1fr) minmax(120px, 1fr); 
             display: grid;
             align-items: stretch;
             padding: 0; 
@@ -230,10 +230,10 @@
         .contact-row > *:nth-child(4) { 
             border-right: none; 
         }
-        /* Remove right border from last column (Date to Close in Deals List) */
-        .deal-list-row > *:nth-child(7) { 
-             border-right: none; 
-        }
+           /* Remove right border from last column (Date to Close in Deals List) */
+           .deal-list-row > *:nth-child(8) { 
+               border-right: none; 
+           }
 
         /* Style for editable cells */
         .edit-cell {
@@ -342,10 +342,6 @@
         }
 
         /*
-         * Prevent the small drop-zone tiles and the drop-zone table modal from
-         * appearing or intercepting clicks on small devices. The drag/drop
-         * experience is desktop-first; on mobile we hide these entirely so they
-         * cannot hijack bottom-nav interactions.
          */
         @media (max-width: 768px) {
             #hidden-drop-zones { display: none !important; pointer-events: none !important; }
@@ -928,6 +924,127 @@
             } catch (e) { /* ignore */ }
         });
     </script>
+    <script>
+        // CRM pending/opening toast helper
+        (function(){
+            const messages = ['Opening…','Just a sec…','Hang tight — opening','Getting details…','One moment…'];
+            let pending = { timer: null, shown: false, toastEl: null };
+
+            function createToastEl(){
+                let el = document.getElementById('crm-top-toast');
+                if (el) return el;
+                el = document.createElement('div');
+                el.id = 'crm-top-toast';
+                el.setAttribute('role','status');
+                el.style.position = 'fixed';
+                el.style.left = '50%';
+                el.style.transform = 'translateX(-50%)';
+                el.style.top = '12px';
+                el.style.zIndex = 12000;
+                el.style.background = '#10B981'; // green
+                el.style.color = '#fff';
+                el.style.padding = '8px 14px';
+                el.style.borderRadius = '10px';
+                el.style.boxShadow = '0 6px 18px rgba(16,185,129,0.14)';
+                el.style.fontWeight = '600';
+                el.style.fontSize = '14px';
+                el.style.opacity = '0';
+                el.style.transition = 'opacity 180ms ease, transform 180ms ease';
+                document.body.appendChild(el);
+                return el;
+            }
+
+            function showToast(msg, persist){
+                const el = createToastEl();
+                el.textContent = msg || messages[Math.floor(Math.random()*messages.length)];
+                requestAnimationFrame(()=>{
+                    el.style.opacity = '1';
+                    el.style.transform = 'translateX(-50%) translateY(0)';
+                });
+                if (!persist) {
+                    setTimeout(()=>hideToast(), 2200);
+                }
+                return el;
+            }
+
+            function hideToast(){
+                const el = document.getElementById('crm-top-toast');
+                if (!el) return;
+                el.style.opacity = '0';
+                el.style.transform = 'translateX(-50%) translateY(-6px)';
+                setTimeout(()=>{ try{ el.remove(); } catch(e){} }, 220);
+            }
+
+            // Public API: start a pending indicator (shows toast if operation hasn't completed after threshold)
+            window.pendingToast = {
+                start: function(thresholdMs){
+                    try {
+                        window.pendingToast.stop();
+                        const ms = typeof thresholdMs === 'number' ? thresholdMs : 450;
+                        pending.timer = setTimeout(()=>{
+                            pending.shown = true;
+                            pending.toastEl = showToast(messages[Math.floor(Math.random()*messages.length)], true);
+                        }, ms);
+                    } catch(e) { console.warn('pendingToast.start failed', e); }
+                },
+                stop: function(){
+                    try {
+                        if (pending.timer) { clearTimeout(pending.timer); pending.timer = null; }
+                        if (pending.shown) { pending.shown = false; hideToast(); pending.toastEl = null; }
+                    } catch(e) { console.warn('pendingToast.stop failed', e); }
+                },
+                showNow: function(){ pending.stop(); pending.shown = true; pending.toastEl = showToast(messages[Math.floor(Math.random()*messages.length)], true); },
+                hideNow: function(){ pending.stop(); }
+            };
+
+            // Auto-clear when any modal-backdrop becomes visible (helper for automatic cases)
+            try {
+                const obs = new MutationObserver((records)=>{
+                    for (const rec of records){
+                        if (rec.type === 'attributes' && rec.target && rec.target.classList) {
+                            const t = rec.target;
+                            if (t.classList && t.classList.contains('modal-backdrop')) {
+                                // If it became visible (no 'hidden' and computed style visible), clear pending toast
+                                const isHidden = t.classList.contains('hidden') || t.style.display === 'none';
+                                const rect = t.getBoundingClientRect();
+                                const visible = !isHidden && rect.width > 0 && rect.height > 0;
+                                if (visible) {
+                                    window.pendingToast.stop();
+                                }
+                            }
+                        }
+                        if (rec.type === 'childList' && rec.addedNodes && rec.addedNodes.length) {
+                            for (const n of rec.addedNodes) {
+                                try {
+                                    if (n.classList && n.classList.contains('modal-backdrop')) {
+                                        const rect = n.getBoundingClientRect();
+                                        if (rect.width > 0 && rect.height > 0) window.pendingToast.stop();
+                                    }
+                                } catch(e){}
+                            }
+                        }
+                    }
+                });
+                obs.observe(document.body, { attributes: true, attributeFilter: ['class','style'], subtree: true, childList: true });
+            } catch(e) { /* ignore */ }
+
+            // Convenience: expose a wrapper to open modal elements by id with pending toast auto-handling
+            window.openModalWithPending = function(modalBackdropId, modalInnerId){
+                try {
+                    window.pendingToast.start(350);
+                    const backdrop = document.getElementById(modalBackdropId);
+                    const inner = modalInnerId ? document.getElementById(modalInnerId) : null;
+                    if (!backdrop) return;
+                    // show backdrop and inner modal
+                    backdrop.classList.remove('hidden');
+                    backdrop.style.display = 'flex';
+                    if (inner) inner.classList.remove('hidden');
+                    // After showing, stop pending toast
+                    setTimeout(()=>{ window.pendingToast.stop(); }, 80);
+                } catch(e) { console.warn('openModalWithPending failed', e); window.pendingToast.stop(); }
+            };
+        })();
+    </script>
     <style>
         /* Mobile: ensure the main scrollable area has enough bottom padding so
            the last list items aren't hidden by the fixed bottom nav. We add
@@ -1229,12 +1346,14 @@
                         
                         <div id="deals-list-view" class="deals-view hidden bg-bg-card rounded-2xl border border-border-dark overflow-x-auto">
                             <div class="deal-list-row text-white/80 font-bold bg-bg-dark rounded-t-xl sticky top-0">
-                                <div></div> <div>No.</div>
+                                <div></div>
+                                <div>No.</div>
                                 <div>Product/Service</div>
                                 <div>Contact Associated</div>
                                 <div>Stage</div>
                                 <div>Amount</div>
                                 <div>Date to Close</div>
+                                <div>Actions</div>
                             </div>
                             <div id="deals-list-container"></div>
                         </div>
@@ -1467,13 +1586,14 @@
             
                     <div class="bg-bg-dark rounded-xl border border-border-dark overflow-x-auto">
                 <div id="drop-zone-table-header" class="deal-list-row text-white/80 font-bold bg-bg-dark sticky top-0">
-                    <div></div> 
+                    <div></div>
                     <div id="header-no">No.</div>
                     <div>Product/Service</div>
                     <div>Associated Contact</div>
                     <div>Stage</div>
                     <div>Amount</div>
                     <div id="header-date">Date Disqualified</div>
+                    <div>Actions</div>
                 </div>
                 <div id="drop-zone-table-container">
                     </div>
@@ -1538,8 +1658,29 @@
 
                                 <!-- Product/Service (first) -->
                                 <div>
-                                    <label class="block text-sm font-medium text-white/70 mb-1" for="new-deal-name">Product or Service</label>
+                                    <label class="block text-sm font-medium text-white/70 mb-1" for="new-deal-name">Deal Name</label>
                                     <input type="text" id="new-deal-name" class="w-full bg-bg-dark border border-border-dark rounded-lg py-2 px-3 text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-main-purple" required>
+                                </div>
+
+                                <!-- Products selector (nested, multiple) -->
+                                <div>
+                                    <label class="block text-sm font-medium text-white/70 mb-1" for="deal-product-search">Products</label>
+                                    <div class="relative">
+                                        <div id="deal-product-input-wrapper" class="flex items-center flex-wrap gap-2 bg-bg-dark border border-border-dark rounded-lg py-2 px-3">
+                                            <div id="deal-selected-products" class="flex items-center gap-2"></div>
+                                            <input type="text" id="deal-product-search" placeholder="Search products by name..." class="flex-1 min-w-[120px] bg-transparent text-white placeholder-white/50 focus:outline-none focus:ring-0">
+                                        </div>
+                                        <div id="deal-product-results" class="absolute z-10 left-0 w-full bg-bg-card border border-border-dark rounded-lg mt-1 shadow-2xl max-h-40 overflow-y-auto hidden"></div>
+                                        <input type="hidden" id="new-deal-products">
+                                    </div>
+                                </div>
+
+                                <!-- Offer selector (populated after product selection) -->
+                                <div>
+                                    <label class="block text-sm font-medium text-white/70 mb-1" for="new-deal-offer">Offer</label>
+                                    <select id="new-deal-offer" class="w-full bg-bg-dark border border-border-dark rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-main-purple">
+                                        <option value="">(No offer)</option>
+                                    </select>
                                 </div>
 
                                 <!-- Contact search (nested contacts appear here) -->
@@ -1967,6 +2108,25 @@
       <h3 class="text-xl font-bold">Schedule Meeting</h3>
       <button data-modal-close="add-meeting-modal" class="text-white/60 hover:text-white">✕</button>
     </div>
+    <script>
+        // Wire follow-up -> Send WhatsApp pending toast: show a short "Opening" toast
+        (function(){
+            function startPending(){ try { if (window.pendingToast && typeof window.pendingToast.start === 'function') window.pendingToast.start(250); } catch(e){} }
+            // Buttons that can open the WhatsApp composer from follow-ups
+            const ids = ['whatsapp-btn', 'send-reminder-whatsapp-btn', 'meeting-reminder-whatsapp-btn', 'contact-whatsapp-btn'];
+            document.addEventListener('DOMContentLoaded', function(){
+                ids.forEach(id => {
+                    try {
+                        const el = document.getElementById(id);
+                        if (el && !el._pendingToastWired) {
+                            el.addEventListener('click', function(){ startPending(); });
+                            el._pendingToastWired = true;
+                        }
+                    } catch(e){}
+                });
+            });
+        })();
+    </script>
 
     <!-- Body -->
     <div id="add-meeting-modal-body" class="p-6 space-y-4">

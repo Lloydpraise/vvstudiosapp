@@ -398,6 +398,71 @@
     }
 }
 
+/* Global modal sizing & centering improvements --------------------------------------- */
+.modal-backdrop {
+    display: flex;
+    align-items: center; /* center vertically by default */
+    justify-content: center;
+    padding: 20px; /* keep some breathing room on small viewports */
+}
+
+/* Inner modal content: ensure it never overflows the viewport and becomes scrollable */
+.modal-backdrop > *,
+.modal-backdrop .modal,
+.modal-backdrop .modal-content,
+.modal-backdrop .bg-bg-card {
+    max-height: calc(100vh - 80px) !important;
+    overflow-y: auto !important;
+    box-sizing: border-box !important;
+}
+
+/* Ensure top-aligned behavior on small screens so modal header is visible */
+@media (max-width: 640px) {
+    .modal-backdrop {
+        align-items: flex-start;
+        padding-top: 28px;
+        padding-bottom: 28px;
+    }
+    .modal-backdrop > *,
+    .modal-backdrop .modal-content,
+    .modal-backdrop .bg-bg-card {
+        max-height: calc(100vh - 56px) !important;
+    }
+}
+
+/* If a modal wants to be vertically centered but its content is short, keep it visually centered */
+.modal-centered {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Slightly reduce the maximum width on very small viewports so content doesn't feel cramped */
+@media (max-width: 420px) {
+    .modal-backdrop > * { width: calc(100% - 32px) !important; }
+}
+
+    /* Bottom-sheet style for small-screen modals (slide from bottom) -------------------- */
+    .modal-backdrop.modal-bottom {
+        align-items: flex-end; /* align content at bottom for slide-in */
+        padding: 0 12px 12px 12px;
+    }
+    .modal-backdrop.modal-bottom .modal-bottom-content {
+        width: 100%;
+        max-width: 720px;
+        transform: translateY(100%);
+        transition: transform .28s ease;
+        box-shadow: 0 -10px 30px rgba(2,6,23,0.6);
+    }
+    .modal-backdrop.modal-bottom.open .modal-bottom-content {
+        transform: translateY(0);
+    }
+    @media (min-width: 640px) {
+        /* On larger screens, keep bottom modal visually centered instead of bottom sheet */
+        .modal-backdrop.modal-bottom { align-items: center; padding: 20px; }
+        .modal-backdrop.modal-bottom .modal-bottom-content { transform: translateY(0); }
+    }
+
 /* Desktop: ensure dashboard area and sidebar are visible for light theme pages
    (covers pages that hide dashboard until login). This is narrowly scoped to
    desktop and light theme only and uses !important to override inline styles. */

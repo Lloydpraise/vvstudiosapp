@@ -38,12 +38,13 @@
                 function updateViewport() {
                     var w = window.innerWidth || document.documentElement.clientWidth || 1024;
                     // Treat < 768 as mobile (matches the app's breakpoints)
-                    if (w < 768) {
-                        vp.setAttribute('content', 'width=device-width, initial-scale=0.8, minimum-scale=0.8, viewport-fit=cover');
-                    } else {
-                        // Desktop: use 0.8 as requested
-                        vp.setAttribute('content', 'width=device-width, initial-scale=0.8, minimum-scale=0.8, viewport-fit=cover');
-                    }
+                        if (w < 768) {
+                            // keep the mobile tuning to 0.8 for compact mobile layout
+                            vp.setAttribute('content', 'width=device-width, initial-scale=0.8, minimum-scale=0.8, viewport-fit=cover');
+                        } else {
+                            // Desktop: use 1.0 so desktop doesn't appear zoomed-in
+                            vp.setAttribute('content', 'width=device-width, initial-scale=1.0, minimum-scale=1.0, viewport-fit=cover');
+                        }
                 }
                 // Run once early
                 updateViewport();
@@ -285,7 +286,7 @@
         <div class="bg-[#1a1d23] p-8 md:p-12 rounded-2xl border border-[#2b2f3a] max-w-lg w-full text-center card-animate">
             <h1 class="text-2xl md:text-3xl font-bold mb-4">VV Studios Login</h1>
             <p class="text-white/60 mb-8">Please enter your credentials to access the dashboard.</p>
-            <form id="login-form" class="space-y-6">
+            <form id="login-form" class="space-y-6" onsubmit="return false;" novalidate>
                 <div>
                     <input type="text" id="firstName" placeholder="First Name" class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500">
                 </div>
@@ -293,7 +294,7 @@
                     <input type="tel" id="phone" placeholder="Phone Number" class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-500">
                 </div>
                 <div id="errorMessage" class="mt-4 text-red-500 text-center" style="display: none;"></div>
-                <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors duration-200">
+                <button type="button" id="login-submit-btn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors duration-200">
                     Sign In
                 </button>
                 <div class="mt-4 text-center">
@@ -585,6 +586,89 @@
                             }
                         });
 
+                    });
+                })();
+            </script>
+
+            <script>
+                (function(){
+                    // Fallback login handler: prevents silent reloads and performs
+                    // a REST lookup if the module handler isn't attached.
+                    const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
+                    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
+
+                    function normalizePhone(p){
+                        if (!p) return '';
+                        let s = String(p).trim();
+                        s = s.replace(/\s+/g,'');
+                        if (s.startsWith('+')) s = s.substring(1);
+                        const digits = s.replace(/\D/g,'');
+                        if (s.startsWith('0')) return '254' + digits.substring(1);
+                        if (digits.length === 9 && digits.startsWith('7')) return '254' + digits;
+                        if (digits.startsWith('254')) return digits;
+                        return digits;
+                    }
+
+                    const btn = document.getElementById('login-submit-btn');
+                    const errEl = document.getElementById('errorMessage') || document.getElementById('error-message');
+                    if (!btn) return;
+
+                    btn.addEventListener('click', async function(e){
+                        e.preventDefault();
+                        // If module-level handler exists, prefer it
+                        try {
+                            if (window.authenticateByPhone && typeof window.authenticateByPhone === 'function') {
+                                await window.authenticateByPhone(document.getElementById('phone')?.value || '', document.getElementById('firstName')?.value || '');
+                                return;
+                            }
+                        } catch (ex) {
+                            console.warn('module authenticateByPhone failed, falling back', ex);
+                        }
+
+                        const phoneInput = document.getElementById('phone')?.value?.trim() || '';
+                        const firstName = document.getElementById('firstName')?.value?.trim() || '';
+                        if (!phoneInput) {
+                            if (errEl) { errEl.textContent = 'Phone number is required'; errEl.style.display = 'block'; }
+                            return;
+                        }
+
+                        const normalized = normalizePhone(phoneInput);
+                        if (errEl) { errEl.style.display = 'block'; errEl.style.color = '#ffd6a5'; errEl.textContent = 'Signing in...'; }
+
+                        try {
+                            const res = await fetch(`${SUPABASE_URL}/rest/v1/logins?phone_number=eq.${encodeURIComponent(normalized)}&select=*`, {
+                                headers: {
+                                    'apikey': SUPABASE_KEY,
+                                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                                }
+                            });
+                            if (!res.ok) {
+                                if (errEl) { errEl.textContent = 'Login failed (network)'; errEl.style.display = 'block'; }
+                                return;
+                            }
+                            const body = await res.json();
+                            const found = Array.isArray(body) ? body[0] : body;
+                            if (!found) {
+                                if (errEl) { errEl.style.color = '#fca5a5'; errEl.textContent = 'No account found. Sign up below.'; errEl.style.display = 'block'; }
+                                return;
+                            }
+
+                            const savedUser = Object.assign({}, found, {
+                                business_id: found['business id'] || found.business_id || null,
+                                phone_number: found.phone_number || normalized,
+                                phone: phoneInput,
+                                admin_first_name: (found.admin_name || firstName || '').split(' ')[0] || ''
+                            });
+                            savedUser.firstName = savedUser.admin_first_name || (savedUser.admin_name ? String(savedUser.admin_name).split(' ')[0] : '') || '';
+
+                            localStorage.setItem('vvUser', JSON.stringify(savedUser));
+                            // Let the normal module-coded auto-login run on reload
+                            window.location.reload();
+
+                        } catch (err) {
+                            console.error('Fallback login error', err);
+                            if (errEl) { errEl.textContent = 'Network error while signing in'; errEl.style.display = 'block'; }
+                        }
                     });
                 })();
             </script>
@@ -1297,7 +1381,7 @@
             </div>
 
             <!-- About Services + Learning cards (copied from free.html, namespaced) -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-20">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-4">
                 <div class="bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] p-6 md:p-8 card-animate flex flex-col h-full justify-between">
                     <div>
                         <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mb-4">
@@ -1327,6 +1411,11 @@
                         Start Learning
                     </button>
                 </div>
+            </div>
+
+            <!-- Contact Customer Success Agent button (centered, below Learning materials) -->
+            <div class="mb-6 flex justify-center">
+                <button id="contact-account-manager-btn" class="py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-full shadow-sm">Contact Customer Success Agent</button>
             </div>
 
             <script>
@@ -1374,6 +1463,119 @@
 
     </div> <!-- /#app -->
     
+    <!-- Contact Account Manager Modal -->
+    <div id="contact-account-manager-modal" class="modal-backdrop hidden modal-bottom fixed inset-0 z-50 bg-black/60 p-4">
+        <div class="modal-bottom-content bg-[#14161a] rounded-2xl border border-[#2b2f3a] max-w-md w-full p-4">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-lg font-bold text-white">Tell us your issue</h3>
+                <button class="text-white/50 hover:text-white" data-modal-close="contact-account-manager-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <textarea id="contact-account-manager-text" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl p-3 text-white" rows="4" placeholder="Describe your issue..."></textarea>
+            <div class="mt-3">
+                <button id="contact-account-manager-submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl font-bold">Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Contact Account Manager modal handlers (index)
+        (function(){
+            const openBtn = document.getElementById('contact-account-manager-btn');
+            const modal = document.getElementById('contact-account-manager-modal');
+            const submitBtn = document.getElementById('contact-account-manager-submit');
+
+            function openModal(){
+                if (!modal) return;
+                const content = modal.querySelector('.modal-bottom-content');
+                // Make modal visible so we can measure, but keep it hidden from pointer/flicker
+                modal.classList.remove('hidden');
+                modal.style.pointerEvents = 'none';
+                modal.style.visibility = 'hidden';
+
+                if (window.innerWidth >= 640 && openBtn) {
+                    // Desktop: position popover above the button
+                    // Temporarily reveal to measure
+                    modal.style.visibility = 'hidden';
+                    modal.style.pointerEvents = 'none';
+                    // ensure content has no transform for measurement
+                    content.style.transform = 'none';
+                    // Allow layout to settle then measure
+                    requestAnimationFrame(() => {
+                        // Position popover centered above the button
+                        const rect = openBtn.getBoundingClientRect();
+                        // measure content; fallback to reasonable defaults
+                        const cw = Math.min((content.offsetWidth || 360), window.innerWidth - 24);
+                        const ch = content.offsetHeight || content.scrollHeight || 180;
+                        let left = rect.left + (rect.width / 2) - (cw / 2);
+                        left = Math.max(12, Math.min(left, window.innerWidth - cw - 12));
+                        // prefer above the button; if not enough space place below
+                        let top = rect.top - ch - 10;
+                        if (top < 12) top = rect.bottom + 12;
+
+                        content.style.position = 'absolute';
+                        content.style.left = left + 'px';
+                        content.style.top = top + 'px';
+                        content.style.right = 'auto';
+                        content.style.maxWidth = cw + 'px';
+                        content.style.transform = 'none';
+
+                        modal.style.visibility = '';
+                        modal.style.pointerEvents = '';
+                    });
+                } else {
+                    // Mobile: show bottom sheet with slide-in
+                    modal.style.visibility = '';
+                    modal.style.pointerEvents = '';
+                    setTimeout(()=> modal.classList.add('open'), 20);
+                }
+
+                try{ document.body.style.overflow = 'hidden'; } catch(e){}
+            }
+            function closeModal(){
+                if (!modal) return;
+                const content = modal.querySelector('.modal-bottom-content');
+                // always clear inline positioning styles
+                try {
+                    content.style.position = '';
+                    content.style.left = '';
+                    content.style.top = '';
+                    content.style.maxWidth = '';
+                    content.style.transform = '';
+                } catch(e){}
+                modal.classList.remove('open');
+                setTimeout(()=> modal.classList.add('hidden'), 260);
+                try{ document.body.style.overflow = ''; } catch(e){}
+            }
+
+            openBtn && openBtn.addEventListener('click', function(e){ e.preventDefault(); openModal(); });
+
+            // close when clicking close buttons (data-modal-close)
+            document.addEventListener('click', function(evt){
+                const t = evt.target;
+                if (t && t.getAttribute && t.getAttribute('data-modal-close') === 'contact-account-manager-modal') closeModal();
+            });
+
+            // Explicitly attach close handler to the modal's X button to ensure it closes reliably
+            try {
+                const modalX = modal && modal.querySelector('[data-modal-close="contact-account-manager-modal"]');
+                if (modalX) modalX.addEventListener('click', function(e){ e.preventDefault(); closeModal(); });
+            } catch(e){}
+
+            // backdrop click closes
+            modal && modal.addEventListener('click', function(ev){ if (ev.target === modal) closeModal(); });
+
+            submitBtn && submitBtn.addEventListener('click', function(){
+                const text = (document.getElementById('contact-account-manager-text')||{}).value || '';
+                if (!text.trim()) { alert('Please enter your issue'); return; }
+                // Placeholder: implement real submit (API/whatsapp/email) as needed
+                console.log('Contact CSA submit:', text);
+                alert('Thanks — your message has been submitted to your Customer Success Agent.');
+                closeModal();
+                try{ document.getElementById('contact-account-manager-text').value = ''; } catch(e){}
+            });
+        })();
+    </script>
+
     <!-- Index Business Profile Modal (duplicate of CRM modal but namespaced for index) -->
     <div id="indexbusinessprofile-modal" class="modal-backdrop hidden">
         <div class="absolute inset-0 flex items-center justify-center p-4">

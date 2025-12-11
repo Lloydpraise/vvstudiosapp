@@ -401,7 +401,7 @@
                     </section>
 
                     <!-- Info Cards -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-20">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-4">
                         <div class="bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] p-6 md:p-8 card-animate flex flex-col h-full justify-between">
                             <div>
                                 <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mb-4"><i class="fa-solid fa-layer-group text-purple-400 text-xl"></i></div>
@@ -417,12 +417,16 @@
                                 <p class="text-white/60 text-sm leading-relaxed mb-6">Master the fundamentals of digital growth.</p>
                             </div>
                             <button onclick="window.location.href='blog.html?category=Learning'" class="w-full py-3 bg-[#1a1d23] border border-white/20 hover:bg-white/5 text-white font-bold rounded-xl transition-colors">Start Learning</button>
-                        </div>
                     </div>
 
                 </div>
             </main>
         </div>
+    </div>
+
+    <!-- Contact Customer Success Agent button (centered, below Learning materials) -->
+    <div class="p-4 flex justify-center">
+        <button id="contact-account-manager-btn" class="py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-full shadow-sm">Contact Customer Success Agent</button>
     </div>
 
     <!-- Free Business Profile Modal -->
@@ -483,6 +487,20 @@
 
                 <div class="pt-4"><button type="submit" id="save-free-business-profile" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold">Save Profile</button></div>
             </form>
+        </div>
+    </div>
+
+    <!-- Contact Account Manager Modal -->
+    <div id="contact-account-manager-modal" class="modal-backdrop hidden modal-bottom fixed inset-0 z-50 bg-black/60 p-4">
+        <div class="modal-bottom-content bg-[#14161a] rounded-2xl border border-[#2b2f3a] max-w-md w-full p-4">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-lg font-bold text-white">Tell us your issue</h3>
+                <button class="text-white/50 hover:text-white" data-modal-close="contact-account-manager-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <textarea id="contact-account-manager-text" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl p-3 text-white" rows="4" placeholder="Describe your issue..."></textarea>
+            <div class="mt-3">
+                <button id="contact-account-manager-submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl font-bold">Submit</button>
+            </div>
         </div>
     </div>
 
@@ -730,6 +748,88 @@
                 openBtn.addEventListener('click', async (e) => { e.preventDefault(); await loadBusinessProfile(); modal.classList.remove('hidden'); });
                 closeBtns.forEach(btn => btn.addEventListener('click', () => modal.classList.add('hidden')));
             }
+
+            // Contact Account Manager modal handlers (free)
+            (function(){
+                const openBtnCam = document.getElementById('contact-account-manager-btn');
+                const camModal = document.getElementById('contact-account-manager-modal');
+                const camSubmit = document.getElementById('contact-account-manager-submit');
+
+
+                function camOpen(){
+                    if (!camModal) return;
+                    const content = camModal.querySelector('.modal-bottom-content');
+                    camModal.classList.remove('hidden');
+                    camModal.style.pointerEvents = 'none';
+                    camModal.style.visibility = 'hidden';
+
+                    if (window.innerWidth >= 640 && openBtnCam) {
+                        // desktop: position popover centered above the button
+                        requestAnimationFrame(() => {
+                            const rect = openBtnCam.getBoundingClientRect();
+                            const cw = Math.min(content.offsetWidth || 360, window.innerWidth - 24);
+                            const ch = content.offsetHeight || content.scrollHeight || 180;
+                            let left = rect.left + (rect.width / 2) - (cw / 2);
+                            left = Math.max(12, Math.min(left, window.innerWidth - cw - 12));
+                            let top = rect.top - ch - 10;
+                            if (top < 12) top = rect.bottom + 12;
+
+                            content.style.position = 'absolute';
+                            content.style.left = left + 'px';
+                            content.style.top = top + 'px';
+                            content.style.maxWidth = cw + 'px';
+                            content.style.transform = 'none';
+
+                            camModal.style.visibility = '';
+                            camModal.style.pointerEvents = '';
+                        });
+                    } else {
+                        camModal.style.visibility = '';
+                        camModal.style.pointerEvents = '';
+                        setTimeout(()=> camModal.classList.add('open'), 20);
+                    }
+                    try{ document.body.style.overflow='hidden'; }catch(e){}
+                }
+
+                function camClose(){
+                    if (!camModal) return;
+                    const content = camModal.querySelector('.modal-bottom-content');
+                    // always clear inline positioning styles
+                    try {
+                        content.style.position = '';
+                        content.style.left = '';
+                        content.style.top = '';
+                        content.style.maxWidth = '';
+                        content.style.transform = '';
+                    } catch(e){}
+                    camModal.classList.remove('open');
+                    setTimeout(()=> camModal.classList.add('hidden'), 260);
+                    try{ document.body.style.overflow=''; }catch(e){}
+                }
+
+                openBtnCam && openBtnCam.addEventListener('click', function(e){ e.preventDefault(); camOpen(); });
+
+                // close when clicking close buttons for this modal
+                document.addEventListener('click', function(evt){ const t = evt.target; if (t && t.getAttribute && t.getAttribute('data-modal-close') === 'contact-account-manager-modal') camClose(); });
+
+                camModal && camModal.addEventListener('click', function(ev){ if (ev.target === camModal) camClose(); });
+
+                // Explicitly attach close handler to the modal's X button so it calls camClose() directly
+                try {
+                    const camX = camModal && camModal.querySelector('[data-modal-close="contact-account-manager-modal"]');
+                    if (camX) camX.addEventListener('click', function(e){ e.preventDefault(); camClose(); });
+                } catch(e){}
+
+                camSubmit && camSubmit.addEventListener('click', function(){
+                    const text = (document.getElementById('contact-account-manager-text')||{}).value || '';
+                    if (!text.trim()) { alert('Please enter your issue'); return; }
+                    // TODO: wire to backend/API
+                    console.log('Contact CSA submit:', text);
+                    alert('Thanks — your message has been submitted to your Customer Success Agent.');
+                    camClose();
+                    try{ document.getElementById('contact-account-manager-text').value = ''; } catch(e){}
+                });
+            })();
             
             document.getElementById('run-audit-btn')?.addEventListener('click', (e) => {
                 e.preventDefault();
