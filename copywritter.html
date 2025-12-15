@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>AI Copywriter | VV Studios</title>
+    
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f1115; color: white; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background-color: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.1); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.2); }
+
+        /* Animations */
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Form Elements */
+        .input-dark {
+            background-color: #0f1115;
+            border: 1px solid #2b2f3a;
+            color: white;
+            transition: all 0.2s;
+        }
+        .input-dark:focus {
+            border-color: #f97316;
+            outline: none;
+            box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.2);
+        }
+        .input-dark::placeholder { color: rgba(255, 255, 255, 0.3); }
+
+        /* Selection Cards */
+        .category-card {
+            background: #1a1d23;
+            border: 1px solid #2b2f3a;
+            transition: all 0.2s ease;
+        }
+        .category-card:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        .category-card.active {
+            border-color: #f97316;
+            background-color: rgba(249, 115, 22, 0.1);
+        }
+        .category-card.active i { color: #f97316; }
+
+        /* Output Tabs */
+        .tab-btn {
+            border-bottom: 2px solid transparent;
+            color: rgba(255, 255, 255, 0.5);
+            transition: all 0.2s;
+        }
+        .tab-btn:hover { color: white; }
+        .tab-btn.active {
+            border-color: #f97316;
+            color: white;
+        }
+        
+        /* Copy Button Animation */
+        .copy-feedback { animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite; }
+        @keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <header class="p-6 flex justify-between items-center max-w-[1400px] mx-auto w-full border-b border-white/5 bg-[#0f1115]/80 backdrop-blur-md sticky top-0 z-40">
+        <div class="flex items-center gap-3">
+            <a href="#" onclick="history.back(); return false;" class="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                <img src="assets/logo.png" onerror="this.src='https://via.placeholder.com/40'" alt="VV Studios Logo" class="w-10 h-10 rounded-full object-cover">
+                <span class="font-bold text-xl tracking-tight text-white">VV Studios <span class="text-white/40 font-normal">| AI Copywriter</span></span>
+            </a>
+        </div>
+        <div class="flex gap-4">
+            <a href="contentportal.html" class="px-5 py-2.5 bg-[#1a1d23] border border-white/10 hover:bg-white/5 rounded-lg text-base text-white transition-colors flex items-center gap-2">
+                <i class="fa-solid fa-folder-open text-sm"></i> My Saved Copy
+            </a>
+            <button onclick="copyCurrentOutput()" class="text-xs text-white/50 hover:text-white px-2 py-1 rounded bg-white/5 hover:bg-white/10 transition flex items-center gap-1" id="header-copy-btn">
+                <i class="fa-regular fa-copy"></i> Copy Current
+            </button>
+            <button onclick="history.back()" class="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm text-white transition-colors border border-white/10 flex items-center gap-2">
+                <i class="fa-solid fa-arrow-left"></i> <span class="hidden sm:inline">Back</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 w-full max-w-[1400px] mx-auto p-4 md:p-8 mb-20">
+
+        <div class="mb-8 fade-in">
+            <h1 class="text-3xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-orange-400 via-purple-400 to-blue-400">
+                Generate Marketing Copy
+            </h1>
+            <p class="text-white/60">Select a category below to generate high-converting text for your business.</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 fade-in" style="animation-delay: 0.1s;">
+            
+            <div class="lg:col-span-7 space-y-6">
+                
+                <div class="bg-[#1a1d23] border border-white/10 rounded-xl p-4">
+                    <label class="block text-xs uppercase tracking-wider text-white/40 font-bold mb-3">Copy Category</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <button onclick="setCategory('social')" id="cat-social" class="category-card active rounded-lg p-3 text-left flex flex-col gap-2">
+                            <i class="fa-brands fa-instagram text-xl"></i>
+                            <span class="text-sm font-medium">Social Media</span>
+                        </button>
+                        <button onclick="setCategory('ads')" id="cat-ads" class="category-card rounded-lg p-3 text-left flex flex-col gap-2">
+                            <i class="fa-solid fa-bullhorn text-xl text-white/50"></i>
+                            <span class="text-sm font-medium">Ads</span>
+                        </button>
+                        <button onclick="setCategory('website')" id="cat-website" class="category-card rounded-lg p-3 text-left flex flex-col gap-2">
+                            <i class="fa-solid fa-globe text-xl text-white/50"></i>
+                            <span class="text-sm font-medium">Website</span>
+                        </button>
+                        <button onclick="setCategory('whatsapp')" id="cat-whatsapp" class="category-card rounded-lg p-3 text-left flex flex-col gap-2">
+                            <i class="fa-brands fa-whatsapp text-xl text-white/50"></i>
+                            <span class="text-sm font-medium">WhatsApp</span>
+                        </button>
+                        <button onclick="setCategory('offers')" id="cat-offers" class="category-card rounded-lg p-3 text-left flex flex-col gap-2">
+                            <i class="fa-solid fa-tag text-xl text-white/50"></i>
+                            <span class="text-sm font-medium">Offers</span>
+                        </button>
+                        <button onclick="setCategory('branding')" id="cat-branding" class="category-card rounded-lg p-3 text-left flex flex-col gap-2">
+                            <i class="fa-solid fa-fingerprint text-xl text-white/50"></i>
+                            <span class="text-sm font-medium">Branding</span>
+                        </button>
+                        <button onclick="setCategory('scripts')" id="cat-scripts" class="category-card rounded-lg p-3 text-left flex flex-col gap-2">
+                            <i class="fa-solid fa-video text-xl text-white/50"></i>
+                            <span class="text-sm font-medium">Scripts</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-[#1a1d23] border border-white/10 rounded-xl p-6 relative overflow-hidden">
+                    
+                    <form id="form-social" class="space-y-5" onsubmit="handleGenerate(event)">
+                        <h3 class="text-lg font-semibold text-white border-b border-white/5 pb-2">Social Media Post Details</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm text-white/70 mb-2">Platform</label>
+                                <select name="platform" class="input-dark w-full rounded-lg px-4 py-2.5">
+                                    <option value="instagram">Instagram</option>
+                                    <option value="linkedin">LinkedIn</option>
+                                    <option value="facebook">Facebook</option>
+                                    <option value="twitter">X (Twitter)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-white/70 mb-2">Post Goal</label>
+                                <select name="goal" class="input-dark w-full rounded-lg px-4 py-2.5">
+                                    <option value="engagement">Engagement / Comments</option>
+                                    <option value="awareness">Brand Awareness</option>
+                                    <option value="sales">Sales / Traffic</option>
+                                    <option value="educational">Educational</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm text-white/70 mb-2">What is the post about? (Topic/Idea)</label>
+                            <textarea name="topic" required rows="3" class="input-dark w-full rounded-lg px-4 py-3" placeholder="E.g. Launching our new summer coffee blend..."></textarea>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm text-white/70 mb-2">Tone <span class="text-white/30 text-xs">(Optional)</span></label>
+                                <select name="tone" class="input-dark w-full rounded-lg px-4 py-2.5">
+                                    <option value="professional">Professional</option>
+                                    <option value="casual">Casual & Friendly</option>
+                                    <option value="excited">High Energy / Excited</option>
+                                    <option value="witty">Witty / Funny</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-white/70 mb-2">Length <span class="text-white/30 text-xs">(Optional)</span></label>
+                                <select name="length" class="input-dark w-full rounded-lg px-4 py-2.5">
+                                    <option value="medium">Medium</option>
+                                    <option value="short">Short & Punchy</option>
+                                    <option value="long">Long Storytelling</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-6 pt-2">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="cta" checked class="accent-orange-500 w-4 h-4">
+                                <span class="text-sm text-white/80">Include CTA</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" name="emojis" checked class="accent-orange-500 w-4 h-4">
+                                <span class="text-sm text-white/80">Use Emojis</span>
+                            </label>
+                        </div>
+                    </form>
+
+                    <form id="form-ads" class="space-y-5 hidden" onsubmit="handleGenerate(event)">
+                        <h3 class="text-lg font-semibold text-white border-b border-white/5 pb-2">Ad Creative Details</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm text-white/70 mb-2">Ad Platform</label>
+                                <select name="platform" class="input-dark w-full rounded-lg px-4 py-2.5">
+                                    <option value="facebook_ads">Facebook/Instagram Ads</option>
+                                    <option value="google_ads">Google Search Ads</option>
+                                    <option value="tiktok_ads">TikTok Ads</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-white/70 mb-2">Ad Goal</label>
+                                <select name="goal" class="input-dark w-full rounded-lg px-4 py-2.5">
+                                    <option value="conversions">Sales / Conversions</option>
+                                    <option value="leads">Lead Generation</option>
+                                    <option value="clicks">Link Clicks</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-white/70 mb-2">Product / Service Name</label>
+                            <input type="text" name="product" required class="input-dark w-full rounded-lg px-4 py-2.5" placeholder="E.g. Premium Consulting Package">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-white/70 mb-2">Describe the Offer <span class="text-white/30 text-xs">(Optional)</span></label>
+                            <textarea name="offer" rows="2" class="input-dark w-full rounded-lg px-4 py-3" placeholder="E.g. 20% off for the first 50 people..."></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-white/70 mb-2">Target Audience <span class="text-white/30 text-xs">(Optional)</span></label>
+                            <input type="text" name="audience" class="input-dark w-full rounded-lg px-4 py-2.5" placeholder="E.g. Small business owners in Nairobi">
+                        </div>
+                    </form>
+
+                    <form id="form-website" class="space-y-5 hidden" onsubmit="handleGenerate(event)">
+                        <h3 class="text-lg font-semibold text-white border-b border-white/5 pb-2">Website Content Details</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm text-white/70 mb-2">Website Section</label>
+                                <select name="section" class="input-dark w-full rounded-lg px-4 py-2.5">
+                                    <option value="hero">Hero Section (Headline + Sub)</option>
+                                    <option value="about">About Us</option>
+                                    <option value="features">Feature/Service Block</option>
+                                    <option value="faq">FAQ Answers</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-white/70 mb-2">Tone</label>
+                                <select name="tone" class="input-dark w-full rounded-lg px-4 py-2.5">
+                                    <option value="trustworthy">Trustworthy & Professional</option>
+                                    <option value="modern">Modern & Minimalist</option>
+                                    <option value="bold">Bold & Aggressive</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-white/70 mb-2">Main Message / Service to Describe</label>
+                            <textarea name="message" required rows="3" class="input-dark w-full rounded-lg px-4 py-3" placeholder="Describe what this section is about..."></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-white/70 mb-2">Target Audience <span class="text-white/30 text-xs">(Optional)</span></label>
+                            <input type="text" name="audience" class="input-dark w-full rounded-lg px-4 py-2.5" placeholder="Who is visiting your site?">
+                        </div>
+                    </form>
+
+                    <form id="form-whatsapp" class="space-y-5 hidden" onsubmit="handleGenerate(event)">
+                        <h3 class="text-lg font-semibold text-white border-b border-white/5 pb-2">WhatsApp Message Details</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm text-white/70 mb-2">Message Type</label>
+                                <select name="type" class="input-dark w-full rounded-lg px-4 py-2.5">
+                                    <option value="broadcast">Promotional Broadcast</option>
+                                    <option value="followup">Client Follow-up</option>
+                                    <option value="welcome">Welcome Message</option>
+                                    <option value="cold">Cold Outreach</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-white/70 mb-2">Friendliness</label>
+                                <select name="friendliness" class="input-dark w-full rounded-lg px-4 py-2.5">
+                                    <option value="casual">Casual (Emojis)</option>
+                                    <option value="formal">Formal & Polite</option>
+                                    <option value="urgent">Urgent</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-white/70 mb-2">Product / Reason for Message</label>
+                            <textarea name="reason" required rows="3" class="input-dark w-full rounded-lg px-4 py-3" placeholder="E.g. Just checking in on the proposal I sent..."></textarea>
+                        </div>
+                        <label class="flex items-center gap-2 cursor-pointer pt-2">
+                            <input type="checkbox" name="placeholder" checked class="accent-orange-500 w-4 h-4">
+                            <span class="text-sm text-white/80">Include [Name] placeholder</span>
+                        </label>
+                    </form>
+
+                    <form id="form-offers" class="space-y-5 hidden" onsubmit="handleGenerate(event)">
+                        <h3 class="text-lg font-semibold text-white border-b border-white/5 pb-2">Offer & Promotion Details</h3>
+                        <div>
+                            <label class="block text-sm text-white/70 mb-2">Offer Type</label>
+                            <select name="type" class="input-dark w-full rounded-lg px-4 py-2.5">
+                                <option value="discount">Discount / Sale</option>
+                                <option value="bundle">Bundle Deal</option>
+                                <option value="launch">New Product Launch</option>
+                                <option value="holiday">Holiday Special</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-white/70 mb-2">Product / Service</label>
+                            <input type="text" name="product" required class="input-dark w-full rounded-lg px-4 py-2.5" placeholder="E.g. Winter Jacket Collection">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-white/70 mb-2">Main Benefit / Deal Details</label>
+                            <textarea name="details" required rows="2" class="input-dark w-full rounded-lg px-4 py-3" placeholder="E.g. Buy 1 Get 1 Free this weekend only"></textarea>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm text-white/70 mb-2">Urgency Level <span class="text-white/30 text-xs">(Optional)</span></label>
+                                <select name="urgency" class="input-dark w-full rounded-lg px-4 py-2.5">
+                                    <option value="high">High (Ends Tonight!)</option>
+                                    <option value="medium">Medium (This Week)</option>
+                                    <option value="low">Low (Evergreen)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-white/70 mb-2">Duration <span class="text-white/30 text-xs">(Optional)</span></label>
+                                <input type="text" name="duration" class="input-dark w-full rounded-lg px-4 py-2.5" placeholder="E.g. 24 Hours">
+                            </div>
+                        </div>
+                    </form>
+
+                    <form id="form-branding" class="space-y-5 hidden" onsubmit="handleGenerate(event)">
+                        <h3 class="text-lg font-semibold text-white border-b border-white/5 pb-2">Branding Copy Details</h3>
+                        <div>
+                            <label class="block text-sm text-white/70 mb-2">Copy Type</label>
+                            <select name="type" class="input-dark w-full rounded-lg px-4 py-2.5">
+                                <option value="bio">Social Media Bio</option>
+                                <option value="tagline">Slogan / Tagline</option>
+                                <option value="mission">Mission Statement</option>
+                                <option value="usp">Value Proposition</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-white/70 mb-2">Describe your Business</label>
+                            <textarea name="description" required rows="3" class="input-dark w-full rounded-lg px-4 py-3" placeholder="We sell eco-friendly shoes to Gen Z..."></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-white/70 mb-2">Key Vibe / Focus</label>
+                            <select name="focus" class="input-dark w-full rounded-lg px-4 py-2.5">
+                                <option value="luxury">Luxury & Premium</option>
+                                <option value="affordable">Affordable & Accessible</option>
+                                <option value="innovative">Innovative & Techy</option>
+                                <option value="sustainable">Sustainable & Ethical</option>
+                            </select>
+                        </div>
+                    </form>
+
+                    <form id="form-scripts" class="space-y-5 hidden" onsubmit="handleGenerate(event)">
+                        <h3 class="text-lg font-semibold text-white border-b border-white/5 pb-2">Video Script Details</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm text-white/70 mb-2">Script Type</label>
+                                <select name="type" class="input-dark w-full rounded-lg px-4 py-2.5">
+                                    <option value="tiktok">TikTok / Reel (Short)</option>
+                                    <option value="youtube_intro">YouTube Intro</option>
+                                    <option value="ad_script">Video Ad Script</option>
+                                    <option value="explainer">Product Explainer</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-white/70 mb-2">Duration Target</label>
+                                <select name="duration" class="input-dark w-full rounded-lg px-4 py-2.5">
+                                    <option value="15s">15 Seconds</option>
+                                    <option value="30s">30 Seconds</option>
+                                    <option value="60s">1 Minute</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-white/70 mb-2">Topic / Product</label>
+                            <input type="text" name="topic" required class="input-dark w-full rounded-lg px-4 py-2.5" placeholder="E.g. How to use our new app">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-white/70 mb-2">Key Points to Cover</label>
+                            <textarea name="points" required rows="3" class="input-dark w-full rounded-lg px-4 py-3" placeholder="- Easy to use&#10;- Saves time&#10;- Affordable"></textarea>
+                        </div>
+                    </form>
+
+                    <div class="pt-6 mt-2 border-t border-white/5">
+                        <button type="button" onclick="document.querySelector('form:not(.hidden)').dispatchEvent(new Event('submit'))" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-orange-900/30 transition-all flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            <span>Generate Copy</span>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="lg:col-span-5">
+                <div class="sticky top-28 bg-[#1a1d23] border border-white/10 rounded-xl flex flex-col h-[600px] overflow-hidden">
+                    
+                    <div class="p-4 border-b border-white/10 flex justify-between items-center bg-[#14161a]">
+                        <span class="font-semibold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-robot text-orange-400"></i> AI Output
+                        </span>
+                        <div class="flex gap-2">
+                             <button onclick="saveDraft()" class="text-xs text-white/50 hover:text-white px-2 py-1 rounded bg-white/5 hover:bg-white/10 transition">
+                                <i class="fa-regular fa-bookmark"></i> Save
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="loading-state" class="hidden flex-1 flex flex-col justify-center items-center p-8 space-y-4">
+                        <div class="w-16 h-16 rounded-full bg-orange-500/20 flex items-center justify-center relative">
+                            <div class="absolute w-full h-full rounded-full border-2 border-orange-500 border-t-transparent animate-spin"></div>
+                            <i class="fa-solid fa-wand-magic-sparkles text-orange-500 text-xl"></i>
+                        </div>
+                        <p class="text-white/60 text-sm animate-pulse">Writing your copy...</p>
+                    </div>
+
+                    <div id="empty-state" class="flex-1 flex flex-col justify-center items-center p-8 text-center text-white/30">
+                        <i class="fa-regular fa-file-lines text-5xl mb-4 opacity-50"></i>
+                        <p class="text-sm max-w-[200px]">Fill out the form and click generate to see results here.</p>
+                    </div>
+
+                    <div id="result-state" class="hidden flex-1 flex flex-col h-full relative">
+                        <div id="dynamic-output" class="flex-1 overflow-y-auto bg-[#0f1115]/50 flex flex-col">
+                            
+                        </div>
+                        
+                        <div class="p-4 border-t border-white/10 bg-[#14161a] flex justify-between shrink-0">
+                             <button onclick="document.querySelector('form:not(.hidden)').dispatchEvent(new Event('submit'))" class="text-xs text-white/50 hover:text-white flex items-center gap-1">
+                                <i class="fa-solid fa-rotate-right"></i> Regenerate
+                            </button>
+                            <div class="text-[10px] text-white/20 self-center">AI generated content may need editing.</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // --- 1. SETUP ---
+        const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
+
+        let supabase = null;
+        if (typeof window.supabase !== 'undefined') {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        } else {
+            console.error('Supabase SDK failed to load. Check your internet connection.');
+        }
+
+        // --- 2. STATE ---
+        let currentCategory = 'social';
+        let lastResponseData = null; // Store full JSON response
+        
+        // --- 3. UI LOGIC ---
+
+        function setCategory(id) {
+            currentCategory = id;
+            
+            // Update Cards
+            document.querySelectorAll('.category-card').forEach(c => c.classList.remove('active'));
+            document.getElementById('cat-' + id).classList.add('active');
+
+            // Update Forms
+            document.querySelectorAll('form').forEach(f => f.classList.add('hidden'));
+            const activeForm = document.getElementById('form-' + id);
+            if(activeForm) {
+                activeForm.classList.remove('hidden');
+                activeForm.classList.add('fade-in');
+            }
+
+            // Reset Output to empty state
+            document.getElementById('result-state').classList.add('hidden');
+            document.getElementById('empty-state').classList.remove('hidden');
+            lastResponseData = null; // Clear old data
+        }
+
+        async function handleGenerate(e) {
+            e.preventDefault();
+            
+            const form = e.target;
+            const btn = form.closest('div').querySelector('button'); 
+            const originalBtnText = btn.innerHTML;
+            
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Generating...`;
+            
+            document.getElementById('empty-state').classList.add('hidden');
+            document.getElementById('result-state').classList.add('hidden');
+            document.getElementById('loading-state').classList.remove('hidden');
+
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+
+            // --- BACKEND INTEGRATION POINT ---
+            /*
+            const response = await fetch('/api/generate-copy', { 
+               method: 'POST', 
+               body: JSON.stringify({ category: currentCategory, ...data }) 
+            });
+            const result = await response.json();
+            */
+
+            // Mock Delay & Response
+            setTimeout(() => {
+                const mockResponse = getMockResponse(currentCategory, data);
+                
+                // --- 4. UNIVERSAL RESPONSE HANDLER CALL ---
+                renderOutput(mockResponse);
+                
+                document.getElementById('loading-state').classList.add('hidden');
+                document.getElementById('result-state').classList.remove('hidden');
+                btn.disabled = false;
+                btn.innerHTML = originalBtnText;
+
+            }, 1500);
+        }
+
+        // --- 5. OUTPUT RENDERING LOGIC ---
+
+        function renderOutput(response) {
+            lastResponseData = response;
+            const container = document.getElementById('dynamic-output');
+            container.innerHTML = ''; // Clear previous
+
+            if (!response || !response.type) {
+                container.innerHTML = `<div class="p-6 text-white/50 text-center">Error: Invalid response format</div>`;
+                return;
+            }
+
+            // Route to specific renderer
+            switch (response.type) {
+                case 'social_media': renderSocialMediaOutput(response, container); break;
+                case 'ads': renderAdsOutput(response, container); break;
+                case 'website': renderWebsiteOutput(response, container); break;
+                case 'whatsapp': renderWhatsAppOutput(response, container); break;
+                case 'offer': renderOfferOutput(response, container); break;
+                case 'branding': renderBrandingOutput(response, container); break;
+                case 'script': renderScriptOutput(response, container); break;
+                default:
+                    container.innerHTML = `<div class="p-6 text-white/50 text-center">Unknown content type: ${response.type}</div>`;
+            }
+        }
+
+        // --- Service-Specific Renderers ---
+
+        function renderSocialMediaOutput(data, container) {
+            // Uses Tabs for Variations
+            const variations = data.variations || [];
+            if(variations.length === 0) { container.innerHTML = `<div class="p-6 text-white/50 text-center">No variations generated.</div>`; return; }
+
+            // Create Tabs Header
+            const tabsHeader = document.createElement('div');
+            tabsHeader.className = "flex border-b border-white/5 px-4 pt-2 gap-4 shrink-0 bg-[#1a1d23]";
+            variations.forEach((_, i) => {
+                const activeClass = i === 0 ? 'active' : '';
+                tabsHeader.innerHTML += `<button onclick="switchVariationTab(${i})" class="tab-btn ${activeClass} text-sm pb-2 font-medium" data-tab="${i}">Variation ${i+1}</button>`;
+            });
+            container.appendChild(tabsHeader);
+
+            // Create Tab Contents
+            const contentWrapper = document.createElement('div');
+            contentWrapper.className = "flex-1 p-5 relative";
+            
+            variations.forEach((text, i) => {
+                const hiddenClass = i === 0 ? '' : 'hidden';
+                const div = document.createElement('div');
+                div.id = `var-content-${i}`;
+                div.className = `variation-content ${hiddenClass} text-white/90 leading-relaxed whitespace-pre-wrap font-light text-sm`;
+                div.innerHTML = `
+                    <div class="bg-white/5 p-4 rounded-lg border border-white/5 relative group">
+                        ${text}
+                        <button onclick="copyText('${escapeHtml(text)}', this)" class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition bg-black/50 hover:bg-black text-xs text-white px-2 py-1 rounded"><i class="fa-regular fa-copy"></i></button>
+                    </div>
+                `;
+                contentWrapper.appendChild(div);
+            });
+
+            // Footer info
+            if(data.hashtags && data.hashtags.length > 0) {
+                const tags = document.createElement('div');
+                tags.className = "mt-4 pt-4 border-t border-white/10 text-blue-300 text-sm italic";
+                tags.innerHTML = `<span class="text-white/40 text-xs font-bold uppercase block mb-1">Hashtags</span> ${data.hashtags.join(' ')}`;
+                contentWrapper.appendChild(tags);
+            }
+            
+            if(data.content_angle) {
+                const angle = document.createElement('div');
+                angle.className = "mt-4 text-xs text-white/40";
+                angle.innerHTML = `<span class="font-bold">Angle:</span> ${data.content_angle}`;
+                contentWrapper.appendChild(angle);
+            }
+            
+            if(data.cta) {
+                const ctaEl = document.createElement('div');
+                ctaEl.className = "mt-4 pt-4 border-t border-white/10";
+                ctaEl.innerHTML = `<div class="text-xs text-white/40 uppercase font-bold mb-2">Recommended CTA</div><div class="bg-blue-500/10 border border-blue-500/20 rounded p-3 text-blue-300 text-sm italic">${data.cta}</div>`;
+                contentWrapper.appendChild(ctaEl);
+            }
+
+            container.appendChild(contentWrapper);
+        }
+
+        function renderAdsOutput(data, container) {
+            let html = `<div class="p-5 space-y-6">`;
+            
+            // Headlines
+            if(data.headlines && data.headlines.length) {
+                html += `
+                    <div>
+                        <h4 class="text-xs text-white/40 uppercase font-bold mb-2">Headlines</h4>
+                        <div class="space-y-2">
+                            ${data.headlines.map(h => `
+                                <div class="bg-white/5 p-3 rounded border border-white/5 flex justify-between items-center group">
+                                    <span class="text-sm text-white/90 font-medium">${h}</span>
+                                    <button onclick="copyText('${escapeHtml(h)}', this)" class="text-white/30 hover:text-white"><i class="fa-regular fa-copy"></i></button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>`;
+            }
+
+            // Primary Text
+            if(data.primary_text && (data.primary_text.short || data.primary_text.long)) {
+                html += `
+                    <div>
+                        <h4 class="text-xs text-white/40 uppercase font-bold mb-2">Primary Text</h4>
+                        <div class="space-y-4">
+                            ${data.primary_text.short ? `
+                                <div class="bg-white/5 p-4 rounded-lg border border-white/5 relative">
+                                    <div class="absolute top-0 left-0 bg-white/10 text-[10px] px-2 py-0.5 rounded-tl rounded-br text-white/60">Short</div>
+                                    <p class="text-sm text-white/80 mt-3 whitespace-pre-wrap">${data.primary_text.short}</p>
+                                    <button onclick="copyText('${escapeHtml(data.primary_text.short)}', this)" class="absolute top-2 right-2 text-white/30 hover:text-white"><i class="fa-regular fa-copy"></i></button>
+                                </div>` : ''}
+                            
+                             ${data.primary_text.long ? `
+                                <div class="bg-white/5 p-4 rounded-lg border border-white/5 relative">
+                                    <div class="absolute top-0 left-0 bg-white/10 text-[10px] px-2 py-0.5 rounded-tl rounded-br text-white/60">Long</div>
+                                    <p class="text-sm text-white/80 mt-3 whitespace-pre-wrap">${data.primary_text.long}</p>
+                                    <button onclick="copyText('${escapeHtml(data.primary_text.long)}', this)" class="absolute top-2 right-2 text-white/30 hover:text-white"><i class="fa-regular fa-copy"></i></button>
+                                </div>` : ''}
+                        </div>
+                    </div>`;
+            }
+            
+            // Urgency/CTA
+            if (data.urgency_line) {
+                 html += `<div class="mt-4 pt-4 border-t border-white/10">
+                    <h4 class="text-xs text-white/40 uppercase font-bold mb-2">Urgency Line</h4>
+                    <p class="text-sm text-orange-400 italic font-semibold">${data.urgency_line}</p>
+                </div>`;
+            }
+
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        function renderWebsiteOutput(data, container) {
+            let html = `<div class="p-5 space-y-6">`;
+            
+            // Hero / Main
+            html += `
+                <div class="bg-gradient-to-br from-white/5 to-transparent p-6 rounded-xl border border-white/10 text-center relative group">
+                    <button onclick="copyText('${escapeHtml(data.headline + ' ' + data.paragraph)}', this)" class="absolute top-3 right-3 text-white/30 hover:text-white"><i class="fa-regular fa-copy"></i></button>
+                    <h2 class="text-xl md:text-2xl font-bold text-white mb-3">${data.headline || 'Your Headline'}</h2>
+                    <p class="text-white/70 text-sm leading-relaxed">${data.paragraph || ''}</p>
+                    ${data.cta ? `<div class="mt-4 inline-block px-5 py-2 bg-orange-600 rounded text-sm font-bold text-white">${data.cta}</div>` : ''}
+                </div>`;
+
+            // Benefits
+            if(data.benefits && data.benefits.length) {
+                html += `
+                    <div>
+                        <h4 class="text-xs text-white/40 uppercase font-bold mb-2">Key Benefits</h4>
+                        <ul class="space-y-2">
+                            ${data.benefits.map(b => `<li class="flex gap-3 text-sm text-white/80"><i class="fa-solid fa-check text-green-500 mt-1"></i> ${b}</li>`).join('')}
+                        </ul>
+                    </div>`;
+            }
+
+            // SEO
+            if(data.seo_snippet) {
+                 html += `
+                    <div class="border-t border-white/10 pt-4">
+                        <h4 class="text-xs text-white/40 uppercase font-bold mb-2">SEO Meta Description</h4>
+                        <p class="text-xs text-white/60 font-mono bg-black/30 p-3 rounded">${data.seo_snippet}</p>
+                    </div>`;
+            }
+
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        function renderWhatsAppOutput(data, container) {
+            const msgs = [
+                { title: 'Main Message', text: data.main_message },
+                { title: 'Short Version', text: data.short_version },
+                { title: 'Follow Up', text: data.follow_up }
+            ].filter(m => m.text);
+
+            let html = `<div class="p-5 space-y-4">`;
+            
+            msgs.forEach(m => {
+                html += `
+                <div class="bg-[#0b141a] border border-[#202c33] p-4 rounded-lg relative max-w-[90%] mx-auto shadow-lg">
+                    <div class="text-[10px] text-white/30 uppercase font-bold mb-1">${m.title}</div>
+                    <div class="text-sm text-white/90 whitespace-pre-wrap">${m.text}</div>
+                    <div class="text-[10px] text-white/30 text-right mt-2">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                    <button onclick="copyText('${escapeHtml(m.text)}', this)" class="absolute -right-8 top-0 text-white/30 hover:text-white p-2"><i class="fa-regular fa-copy"></i></button>
+                </div>`;
+            });
+            
+            if(data.cta) {
+                 html += `<div class="mt-4 pt-4 border-t border-white/10">
+                    <h4 class="text-xs text-white/40 uppercase font-bold mb-2">Suggested CTA</h4>
+                    <p class="text-sm text-white/80 italic">${data.cta}</p>
+                </div>`;
+            }
+
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        function renderOfferOutput(data, container) {
+             let html = `<div class="p-5">
+                <div class="bg-gradient-to-r from-orange-500/10 to-purple-500/10 border border-orange-500/20 rounded-xl p-6 text-center relative">
+                    <button onclick="copyText('${escapeHtml(data.headline + ' ' + data.description)}', this)" class="absolute top-3 right-3 text-white/30 hover:text-white"><i class="fa-regular fa-copy"></i></button>
+                    
+                    <div class="text-orange-400 font-bold tracking-widest text-xs uppercase mb-2">${data.urgency || 'Limited Time Offer'}</div>
+                    <h2 class="text-2xl font-bold text-white mb-2">${data.headline}</h2>
+                    <p class="text-white/70 text-sm mb-6">${data.description}</p>
+                    
+                    <div class="mt-4 bg-white/10 inline-block px-4 py-2 rounded-lg border border-dashed border-white/20 text-sm font-mono text-orange-200 cursor-pointer hover:bg-white/20 transition">
+                        ${data.cta || 'SHOP NOW'}
+                    </div>
+                </div>
+                
+                ${data.short_promo ? `
+                <div class="mt-6">
+                     <h4 class="text-xs text-white/40 uppercase font-bold mb-2">Short Promo (SMS/Tweet)</h4>
+                     <div class="bg-white/5 p-3 rounded border border-white/5 text-sm text-white/80 relative group">
+                        ${data.short_promo}
+                        <button onclick="copyText('${escapeHtml(data.short_promo)}', this)" class="absolute top-2 right-2 text-white/30 hover:text-white opacity-0 group-hover:opacity-100"><i class="fa-regular fa-copy"></i></button>
+                     </div>
+                </div>` : ''}
+             </div>`;
+             container.innerHTML = html;
+        }
+
+        function renderBrandingOutput(data, container) {
+            let html = `<div class="p-5 space-y-6">`;
+            
+            // Primary
+            html += `
+                <div>
+                     <h4 class="text-xs text-white/40 uppercase font-bold mb-2">Primary Option</h4>
+                     <div class="bg-white/5 p-4 rounded-xl border border-white/10 text-lg font-medium text-white/90 text-center relative group">
+                        "${data.primary}"
+                        <button onclick="copyText('${escapeHtml(data.primary)}', this)" class="absolute top-1/2 -translate-y-1/2 right-4 text-white/30 hover:text-white opacity-0 group-hover:opacity-100"><i class="fa-regular fa-copy"></i></button>
+                     </div>
+                </div>`;
+            
+            // Alternatives
+            if(data.alternatives && data.alternatives.length) {
+                html += `
+                    <div>
+                        <h4 class="text-xs text-white/40 uppercase font-bold mb-2">Alternatives</h4>
+                         <div class="space-y-2">
+                            ${data.alternatives.map(a => `
+                                <div class="bg-white/5 p-3 rounded border border-white/5 text-sm text-white/70 flex justify-between">
+                                    <span>${a}</span>
+                                    <button onclick="copyText('${escapeHtml(a)}', this)" class="text-white/20 hover:text-white"><i class="fa-regular fa-copy"></i></button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>`;
+            }
+            
+            if(data.short_bio) {
+                html += `<div class="mt-4 pt-4 border-t border-white/10">
+                     <h4 class="text-xs text-white/40 uppercase font-bold mb-2">Short Bio/Description</h4>
+                     <div class="text-sm text-white/60 italic">${data.short_bio}</div>
+                </div>`;
+            }
+
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        function renderScriptOutput(data, container) {
+            let html = `<div class="p-5 space-y-6">`;
+            
+            const sections = [
+                { label: 'The Hook (0-3s)', text: data.hook, icon: 'fa-solid fa-magnet' },
+                { label: 'The Script Body', text: data.script, icon: 'fa-solid fa-align-left' },
+                { label: 'Call to Action', text: data.cta, icon: 'fa-solid fa-bullhorn' }
+            ];
+
+            sections.forEach(s => {
+                if(s.text) {
+                    html += `
+                    <div>
+                        <div class="flex items-center gap-2 mb-2">
+                             <i class="${s.icon} text-orange-500 text-xs"></i>
+                             <h4 class="text-xs text-white/40 uppercase font-bold">${s.label}</h4>
+                        </div>
+                        <div class="bg-white/5 p-4 rounded-lg border border-white/5 text-sm text-white/80 whitespace-pre-wrap relative group">
+                            ${s.text}
+                            <button onclick="copyText('${escapeHtml(s.text)}', this)" class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition text-white/30 hover:text-white"><i class="fa-regular fa-copy"></i></button>
+                        </div>
+                    </div>`;
+                }
+            });
+
+            if(data.objection_handler) {
+                html += `
+                <div class="mt-4 pt-4 border-t border-white/10">
+                     <h4 class="text-xs text-white/40 uppercase font-bold mb-2">Objection Handler</h4>
+                     <p class="text-sm text-white/60 italic">"${data.objection_handler}"</p>
+                </div>`;
+            }
+
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        // --- Helpers ---
+        function switchVariationTab(index) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector(`.tab-btn[data-tab="${index}"]`).classList.add('active');
+            
+            document.querySelectorAll('.variation-content').forEach(c => c.classList.add('hidden'));
+            document.getElementById(`var-content-${index}`).classList.remove('hidden');
+        }
+        
+        // UPDATED COPY FUNCTION FOR BETTER UX FEEDBACK
+        function copyText(text, btnElement) {
+            if (!text) return;
+            navigator.clipboard.writeText(text.replace(/\\n/g, '\n')).then(() => {
+                // Inline button feedback
+                if(btnElement) {
+                    const originalIcon = btnElement.innerHTML;
+                    btnElement.innerHTML = `<i class="fa-solid fa-check text-green-400"></i>`;
+                    // Restore original icon after 1.5 seconds
+                    setTimeout(() => {
+                        btnElement.innerHTML = originalIcon;
+                    }, 1500);
+                } else {
+                    // Global button feedback
+                    const btn = document.getElementById('header-copy-btn');
+                    const orig = btn.innerHTML;
+                    btn.innerHTML = `<i class="fa-solid fa-check"></i> Copied!`;
+                    setTimeout(() => btn.innerHTML = orig, 2000);
+                }
+            });
+        }
+        
+        // NEW FUNCTION TO COPY THE MOST RELEVANT PIECE OF OUTPUT
+        function copyCurrentOutput() {
+            if (!lastResponseData) return;
+            
+            let textToCopy = '';
+
+            switch (lastResponseData.type) {
+                case 'social_media':
+                    const activeIndex = Array.from(document.querySelectorAll('.tab-btn')).findIndex(btn => btn.classList.contains('active'));
+                    textToCopy = lastResponseData.variations[activeIndex || 0] || '';
+                    break;
+                case 'ads':
+                    textToCopy = lastResponseData.primary_text.short || lastResponseData.headlines[0] || '';
+                    if (textToCopy && lastResponseData.primary_text.long && !lastResponseData.primary_text.short) {
+                         textToCopy = lastResponseData.primary_text.long;
+                    }
+                    break;
+                case 'website':
+                    textToCopy = `${lastResponseData.headline || ''}\n\n${lastResponseData.paragraph || ''}`;
+                    break;
+                case 'whatsapp':
+                    textToCopy = lastResponseData.main_message || '';
+                    break;
+                case 'offer':
+                    textToCopy = `${lastResponseData.headline || ''}\n${lastResponseData.description || ''}`;
+                    break;
+                case 'branding':
+                    textToCopy = lastResponseData.primary || '';
+                    break;
+                case 'script':
+                    textToCopy = `${lastResponseData.hook || ''}\n\n${lastResponseData.script || ''}`;
+                    break;
+            }
+            
+            copyText(escapeHtml(textToCopy), null); // null targets the global button feedback logic
+        }
+
+        function escapeHtml(text) {
+             if(!text) return '';
+             // Ensure quotes and newlines are correctly escaped for JS string literal insertion into HTML attribute
+             return text
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;")
+                 .replace(/\n/g, "\\n"); 
+        }
+
+        function saveDraft() {
+            if(!lastResponseData) {
+                alert("Nothing to save. Generate copy first!");
+                return;
+            }
+            console.log('Saving draft:', lastResponseData);
+            alert("Draft saved to 'My Content' (Mock Action)");
+        }
+
+        // --- 6. MOCK DATA GENERATOR (UPDATED SCHEMAS) ---
+        function getMockResponse(category, data) {
+            const topic = data.topic || data.product || data.reason || "your business";
+            
+            if (category === 'social') {
+                return {
+                    type: "social_media",
+                    platform: data.platform || "instagram",
+                    variations: [
+                        `✨ Something exciting is brewing! \n\nWe've been working hard on ${topic} and we can't wait to share it. It's designed to bring more joy to your routine.\n\nWho needs this? 🙋‍♀️`,
+                        `Stop scrolling! 🛑\n\nIf you've been looking for a sign to upgrade your routine, this is it. Introducing our take on ${topic}.\n\n✅ Better quality\n✅ Faster results\n\nCheck the link in bio!`,
+                        `Question: When was the last time you treated yourself? 🤔\n\n${topic} is the perfect excuse. Let us know in the comments!`
+                    ],
+                    hashtags: ["#BusinessGrowth", "#Trending", "#" + (data.platform || "Social")],
+                    cta: "Link in bio to learn more! 👆",
+                    content_angle: "Excitement & Curiosity"
+                };
+            }
+            
+            if (category === 'ads') {
+                return {
+                    type: "ads",
+                    headlines: [
+                        `Stop Wasting Time on Old Methods`,
+                        `The Ultimate Solution for ${topic}`,
+                        `Try ${topic} Risk-Free Today`
+                    ],
+                    primary_text: {
+                        short: `Get the results you want with ${topic}. Fast, reliable, and affordable. Click to learn more.`,
+                        long: `Struggling with the old way? It's time for a change. \n\n${topic} is designed for people who value quality and speed. \n\nJoin 500+ happy customers who have already switched. Don't miss out on our limited time offer.`
+                    },
+                    cta_options: ["Shop Now", "Learn More", "Sign Up"],
+                    urgency_line: "Offer ends in 24 hours!"
+                };
+            }
+
+            if (category === 'website') {
+                return {
+                    type: "website",
+                    headline: `Experience the Future of ${topic}`,
+                    paragraph: `We provide cutting-edge solutions designed to help you succeed faster. Whether you are a pro or a beginner, ${topic} adapts to your needs.`,
+                    benefits: [
+                        "Instantly saves you 10+ hours a week",
+                        "Seamless integration with your workflow",
+                        "24/7 Support included"
+                    ],
+                    cta: "Get Started for Free",
+                    seo_snippet: `Best ${topic} solution for 2025. Increase productivity and save money with our top-rated tool.`
+                };
+            }
+
+            if (category === 'whatsapp') {
+                return {
+                    type: "whatsapp",
+                    main_message: `Hey [Name]! 👋 \n\nJust wanted to check in regarding ${topic}. I think it would be a perfect fit for what you're trying to achieve this month.\n\nDo you have 5 mins to chat this week?`,
+                    short_version: `Hi [Name], quick question about ${topic} - are you still looking for help with this?`,
+                    follow_up: `Hi again! Just bumping this up in case you missed it. Would love to hear your thoughts on ${topic}.`,
+                    cta: "Reply to chat"
+                };
+            }
+
+            if (category === 'offers') {
+                return {
+                    type: "offer",
+                    headline: `Flash Sale: 50% Off ${topic}`,
+                    description: `Get the best deal of the year. Valid for the next 48 hours only. Don't miss out on premium quality for half the price.`,
+                    urgency: "ENDS TONIGHT",
+                    cta: "CLAIM DISCOUNT",
+                    short_promo: `🔥 50% OFF ${topic}! Ends tonight. Link: [URL]`
+                };
+            }
+
+            if (category === 'branding') {
+                return {
+                    type: "branding",
+                    primary: `Elevating ${topic} for the modern world.`,
+                    alternatives: [
+                        `${topic} Reimagined.`,
+                        `Simply the best ${topic}.`,
+                        `Your partner in ${topic}.`
+                    ],
+                    short_bio: `We help people master ${topic} through innovation and care.`,
+                    usage: ["Social Bio", "Hero Section"]
+                };
+            }
+
+            if (category === 'scripts') {
+                return {
+                    type: "script",
+                    hook: `(Visual: Person looking frustrated)\n"Stop doing ${topic} the hard way..."`,
+                    script: `(Visual: Cut to product demo)\nMost people think ${topic} takes forever. But with our new tool, it takes seconds.\n\nWatch this... (Demo shows speed).\n\nSee that? That's the power of modern engineering.`,
+                    objection_handler: "Think it's too expensive? It actually costs less than your daily coffee.",
+                    cta: "Click the link below to try it free.",
+                    hook_variations: ["I bet you didn't know this...", "This hack changed my life..."]
+                };
+            }
+
+            return { type: "unknown" };
+        }
+
+    </script>
+</body>
+</html>

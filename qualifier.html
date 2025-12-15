@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=0.8, viewport-fit=cover">
+    <title>Lead Qualification | VV Systems</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f1115; color: white; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background-color: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.1); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.2); }
+
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- DASHBOARD CARDS (New Style) --- */
+        .dash-card {
+            background: linear-gradient(145deg, #1a1d23 0%, #14161a 100%);
+            border: 1px solid #2b2f3a;
+            border-radius: 16px;
+            padding: 2rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 280px;
+        }
+        
+        .dash-card:hover {
+            transform: translateY(-5px);
+            border-color: #f97316;
+            box-shadow: 0 10px 30px -10px rgba(249, 115, 22, 0.15);
+        }
+
+        .dash-card .icon-box {
+            width: 60px; height: 60px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.05);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; color: white;
+            transition: background 0.3s;
+        }
+        .dash-card:hover .icon-box { background: rgba(249, 115, 22, 0.2); color: #f97316; }
+
+        /* --- WIZARD STYLES --- */
+        .input-dark {
+            background-color: #0f1115; border: 1px solid #2b2f3a; color: white;
+            border-radius: 0.75rem; padding: 0.75rem 1rem; width: 100%;
+            transition: border-color 0.2s;
+        }
+        .input-dark:focus { outline: none; border-color: #f97316; }
+
+        .step-indicator { height: 4px; border-radius: 2px; background: #2b2f3a; flex: 1; transition: background 0.3s; }
+        .step-indicator.active { background: #f97316; }
+
+        /* --- CATEGORY BLOCKS (Focus Logic) --- */
+        .cat-block {
+            border: 1px solid #2b2f3a; border-radius: 12px; padding: 1.5rem;
+            background: #15171c; margin-bottom: 2rem;
+            transition: all 0.4s ease;
+            opacity: 0.6; transform: scale(0.98);
+        }
+        
+        /* When active/focused */
+        .cat-block.active-block {
+            opacity: 1; transform: scale(1.02);
+            border-color: #f97316;
+            background: #1a1d23;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            z-index: 10;
+        }
+
+        /* --- BUTTONS --- */
+        .btn-primary { background-color: #f97316; color: white; font-weight: 600; padding: 0.75rem 1.5rem; border-radius: 0.75rem; transition: all 0.2s; }
+        .btn-primary:hover { background-color: #ea580c; box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3); }
+        
+        .btn-secondary { background-color: rgba(255,255,255,0.05); color: white; font-weight: 500; padding: 0.75rem 1.5rem; border-radius: 0.75rem; border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; }
+        .btn-secondary:hover { background-color: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+
+        /* Hide sections initially */
+        .app-view { display: none; }
+        .app-view.active { display: block; animation: fadeIn 0.4s ease-out forwards; }
+        .hidden { display: none !important; }
+
+        /* Range Slider Styling */
+        input[type=range] { -webkit-appearance: none; -moz-appearance: none; appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #f97316; cursor: pointer; margin-top: -6px; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #2b2f3a; border-radius: 2px; }
+
+        /* Create wizard container: allow internal scrolling and reserve space for sticky actions */
+        .create-container { max-height: calc(100vh - 140px); overflow-y: auto; padding-bottom: 4rem; }
+
+    </style>
+</head>
+<body class="min-h-screen flex flex-col overflow-hidden">
+
+    <header class="h-16 px-6 flex justify-between items-center border-b border-white/5 bg-[#0f1115] z-40">
+        <div class="flex items-center gap-3">
+            <img src="assets/logo.png" onerror="this.src='https://via.placeholder.com/32'" alt="VV Studios Logo" class="w-8 h-8 rounded-lg object-cover cursor-pointer" onclick="history.back()">
+            <a href="#" onclick="history.back(); return false;" class="font-bold text-lg tracking-tight text-white">VV Studios</a>
+            <span class="text-white/50 ml-2">| Lead Qualifier</span>
+        </div>
+        <div class="flex gap-4">
+            <button id="back-to-start-btn" onclick="navigate('dashboard')" class="text-xs px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-md text-white hidden">Back to Start</button>
+            <button onclick="navigate('templates')" class="text-xs text-white/60 hover:text-white transition-colors">My Templates</button>
+            <button onclick="navigate('create')" class="text-xs px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 rounded-md transition-colors border border-orange-500/20 flex items-center gap-2">
+                <i class="fa-solid fa-plus"></i> New Template
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 w-full max-w-[1200px] mx-auto p-4 md:p-8 overflow-y-auto pb-32">
+
+        <div id="view-dashboard" class="app-view active">
+            <div class="text-center mb-12 mt-8">
+                <h1 class="text-3xl md:text-5xl font-bold mb-4 text-white">
+                    Filter Leads, Maximize Sales!
+                </h1>
+                <p class="text-white/50 text-lg max-w-xl mx-auto">
+                    We built this so you can maximize every meeting with qualified prospects. Set your criteria, launch live sessions, and analyze results to close more deals. 
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="dash-card group" onclick="navigate('create')">
+                    <div>
+                        <div class="icon-box mb-6"><i class="fa-solid fa-layer-group"></i></div>
+                        <h3 class="text-2xl font-bold text-white mb-2">Create</h3>
+                        <p class="text-white/40 text-sm leading-relaxed">Create new qualification templates and define which leads matter most.</p>
+                    </div>
+                    <div class="flex items-center text-orange-400 font-bold text-sm mt-4 group-hover:translate-x-2 transition-transform">
+                        Create Template <i class="fa-solid fa-arrow-right ml-2"></i>
+                    </div>
+                </div>
+
+                <div class="dash-card group" onclick="startNewMeetingFlow()">
+                    <div>
+                        <div class="icon-box mb-6"><i class="fa-solid fa-phone"></i></div>
+                        <h3 class="text-2xl font-bold text-white mb-2">Start Meeting</h3>
+                        <p class="text-white/40 text-sm leading-relaxed">Launch a live session. Guide the conversation and score in real-time.</p>
+                    </div>
+                    <div class="flex items-center text-purple-400 font-bold text-sm mt-4 group-hover:translate-x-2 transition-transform">
+                        Launch Live Mode <i class="fa-solid fa-arrow-right ml-2"></i>
+                    </div>
+                </div>
+
+                <div class="dash-card group" onclick="navigate('results')">
+                    <div>
+                        <div class="icon-box mb-6"><i class="fa-solid fa-chart-simple"></i></div>
+                        <h3 class="text-2xl font-bold text-white mb-2">Meeting Insights</h3>
+                        <p class="text-white/40 text-sm leading-relaxed">Review past meetings, analyze scores, and determine next steps.</p>
+                    </div>
+                    <div class="flex items-center text-blue-400 font-bold text-sm mt-4 group-hover:translate-x-2 transition-transform">
+                        View History <i class="fa-solid fa-arrow-right ml-2"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-create" class="app-view">
+            <div class="max-w-3xl mx-auto h-full flex flex-col create-container">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-white">New Template</h2>
+                    <button onclick="navigate('dashboard')" class="text-white/40 hover:text-white"><i class="fa-solid fa-times"></i></button>
+                </div>
+
+                <div class="flex gap-2 mb-8">
+                    <div id="step-bar-1" class="step-indicator active"></div>
+                    <div id="step-bar-2" class="step-indicator"></div>
+                    <div id="step-bar-3" class="step-indicator"></div>
+                    <div id="step-bar-4" class="step-indicator"></div>
+                </div>
+
+                <div class="flex-1"> <div id="create-step-1" class="wizard-step">
+                        <h3 class="text-2xl font-bold text-orange-400 mb-2">The Basics</h3>
+                        <p class="text-white/50 mb-8">Name your system and define who you are targeting.</p>
+                        
+                        <div class="space-y-6">
+                            <div>
+                                <label class="block text-sm font-medium text-white/70 mb-2">Template Name</label>
+                                <input type="text" id="tpl-name" class="input-dark" placeholder="e.g. Enterprise Sales Discovery">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-white/70 mb-2">Ideal Client Profile</label>
+                                <textarea id="tpl-desc" class="input-dark min-h-[120px]" placeholder="Describe the perfect lead..."></textarea>
+                                <div class="mt-2 flex justify-end">
+                                    <button onclick="aiFillDesc()" class="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1"><i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Generate Description</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="create-step-2" class="wizard-step hidden">
+                        <h3 class="text-2xl font-bold text-purple-400 mb-2">Categories</h3>
+                        <p class="text-white/50 mb-2">What areas define a qualified lead? Toggle or add your own.</p>
+                        <p class="text-white/40 mb-6 text-sm">Tip: Categories are the high-level areas you'll ask about (budget, timeline, decision process). Use them to group questions and set priorities.</p>
+                        
+                        <div class="space-y-3 mb-8" id="category-list">
+                            </div>
+
+                        <div class="pt-6 border-t border-white/10">
+                            <label class="block text-sm text-white/40 mb-2">Add Custom Category</label>
+                            <div class="flex gap-2">
+                                <input type="text" id="new-cat-input" class="input-dark" placeholder="e.g. Technical Feasibility">
+                                <button onclick="addNewCategory()" class="btn-secondary whitespace-nowrap"><i class="fa-solid fa-plus"></i> Add</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="create-step-3" class="wizard-step hidden">
+                        <h3 class="text-2xl font-bold text-blue-400 mb-2">Questions & Benchmarks</h3>
+                        <p class="text-white/50 mb-8">Click a section to focus. Define what you need to ask.</p>
+                        
+                        <div id="questions-builder-container" class="space-y-6">
+                            </div>
+                    </div>
+
+                    <div id="create-step-4" class="wizard-step hidden">
+                        <h3 class="text-2xl font-bold text-green-400 mb-2">Priority & Weighting</h3>
+                        <p class="text-white/50 mb-8">Set the importance of each category from 1-10. The system calculates the math.</p>
+                        
+                        <div id="weights-container" class="space-y-6 bg-[#15171c] p-6 rounded-xl border border-white/5">
+                            </div>
+                    </div>
+                </div>
+
+                <div class="w-full bg-transparent py-6">
+                    <div class="max-w-3xl mx-auto flex justify-between items-center">
+                        <button onclick="prevStep()" class="text-white/50 hover:text-white px-4 py-2">Back</button>
+                        <button onclick="nextStep()" id="btn-next-step" class="btn-primary">Next Step</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-meeting" class="app-view">
+             <div id="meeting-setup" class="max-w-lg mx-auto mt-10">
+                <div class="bg-[#1a1d23] border border-[#2b2f3a] rounded-2xl p-8 text-center">
+                    <div class="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center mx-auto mb-4 text-orange-500 text-2xl">
+                        <i class="fa-solid fa-handshake"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-white mb-6">Start Qualification</h2>
+                    
+                    <div class="text-left space-y-4 mb-8">
+                        <div>
+                            <label class="text-xs text-white/50 uppercase">Client Name</label>
+                            <input type="text" id="m-client" class="input-dark mt-1" placeholder="e.g. Acme Corp">
+                        </div>
+                        <div>
+                            <label class="text-xs text-white/50 uppercase">Template</label>
+                            <select id="m-template" class="input-dark mt-1 bg-[#0f1115]">
+                                </select>
+                        </div>
+                    </div>
+
+                    <button onclick="launchMeeting()" class="w-full btn-primary">Start Meeting</button>
+                </div>
+            </div>
+
+            <div id="meeting-live" class="hidden h-full flex flex-col">
+                <div class="flex justify-between items-center mb-6 bg-[#1a1d23]/50 p-4 rounded-xl border border-white/5">
+                    <div>
+                        <h2 id="live-client-name" class="font-bold text-lg text-white">Client Name</h2>
+                        <div class="text-xs text-white/40 flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> LIVE
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div id="meeting-timer" class="text-xl font-mono text-white/70">00:00</div>
+                        <button onclick="toggleRoughNotes()" class="text-sm text-white/60 hover:text-white px-3 py-1 rounded-md border border-white/5">Rough Notes</button>
+                        <button onclick="cancelMeeting()" class="text-sm text-white/40 hover:text-white px-3 py-1 rounded-md border border-red-600/20">Cancel Meeting</button>
+                    </div>
+                </div>
+
+                <div class="flex-1 flex gap-6">
+                    <div class="flex-1 relative">
+                        <div class="h-full w-full relative rounded-2xl border border-white/10 bg-[#1a1d23] overflow-hidden flex flex-col">
+                            
+                            <div class="w-full h-1 bg-white/5">
+                                <div id="progress-bar" class="h-full bg-orange-500 transition-all duration-300" style="width: 10%;"></div>
+                            </div>
+
+                            <div class="p-8 flex flex-col h-full overflow-y-auto">
+                                <div class="mb-auto">
+                                    <span id="q-category" class="inline-block px-3 py-1 rounded-full bg-purple-500/10 text-purple-400 text-xs font-bold mb-4 border border-purple-500/20">CATEGORY</span>
+                                    <h3 id="q-text" class="text-2xl md:text-3xl font-bold text-white mb-2 leading-tight">Question Text?</h3>
+                                    
+                                    <div class="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg inline-block">
+                                        <p class="text-blue-200 text-xs"><i class="fa-solid fa-bullseye mr-2"></i><strong>Ideal Answer:</strong> <span id="q-benchmark">...</span></p>
+                                    </div>
+                                </div>
+
+                                <div id="q-input-area" class="my-8"></div>
+
+                                <div class="flex justify-between items-center pt-6 border-t border-white/5 mt-auto">
+                                    <button onclick="prevQuestion()" class="text-white/40 hover:text-white flex items-center gap-2">Previous</button>
+                                    <button onclick="nextQuestion()" class="btn-primary flex items-center gap-2 px-8">
+                                        <span id="btn-next-text">Next</span> <i class="fa-solid fa-arrow-right"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="rough-notes-panel" class="w-80 bg-[#0f1115] border border-white/5 rounded-xl p-4 hidden">
+                        <h4 class="font-bold text-white mb-2">Rough Notes</h4>
+                        <textarea id="rough-notes" class="w-full h-40 input-dark mb-3" placeholder="Type notes about the lead..."></textarea>
+                        <div class="flex gap-2">
+                            <button onclick="analyzeWithAI()" class="btn-secondary">Analyze with AI</button>
+                            <button onclick="saveMeetingNotes()" class="btn-primary">Save As Meeting Notes</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-templates" class="app-view">
+            <h2 class="text-3xl font-bold text-white mb-8">My Templates</h2>
+            <div class="bg-[#1a1d23] rounded-xl border border-[#2b2f3a] overflow-hidden p-4">
+                <table class="w-full text-left">
+                    <thead class="bg-[#20242c] text-white/50 text-xs uppercase">
+                        <tr>
+                            <th class="p-3">Name</th>
+                            <th class="p-3">Questions</th>
+                            <th class="p-3">Leads Vetted</th>
+                            <th class="p-3">Leads Qualified</th>
+                        </tr>
+                    </thead>
+                    <tbody id="templates-table-body" class="divide-y divide-[#2b2f3a] text-sm text-white"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="view-results" class="app-view">
+            <h2 class="text-3xl font-bold text-white mb-8">Past Qualifications</h2>
+            <div class="bg-[#1a1d23] rounded-xl border border-[#2b2f3a] overflow-hidden">
+                <table class="w-full text-left">
+                    <thead class="bg-[#20242c] text-white/50 text-xs uppercase">
+                        <tr>
+                            <th class="p-4">Client</th>
+                            <th class="p-4">Date</th>
+                            <th class="p-4">Score</th>
+                            <th class="p-4">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-table-body" class="divide-y divide-[#2b2f3a] text-sm text-white"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // --- 1. STATE ---
+        const state = {
+            templates: [],
+            meetings: [],
+            currentStep: 1,
+            // Working Draft Template
+            newTemplate: { 
+                name: '', 
+                categories: [], 
+                weights: {}, // Store as 1-10
+                questions: {} 
+            },
+            activeCatId: null, // For highlighting Step 3
+            activeMeeting: null,
+            timerInterval: null
+        };
+
+        const defaultCats = [
+            { id: 'cat_budget', name: 'Budget & Resources', enabled: true },
+            { id: 'cat_problem', name: 'Pain Points', enabled: true },
+            { id: 'cat_timeline', name: 'Timeline', enabled: true },
+            { id: 'cat_decision', name: 'Decision Process', enabled: false }
+        ];
+
+        // --- 2. HELPERS & NAV ---
+        function navigate(viewId) {
+            document.querySelectorAll('.app-view').forEach(el => el.classList.remove('active'));
+            document.getElementById('view-' + viewId).classList.add('active');
+            if(viewId === 'create') resetCreateWizard();
+            // stop meeting timer if navigating away from meeting
+            if(viewId !== 'meeting') stopMeetingTimer();
+            if(viewId === 'results') renderResults();
+            if(viewId === 'templates') renderTemplates();
+            // Toggle the header "Back to Start" button: show when not on dashboard
+            try {
+                var backBtn = document.getElementById('back-to-start-btn');
+                if(backBtn) {
+                    if(viewId === 'dashboard') backBtn.classList.add('hidden'); else backBtn.classList.remove('hidden');
+                }
+            } catch(e) {}
+        }
+
+        // --- 3. CREATE WIZARD ---
+        function resetCreateWizard() {
+            state.currentStep = 1;
+            state.newTemplate = { 
+                name: '', 
+                categories: JSON.parse(JSON.stringify(defaultCats)), 
+                weights: {}, 
+                questions: {} 
+            };
+            document.getElementById('tpl-name').value = '';
+            document.getElementById('tpl-desc').value = '';
+            updateWizardUI();
+        }
+
+        function updateWizardUI() {
+            // Hide all
+            document.querySelectorAll('.wizard-step').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.step-indicator').forEach(el => el.classList.remove('active'));
+            
+            // Show current
+            document.getElementById(`create-step-${state.currentStep}`).classList.remove('hidden');
+            
+            // Update bars
+            for(let i=1; i<=state.currentStep; i++) {
+                document.getElementById(`step-bar-${i}`).classList.add('active');
+            }
+
+            // Next Button Text
+            const nextBtn = document.getElementById('btn-next-step');
+            nextBtn.innerHTML = state.currentStep === 4 ? '<i class="fa-solid fa-save mr-2"></i>Save Template' : 'Next Step';
+
+            // Renders
+            if(state.currentStep === 2) renderCatSelection();
+            if(state.currentStep === 3) renderQuestionBuilder();
+            if(state.currentStep === 4) renderWeighting();
+        }
+
+        function nextStep() {
+            if(state.currentStep === 1) {
+                state.newTemplate.name = document.getElementById('tpl-name').value || "Untitled Template";
+            }
+            if(state.currentStep < 4) {
+                state.currentStep++;
+                updateWizardUI();
+            } else {
+                saveTemplate();
+            }
+        }
+
+        function prevStep() {
+            if(state.currentStep > 1) {
+                state.currentStep--;
+                updateWizardUI();
+            } else {
+                navigate('dashboard');
+            }
+        }
+
+        // STEP 2: CATEGORIES
+        function renderCatSelection() {
+            const container = document.getElementById('category-list');
+            container.innerHTML = '';
+            state.newTemplate.categories.forEach((cat, idx) => {
+                container.innerHTML += `
+                    <div class="flex items-center justify-between bg-[#15171c] p-4 rounded-xl border border-white/5 hover:border-white/10 transition">
+                        <span class="text-white font-medium">${cat.name}</span>
+                        <button onclick="toggleCat(${idx})" class="${cat.enabled ? 'text-green-400' : 'text-white/20'}">
+                            <i class="fa-solid fa-toggle-${cat.enabled ? 'on' : 'off'} text-3xl transition"></i>
+                        </button>
+                    </div>
+                `;
+            });
+        }
+
+        function toggleCat(idx) {
+            state.newTemplate.categories[idx].enabled = !state.newTemplate.categories[idx].enabled;
+            renderCatSelection();
+        }
+
+        function addNewCategory() {
+            const input = document.getElementById('new-cat-input');
+            const name = input.value.trim();
+            if(!name) return;
+            
+            const newId = 'cat_' + Date.now();
+            state.newTemplate.categories.push({ id: newId, name: name, enabled: true });
+            input.value = '';
+            renderCatSelection();
+        }
+
+        function aiFillDesc() {
+            document.getElementById('tpl-desc').value = "Companies with >$1M revenue looking for digital transformation. Key decision makers are CMO or CTO. Budget range $50k+.";
+        }
+
+        // STEP 3: QUESTIONS (With Focus & Edit)
+        function renderQuestionBuilder() {
+            const container = document.getElementById('questions-builder-container');
+            container.innerHTML = '';
+            
+            const enabledCats = state.newTemplate.categories.filter(c => c.enabled);
+            
+            // Initialize active cat if null
+            if(state.activeCatId === null && enabledCats.length > 0) {
+                state.activeCatId = enabledCats[0].id;
+            }
+
+            let globalCounter = 1;
+            enabledCats.forEach(cat => {
+                const isActive = (cat.id === state.activeCatId);
+                const qKey = cat.id;
+                const qs = state.newTemplate.questions[qKey] || [];
+                
+                let questionsHtml = '';
+                
+                if(qs.length === 0) {
+                    // Empty State with centered buttons
+                    questionsHtml = `
+                        <div class="text-center py-8 border-2 border-dashed border-white/10 rounded-xl bg-white/5">
+                            <p class="text-white/30 text-sm mb-4">No questions in this section yet.</p>
+                            <div class="flex justify-center gap-3">
+                                <button onclick="addQuestion('${cat.id}')" class="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white border border-white/10 transition">
+                                    <i class="fa-solid fa-plus mr-1"></i> Create Question
+                                </button>
+                                <button onclick="aiSuggest('${cat.id}')" class="px-4 py-2 bg-purple-500/10 hover:bg-purple-500/20 rounded-lg text-sm text-purple-400 border border-purple-500/20 transition">
+                                    <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> AI Suggest
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // List Questions (Editable)
+                    qs.forEach((q, qIdx) => {
+                        questionsHtml += `
+                            <div class="bg-[#0f1115] p-4 rounded-lg border border-white/10 mb-4">
+                                <div class="mb-3">
+                                    <label class="text-xs text-white/40 uppercase font-bold">Question</label>
+                                    <input type="text" class="input-dark mt-1" value="${q.text}" oninput="updateQ('${cat.id}', ${qIdx}, 'text', this.value)">
+                                </div>
+                                <div class="grid grid-cols-2 gap-4 mb-3">
+                                    <div>
+                                        <label class="text-xs text-white/40 uppercase font-bold">Type</label>
+                                        <select class="input-dark mt-1 bg-[#0f1115]" onchange="updateQ('${cat.id}', ${qIdx}, 'type', this.value)">
+                                            <option value="scale" ${q.type==='scale'?'selected':''}>1-10 Scale</option>
+                                            <option value="yesno" ${q.type==='yesno'?'selected':''}>Yes / No</option>
+                                            <option value="short" ${q.type==='short'?'selected':''}>Short Answer</option>
+                                            <option value="choice" ${q.type==='choice'?'selected':''}>Multiple Choice</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-white/40 uppercase font-bold">How would your best client respond to this question?</label>
+                                        <input type="text" class="input-dark mt-1" placeholder="e.g. Yes — budget approved" value="${q.benchmark || ''}" oninput="updateQ('${cat.id}', ${qIdx}, 'benchmark', this.value)">
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    // Add More Button at bottom of list
+                    questionsHtml += `
+                         <button onclick="addQuestion('${cat.id}')" class="w-full py-2 border border-dashed border-white/20 rounded-lg text-white/40 hover:text-white hover:border-white/40 text-sm mt-2 transition">
+                            + Add Another Question
+                        </button>
+                    `;
+                }
+
+                // Build preview lines with sequential numbering across categories
+                // We'll compute numbering outside the loop later; for simplicity show local previews here
+                let previewHtml = '';
+                if(qs.length > 0) {
+                    const previews = qs.map((q, i) => `${globalCounter++}. ${q.text || 'Untitled'} — ${q.type} — ${q.benchmark || 'N/A'}`);
+                    previewHtml = `<div class="text-sm text-white/40 truncate">${previews.join(' • ')}</div>`;
+                }
+
+                container.innerHTML += `
+                    <div class="cat-block ${isActive ? 'active-block' : ''}">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-lg font-bold ${isActive ? 'text-white' : 'text-white/60'} cursor-pointer" onclick="setActiveCat('${cat.id}')">${cat.name}</h4>
+                            ${isActive ? '<span class="text-xs text-orange-500 font-bold uppercase tracking-wider">Editing</span>' : ''}
+                        </div>
+                        ${isActive ? `<div class="block">${questionsHtml}</div>` : `<div class="px-2 pb-2">${previewHtml}</div>`}
+                    </div>
+                `;
+            });
+        }
+
+        function setActiveCat(id) {
+            state.activeCatId = id;
+            renderQuestionBuilder();
+        }
+
+        function addQuestion(catId) {
+            if(!state.newTemplate.questions[catId]) state.newTemplate.questions[catId] = [];
+            state.newTemplate.questions[catId].push({
+                text: "", 
+                type: "scale",
+                benchmark: "" 
+            });
+            renderQuestionBuilder();
+        }
+
+        function aiSuggest(catId) {
+            if(!state.newTemplate.questions[catId]) state.newTemplate.questions[catId] = [];
+            
+            // Simulation of AI suggestions based on category name
+            let suggestion = "Does this align with your Q3 goals?";
+            if(catId.includes('budget')) suggestion = "Is the budget formally approved?";
+            if(catId.includes('timeline')) suggestion = "What is the hard deadline for implementation?";
+            
+            state.newTemplate.questions[catId].push({
+                text: suggestion,
+                type: "yesno",
+                benchmark: "Yes, fully approved."
+            });
+            renderQuestionBuilder();
+        }
+
+        function updateQ(catId, idx, field, val) {
+            state.newTemplate.questions[catId][idx][field] = val;
+        }
+
+        // STEP 4: WEIGHTS (1-10 Scale)
+        function renderWeighting() {
+            const container = document.getElementById('weights-container');
+            container.innerHTML = '';
+            
+            const enabledCats = state.newTemplate.categories.filter(c => c.enabled);
+            
+            enabledCats.forEach(cat => {
+            // Default to 7 if not set
+            const currentWeight = state.newTemplate.weights[cat.id] || 7;
+                state.newTemplate.weights[cat.id] = currentWeight;
+
+                container.innerHTML += `
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-bold text-white">${cat.name}</span>
+                            <span class="text-orange-400 font-bold text-lg" id="disp-w-${cat.id}">${currentWeight}/10</span>
+                        </div>
+                        <input type="range" min="1" max="10" value="${currentWeight}" 
+                            class="w-full accent-orange-500"
+                            oninput="updateWeight('${cat.id}', this.value)">
+                        <div class="flex justify-between text-xs text-white/30 mt-1">
+                            <span>Low Priority</span>
+                            <span>Critical</span>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function updateWeight(catId, val) {
+            state.newTemplate.weights[catId] = parseInt(val);
+            document.getElementById(`disp-w-${catId}`).innerText = val + "/10";
+        }
+
+        function saveTemplate() {
+            // Ensure weights default to 7 for any missing
+            Object.keys(state.newTemplate.questions || {}).forEach(catId => {
+                if(!state.newTemplate.weights[catId]) state.newTemplate.weights[catId] = 7;
+            });
+
+            const tpl = {
+                id: Date.now(),
+                name: state.newTemplate.name,
+                categories: state.newTemplate.categories.filter(c => c.enabled),
+                questions: state.newTemplate.questions,
+                weights: state.newTemplate.weights
+            };
+            state.templates.push(tpl);
+            showToast('Template Saved!');
+            navigate('templates');
+        }
+
+        // --- 4. MEETING LOGIC ---
+        function startNewMeetingFlow() {
+            if(state.templates.length === 0) {
+                // Seed a demo template if none exist
+                state.templates.push({
+                    id: 999,
+                    name: "Demo: Sales Discovery",
+                    categories: [{id:'c1', name:'Budget', enabled:true}, {id:'c2', name:'Timing', enabled:true}],
+                    weights: {c1: 10, c2: 5},
+                    questions: {
+                        c1: [{text: "What is your budget?", type: "scale", benchmark: "High"}],
+                        c2: [{text: "When to start?", type: "short", benchmark: "ASAP"}]
+                    }
+                });
+            }
+
+            navigate('meeting');
+            document.getElementById('meeting-setup').classList.remove('hidden');
+            document.getElementById('meeting-live').classList.add('hidden');
+            
+            const select = document.getElementById('m-template');
+            select.innerHTML = '';
+            state.templates.forEach(t => {
+                select.innerHTML += `<option value="${t.id}">${t.name}</option>`;
+            });
+        }
+
+        function cancelMeeting() {
+            if(confirm('Cancel this meeting?')) {
+                stopMeetingTimer();
+                state.activeMeeting = null;
+                navigate('dashboard');
+            }
+        }
+
+        function toggleRoughNotes() {
+            const panel = document.getElementById('rough-notes-panel');
+            if(!panel) return;
+            panel.classList.toggle('hidden');
+        }
+
+        function analyzeWithAI() {
+            const notes = document.getElementById('rough-notes').value;
+            // Placeholder: simulate analysis
+            alert('AI analysis (simulated):\n' + (notes ? notes.substring(0,200) : 'No notes')); 
+        }
+
+        function saveMeetingNotes() {
+            const notes = document.getElementById('rough-notes').value;
+            if(!state.activeMeeting) { alert('No active meeting'); return; }
+            state.activeMeeting.notes = notes;
+            showToast('Meeting notes saved');
+        }
+
+        function launchMeeting() {
+            const tId = document.getElementById('m-template').value;
+            const client = document.getElementById('m-client').value;
+            const tpl = state.templates.find(t => t.id == tId);
+
+            // Flatten questions
+            let flatQs = [];
+            tpl.categories.forEach(cat => {
+                const qs = tpl.questions[cat.id] || [];
+                qs.forEach(q => {
+                    flatQs.push({ ...q, category: cat.name, catId: cat.id });
+                });
+            });
+
+            if(flatQs.length === 0) { alert("This template has no questions."); return; }
+
+            state.activeMeeting = {
+                client: client,
+                template: tpl,
+                qList: flatQs,
+                currIdx: 0,
+                score: 0,
+                answers: []
+            };
+
+            document.getElementById('meeting-setup').classList.add('hidden');
+            document.getElementById('meeting-live').classList.remove('hidden');
+            document.getElementById('live-client-name').innerText = client;
+
+            // start timer and render first question
+            startMeetingTimer();
+            renderLiveQuestion();
+        }
+
+        function renderLiveQuestion() {
+            const m = state.activeMeeting;
+            const q = m.qList[m.currIdx];
+            
+            // Progress
+            const pct = ((m.currIdx) / m.qList.length) * 100;
+            document.getElementById('progress-bar').style.width = pct + "%";
+
+            // Content
+            document.getElementById('q-category').innerText = q.category;
+            document.getElementById('q-text').innerText = q.text;
+            document.getElementById('q-benchmark').innerText = q.benchmark || "N/A";
+            document.getElementById('btn-next-text').innerText = (m.currIdx === m.qList.length - 1) ? "Finish" : "Next";
+
+            const area = document.getElementById('q-input-area');
+            area.innerHTML = '';
+
+            // Input Types
+            if(q.type === 'scale') {
+                area.innerHTML = `
+                    <div class="flex justify-between text-white/50 mb-2 font-mono text-sm"><span>1</span><span>5</span><span>10</span></div>
+                    <input type="range" min="1" max="10" class="w-full accent-orange-500 mb-4" onchange="tempScore=this.value">
+                `;
+            } else if(q.type === 'yesno') {
+                area.innerHTML = `
+                    <div class="grid grid-cols-2 gap-4">
+                        <button class="p-4 rounded-xl border border-white/10 hover:bg-green-500/20 hover:border-green-500 transition text-white font-bold">YES</button>
+                        <button class="p-4 rounded-xl border border-white/10 hover:bg-red-500/20 hover:border-red-500 transition text-white font-bold">NO</button>
+                    </div>
+                `;
+            } else {
+                area.innerHTML = `
+                    <textarea class="w-full bg-[#0f1115] border border-white/10 rounded-xl p-4 text-white focus:border-orange-500 outline-none" rows="4" placeholder="Record answer..."></textarea>
+                `;
+            }
+        }
+
+        function nextQuestion() {
+            const m = state.activeMeeting;
+            // (Scoring logic simplified for demo)
+            m.score += 10; 
+
+            if(m.currIdx < m.qList.length - 1) {
+                m.currIdx++;
+                renderLiveQuestion();
+            } else {
+                finishMeeting();
+            }
+        }
+
+        function prevQuestion() {
+            if(state.activeMeeting.currIdx > 0) {
+                state.activeMeeting.currIdx--;
+                renderLiveQuestion();
+            }
+        }
+
+        function finishMeeting() {
+            const m = state.activeMeeting;
+            stopMeetingTimer();
+            state.meetings.push({
+                client: m.client,
+                templateId: m.template && m.template.id,
+                date: new Date().toLocaleDateString(),
+                score: Math.min(100, m.score), // cap at 100
+                status: m.score > 50 ? 'Qualified' : 'Disqualified'
+            });
+            navigate('results');
+        }
+
+        // Timer helpers for meetings
+        function startMeetingTimer() {
+            // clear any previous
+            stopMeetingTimer();
+            if(!state.activeMeeting) return;
+            state.activeMeeting._startTime = Date.now();
+            const tick = () => {
+                if(!state.activeMeeting || !state.activeMeeting._startTime) return;
+                const diff = Date.now() - state.activeMeeting._startTime;
+                const secs = Math.floor(diff / 1000);
+                const mm = String(Math.floor(secs / 60)).padStart(2, '0');
+                const ss = String(secs % 60).padStart(2, '0');
+                const el = document.getElementById('meeting-timer');
+                if(el) el.innerText = mm + ':' + ss;
+            };
+            // run immediately then every second
+            tick();
+            state.timerInterval = setInterval(tick, 1000);
+        }
+
+        function stopMeetingTimer() {
+            if(state.timerInterval) { clearInterval(state.timerInterval); state.timerInterval = null; }
+            const el = document.getElementById('meeting-timer');
+            if(el) el.innerText = '00:00';
+            if(state.activeMeeting) state.activeMeeting._startTime = null;
+        }
+
+        // Toast helper
+        function showToast(msg, timeout = 2500) {
+            let el = document.getElementById('toast');
+            if(!el) {
+                el = document.createElement('div');
+                el.id = 'toast';
+                el.className = 'fixed right-4 bottom-8 bg-white/10 text-white px-4 py-2 rounded-md shadow-md';
+                document.body.appendChild(el);
+            }
+            el.innerText = msg;
+            el.style.opacity = 1;
+            setTimeout(() => { el.style.opacity = 0; }, timeout);
+        }
+
+        // --- 5. RESULTS ---
+        function renderResults() {
+            const tbody = document.getElementById('results-table-body');
+            tbody.innerHTML = '';
+            if(state.meetings.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-white/30">No meetings yet.</td></tr>`;
+                return;
+            }
+            state.meetings.forEach(m => {
+                const color = m.status === 'Qualified' ? 'text-green-400' : 'text-red-400';
+                tbody.innerHTML += `
+                    <tr class="hover:bg-white/5 border-b border-white/5">
+                        <td class="p-4 font-bold">${m.client}</td>
+                        <td class="p-4 text-white/50">${m.date}</td>
+                        <td class="p-4 font-mono">${m.score}/100</td>
+                        <td class="p-4 ${color} font-bold uppercase text-xs">${m.status}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderTemplates() {
+            const tbody = document.getElementById('templates-table-body');
+            tbody.innerHTML = '';
+            if(state.templates.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-white/30">No templates yet.</td></tr>`;
+                return;
+            }
+
+            state.templates.forEach(t => {
+                // count questions
+                let qCount = 0;
+                Object.values(t.questions || {}).forEach(arr => qCount += (arr||[]).length);
+                // leads vetted / qualified
+                const vetted = state.meetings.filter(m => m.templateId == t.id).length;
+                const qualified = state.meetings.filter(m => m.templateId == t.id && m.status === 'Qualified').length;
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-white/5 border-b border-white/5">
+                        <td class="p-4 font-bold">${t.name}</td>
+                        <td class="p-4 text-white/50">${qCount}</td>
+                        <td class="p-4 text-white/50">${vetted}</td>
+                        <td class="p-4 text-white/50">${qualified}</td>
+                    </tr>
+                `;
+            });
+        }
+    </script>
+</body>
+</html>

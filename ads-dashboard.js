@@ -1,10 +1,11 @@
-// --- Supabase Configuration (Matching Dashboard.js) ---
-import * as Supabase from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+// --- Supabase Configuration (matching `dashboard.js` import style) ---
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { showRenewalPopup } from './dashboard.js';
 
-const supabaseUrl = 'https://xgtnbxdxbbywvzrttixf.supabase.co'; 
+const supabaseUrl = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
 
-const supabase = Supabase.createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Global state variables
 let loggedInUser = null;
@@ -223,12 +224,18 @@ function updateSubscriptionStatus(userData) {
 
         const joinTimestamp = userData['joined date'] || userData['renewed date'] || userData.joined_date || userData.renewed_date;
         let daysRemaining = period;
-        
+
         if (joinTimestamp) {
-            const startDate = new Date(joinTimestamp);
-            const today = new Date();
-            const diffDays = Math.floor((today - startDate) / (1000 * 60 * 60 * 24));
-            daysRemaining = Math.max(0, period - (diffDays % period));
+          let startDate;
+          if (joinTimestamp.toDate) {
+            startDate = joinTimestamp.toDate();
+          } else {
+            startDate = new Date(joinTimestamp);
+          }
+
+          const today = new Date();
+          const diffDays = Math.floor((today - startDate) / (1000 * 60 * 60 * 24));
+          daysRemaining = Math.max(0, period - diffDays);
         }
 
         console.log(`[DEBUG] Subscription Period: ${period} days. Days Remaining: ${daysRemaining}. Total Fees: KES ${totalAmount}`);
@@ -386,9 +393,9 @@ function updateSubscriptionStatus(userData) {
                 btn.style.display = 'block';
                 btn.textContent = finalButtonText;
                 btn.className = `w-full ${finalButtonClass} text-white font-semibold py-3 px-4 rounded-xl hover:bg-opacity-80 transition-colors`;
-                btn.onclick = () => showRenewalPopup(userData, finalButtonText, daysRemaining, totalAmount, period);
+                btn.onclick = () => showRenewalPopup(userData, finalButtonText, daysRemaining, totalAmount, false, (period===10? 'Mini Package' : ''));
             }
-            showRenewalPopup(userData, finalButtonText, daysRemaining, totalAmount, period);
+              showRenewalPopup(userData, finalButtonText, daysRemaining, totalAmount, false, (period===10? 'Mini Package' : ''));
         } else if (daysRemaining <= 3) {
           if (countdownTextEl) {
             if (pkg === 'Free') {
@@ -403,9 +410,9 @@ function updateSubscriptionStatus(userData) {
                 // Use red color for general warning, unless it's the "Go Monthly!" button which remains blue.
                 const warningClass = (period === 10) ? finalButtonClass : "bg-red-600 hover:bg-red-700";
                 btn.className = `w-full ${warningClass} text-white font-semibold py-3 px-4 rounded-xl transition-colors`;
-                btn.onclick = () => showRenewalPopup(userData, finalButtonText, daysRemaining, totalAmount, period);
+                btn.onclick = () => showRenewalPopup(userData, finalButtonText, daysRemaining, totalAmount, false, (period===10? 'Mini Package' : ''));
             }
-            showRenewalPopup(userData, finalButtonText, daysRemaining, totalAmount, period);
+              showRenewalPopup(userData, finalButtonText, daysRemaining, totalAmount, false, (period===10? 'Mini Package' : ''));
         } else {
           if (countdownTextEl) {
             if (pkg === 'Free') {
@@ -435,7 +442,7 @@ function updateSubscriptionStatus(userData) {
             if (pkg === 'Free') {
               btn.onclick = () => { if (window.openUpgradeFlow) window.openUpgradeFlow(userData); };
             } else {
-              btn.onclick = () => showRenewalPopup(userData, finalButtonText, daysRemaining, totalAmount, period);
+              btn.onclick = () => showRenewalPopup(userData, finalButtonText, daysRemaining, totalAmount, false, (period===10? 'Mini Package' : ''));
             }
             }
         }
@@ -443,148 +450,7 @@ function updateSubscriptionStatus(userData) {
 }
 
 // --- Renewal Popup (Refactored) ---
-function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount, period) {
-    console.log("[DEBUG] Showing renewal popup.");
-    
-    const isMini = period === 10;
-    const isWarning = daysRemaining > 0;
-    const activeServices = (userData.services || []).filter(s => !s.toLowerCase().includes('fees')).map(s => s.replace(/\(.*\)/, '').trim()).join(', ');
-
-    let popupTitle, popupBodyHTML, popupAmount, upgradeButtonText, upgradeButtonClass, paymentAmount;
-
-    if (isMini) {
-        // Mini Package Upgrade Logic
-        popupTitle = "Pay Only 4000sh and get Ads Management Monthly!";
-        paymentAmount = 4000; // Hardcoded upgrade price
-        upgradeButtonText = "Go Monthly!";
-        upgradeButtonClass = "bg-purple-600 hover:bg-purple-700"; // Purple for Go Monthly
-        
-        popupBodyHTML = `
-            <div class="text-center">
-                <p class="text-white/80 mb-4 font-bold text-lg">You have ${daysRemaining} days left in your subscription.</p>
-                <p class="text-white/80 mb-6">
-                    Go monthly now and enjoy more features like:
-                </p>
-                <ul class="list-disc list-inside text-white/90 text-left mx-auto max-w-xs space-y-2">
-                    <li>Ads Intelligence</li>
-                    <li>CRM with powerful Capabilities</li>
-                    <li>Real Time Ad Results Updates</li>
-                    <li>Unlimited Copilot Credits!</li>
-                </ul>
-            </div>
-        `;
-        popupAmount = 'KES 4000'; // Displayed amount in popup
-    } else {
-        // Monthly Package Renewal Logic
-        popupTitle = "Renew Your Subscription";
-        paymentAmount = totalAmount; // Dynamic renewal price
-        upgradeButtonText = buttonText;
-        upgradeButtonClass = (daysRemaining <= 3 && daysRemaining > 0) ? "bg-red-600 hover:bg-red-700" : "bg-purple-600 hover:bg-purple-700";
-        
-        popupBodyHTML = `
-            <p class="text-white/80 mb-4">Your subscription is ${daysRemaining === 0 ? 'expired' : 'expiring soon'}. ${daysRemaining > 0 ? 'Renew' : 'Upgrade'} to continue enjoying our services.</p>
-            <p class="text-white/80 mb-4">Active Services: ${activeServices}</p>
-        `;
-        popupAmount = `KES ${totalAmount}`; // Displayed amount in popup
-    }
-
-    // Build the popup (reuse same UX as dashboard.js for consistency)
-    const isFreeExpired = (userData && (userData.package === 'Free' || userData.package_name === 'Free') && daysRemaining === 0);
-    const showLeft = (typeof buttonText === 'string' && buttonText.toLowerCase().includes('renew'));
-
-    const popup = document.createElement('div');
-    popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-
-    if (isFreeExpired) {
-      popup.innerHTML = `
-        <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4 relative">
-          <button id="close-popup" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">&times;</button>
-          <h3 class="text-xl font-bold text-white mb-4 text-center">Your Trial Has Ended!</h3>
-          <p class="text-white/80 mb-6 text-center">Upgrade to Continue enjoying our Services.</p>
-          <div class="flex justify-center">
-            <button id="select-plans-btn" class="w-full bg-orange-500 text-white py-2 px-4 rounded-xl hover:bg-orange-600 transition-colors">Select Plans</button>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(popup);
-      popup.querySelector('#close-popup').addEventListener('click', () => popup.remove());
-      popup.querySelector('#select-plans-btn').addEventListener('click', () => { try { popup.remove(); } catch(e){}; if (window.openUpgradeFlow) window.openUpgradeFlow(userData); });
-      return;
-    }
-
-    popup.innerHTML = `
-      <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4 relative">
-      <button id="close-popup" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">&times;</button>
-      <h3 class="text-xl font-bold text-white mb-4 text-center">${popupTitle}</h3>
-      ${popupBodyHTML}
-      <p class="text-orange-400 text-lg font-bold mb-6 text-center">Total Amount: ${popupAmount}</p>
-      <div class="flex justify-center">
-        <button id="confirm-renewal" class="w-full ${upgradeButtonClass} text-white py-2 px-4 rounded-xl hover:bg-opacity-80 transition-colors">${upgradeButtonText}</button>
-      </div>
-      </div>
-    `;
-    document.body.appendChild(popup);
-
-    popup.querySelector('#close-popup')?.addEventListener('click', () => popup.remove());
-    if (showLeft) {
-      const floater = document.createElement('button');
-      floater.id = 'modal-upgrade-btn';
-      floater.className = 'upgrade-floating';
-      floater.textContent = 'Upgrade';
-      document.body.appendChild(floater);
-      floater.addEventListener('click', () => { try { popup.remove(); } catch(e){}; try { floater.remove(); } catch(e){}; if (window.openUpgradeFlow) window.openUpgradeFlow(userData); });
-      popup.querySelector('#close-popup')?.addEventListener('click', () => { try { floater.remove(); } catch(e){} });
-    }
-    popup.querySelector('#confirm-renewal')?.addEventListener('click', () => {
-      // Determine payment amount: prefer explicit totalAmount, otherwise derive from package
-      let paymentAmountNum = Number(totalAmount) || 0;
-      if (!paymentAmountNum) {
-        const vv = localStorage.getItem('vvUser');
-        const pkg = (userData && (userData.package || userData.package_name)) || (vv ? (JSON.parse(vv).package || JSON.parse(vv).package_name) : '');
-        const pkgNorm = (pkg || '').toString().toLowerCase();
-        if (pkgNorm === 'growth') paymentAmountNum = 6000;
-        else if (pkgNorm === 'pro') paymentAmountNum = 12000;
-        else if (pkgNorm === 'premium') paymentAmountNum = 30000;
-        else paymentAmountNum = 0;
-      }
-      const paymentAmountDisplay = paymentAmountNum ? paymentAmountNum : 'Amount';
-
-      popup.innerHTML = `
-        <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4">
-          <h3 class="text-xl font-bold text-white mb-4 text-center">Payment Details</h3>
-          <p class="text-white/80 mb-4 text-center">PAY VIA MPESA, Buy Goods and Services Till Number 3790912 Amount KES ${paymentAmountDisplay}. Once Paid Click Paid Below.</p>
-          <div class="flex justify-center">
-            <button id="paid-button" class="w-full bg-purple-600 text-white py-2 px-4 rounded-xl hover:bg-purple-700 transition-colors">Paid</button>
-          </div>
-        </div>
-      `;
-      setTimeout(()=>{
-        const paid = document.getElementById('paid-button'); if (paid) paid.addEventListener('click', ()=>{
-          // try to get business name
-          function getBusinessName(){
-            try{ const raw = localStorage.getItem('vvUser') || localStorage.getItem('user') || localStorage.getItem('business'); if(!raw) return ''; const u = JSON.parse(raw); return u.business_name || u.business || u.name || '';}catch(e){return '';}
-          }
-          const business = getBusinessName();
-          try { localStorage.setItem('paymentInitiated','true'); } catch(e){}
-          const text = encodeURIComponent(`Hello Lloyd. I have Paid KES ${paymentAmountDisplay} for ${business} please confirm. thank you.`);
-          const wa = `whatsapp://send?phone=254789254864&text=${text}`;
-          const webWa = `https://wa.me/254789254864?text=${text}`;
-          try { window.location.href = wa; } catch(e) { window.location.href = webWa; }
-
-          popup.innerHTML = `
-          <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a] max-w-md w-full mx-4">
-            <h3 class="text-xl font-bold text-white mb-4 text-center">Payment Confirmation</h3>
-            <p class="text-white/80 mb-6 text-center">Payment will be Confirmed in A few Minutes' would you like to chat with Your Assistant As you Wait?</p>
-            <div class="flex justify-center">
-              <button id="go-to-ai" class="w-full bg-blue-600 text-white py-2 px-4 rounded-xl hover:bg-blue-700 transition-colors">Go to AI Assistant</button>
-            </div>
-          </div>
-        `;
-          const go = document.getElementById('go-to-ai'); if (go) go.addEventListener('click', ()=>{ localStorage.setItem('paymentInitiated','true'); window.location.href='aiassistant.html'; });
-        });
-      }, 40);
-    });
-}
+// Payment flow removed from Ads to reuse central business flow (dashboard.js)
 
 
 // --- Ad Results (Supabase) ---

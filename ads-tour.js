@@ -173,8 +173,6 @@
         // show initial prompt after small delay
         setTimeout(()=>{ renderInitialPrompt(); }, 800);
       }
-      // ensure floating button exists
-      setTimeout(()=>{ addFloatingButton(); }, 400);
     }catch(e){ console.warn('AdsTour.init error', e); }
   }
 
@@ -198,11 +196,6 @@
   global.AdsTour = AdsTour;
 
   // Auto-add floating button if body data-page indicates ads
-  try{
-    if (document.body && document.body.getAttribute('data-page') === 'ads') {
-      // add button after a small delay so page elements load
-      window.addEventListener('DOMContentLoaded', ()=>{ setTimeout(()=>{ addFloatingButton(); }, 300); });
-    }
-  }catch(e){}
+  // Floating button auto-add removed; placement handled by page markup.
 
 })(window);

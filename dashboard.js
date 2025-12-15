@@ -865,21 +865,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         } else if (window.AdsTour && window.AdsTour.addFloatingButton) {
                             window.AdsTour.addFloatingButton();
                         }
-                        // add a small Take Tour button near the profile menu for easy access
-                        try {
-                            const profileBtn = document.getElementById('profile-menu-button');
-                            if (profileBtn && !document.getElementById('vv-profile-take-tour')) {
-                                const t = document.createElement('button');
-                                t.id = 'vv-profile-take-tour';
-                                t.textContent = 'Take Tour';
-                                t.style.marginLeft = '8px';
-                                t.className = 'px-3 py-1 rounded-xl text-sm font-semibold';
-                                t.style.background = '#f97316';
-                                t.style.color = '#fff';
-                                t.addEventListener('click', (ev) => { ev.preventDefault(); try { if (window.AdsTour && window.AdsTour.start) window.AdsTour.start(); } catch (e) {} });
-                                profileBtn.parentNode.insertBefore(t, profileBtn.nextSibling);
-                            }
-                        } catch (e) {}
+                        // Take Tour button placement is handled inside the Ads page profile dropdown now.
                     } catch (e) {}
                 };
                 document.body.appendChild(s);
@@ -1360,7 +1346,7 @@ function renderSalesChart(data) {
     });
 }
 
-function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount, hideLeft = false, planName = '') {
+export function showRenewalPopup(userData, buttonText, daysRemaining, totalAmount, hideLeft = false, planName = '') {
     const services = userData.services || [];
     const activeServices = services.filter(s => !s.toLowerCase().includes('fees')).map(s => s.replace(/\(.*\)/, '').trim()).join(', ');
 
