@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VV Studios Manager & CRM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.5.1/chart.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f1115; color: white; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background-color: #1a1d23; }
+        ::-webkit-scrollbar-thumb { background-color: #374151; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: #4b5563; }
+
+        /* Transitions */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .sidebar-link.active { background-color: rgba(124, 58, 237, 0.1); color: #a78bfa; border-right: 3px solid #7c3aed; }
+        .crm-tab-btn.active { border-color: #a855f7; color: white; }
+
+        /* Utility */
+        .hidden-force { display: none !important; }
+        
+        /* WhatsApp Specific */
+        .chat-bg { background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-repeat: repeat; opacity: 0.95; }
+        .chat-bubble-user { background-color: #005c4b; color: #e9edef; border-radius: 10px 0 10px 10px; }
+        .chat-bubble-contact { background-color: #202c33; color: #e9edef; border-radius: 0 10px 10px 10px; }
+        
+        /* Mobile Chat Toggle Logic */
+        @media (max-width: 768px) {
+            .mobile-chat-list-hidden { display: none !important; }
+            .mobile-chat-view-active { display: flex !important; width: 100%; height: 100%; }
+            #crm-chat-window { display: none; } /* Hidden by default on mobile until active */
+        }
+
+        /* Sidebar Slide */
+        #sidebar { transform: translateX(-100%); position: fixed; left: 0; top: 0; bottom: 0; width: 16rem; z-index: 50; transition: transform 300ms ease-in-out; }
+        #sidebar.open { transform: translateX(0); }
+        #sidebar-overlay.hidden { opacity: 0; pointer-events: none; }
+        #sidebar-overlay { transition: opacity 200ms ease-in-out; opacity: 1; pointer-events: auto; }
+        @media (min-width: 1024px) {
+            #sidebar { position: static; transform: none; }
+        }
+    </style>
+</head>
+<body class="overflow-hidden">
+
+    <div id="login-view" class="fixed inset-0 z-50 flex items-center justify-center bg-[#0f1115]">
+        <div class="w-full max-w-md p-8 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] text-center shadow-2xl">
+            <div class="w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+                <img src="assets/logo.png" alt="VV Studios" class="w-16 h-16 object-contain" onerror="this.src='https://placehold.co/100x100/1a1d23/FFF?text=VV'"/>
+            </div>
+            <h1 class="text-2xl font-bold mb-2">Account Manager</h1>
+            <p class="text-white/50 mb-8">Enter your secure PIN to access the portal.</p>
+            <form id="login-form" class="space-y-4">
+                <input type="password" id="login-pin" placeholder="Enter PIN (1234)" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl py-3 px-4 text-center text-xl tracking-widest text-white focus:outline-none focus:border-purple-500 transition-colors">
+                <button type="submit" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 rounded-xl transition-all">Sign In</button>
+            </form>
+            <p id="login-error" class="mt-4 text-red-400 text-sm hidden">Incorrect PIN.</p>
+        </div>
+    </div>
+
+    <div id="app-layout" class="flex h-screen hidden-force">
+        <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 z-40 hidden"></div>
+
+        <aside id="sidebar" class="hidden lg:flex w-64 bg-[#14161a] border-r border-[#2b2f3a] flex flex-col flex-shrink-0 z-50">
+            <div class="p-6 flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-purple-900/20 flex items-center justify-center font-bold text-purple-400">VV</div>
+                <span class="font-bold text-lg tracking-tight">Manager Portal</span>
+            </div>
+            <nav class="flex-1 px-4 space-y-2 overflow-y-auto">
+                <button onclick="router.navigate('dashboard')" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 text-white/70 hover:text-white rounded-xl transition-colors text-left" data-target="dashboard">
+                    <i class="fa-solid fa-chart-pie w-5"></i> Dashboard
+                </button>
+                <button onclick="router.navigate('messaging')" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 text-white/70 hover:text-white rounded-xl transition-colors text-left" data-target="messaging">
+                    <i class="fa-brands fa-whatsapp w-5"></i> Messaging (CRM)
+                </button>
+                <button onclick="router.navigate('users')" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 text-white/70 hover:text-white rounded-xl transition-colors text-left" data-target="users">
+                    <i class="fa-solid fa-users w-5"></i> Users / Clients
+                </button>
+            </nav>
+            <div class="p-4 border-t border-[#2b2f3a]">
+                <button onclick="auth.logout()" class="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-xl transition-colors text-left">
+                    <i class="fa-solid fa-right-from-bracket w-5"></i> Sign Out
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-1 overflow-y-auto bg-[#0f1115] relative">
+            <header class="sticky top-0 z-30 bg-[#0f1115]/90 backdrop-blur-md border-b border-[#2b2f3a] px-4 md:px-8 py-4 flex justify-between items-center">
+                <div class="flex items-center">
+                    <button id="sidebar-toggle" class="lg:hidden p-2 rounded-lg bg-white/5 hover:bg-white/10 mr-3 text-white"><i class="fa-solid fa-bars"></i></button>
+                    <h2 id="page-title" class="text-xl font-bold">Dashboard</h2>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="text-right hidden sm:block">
+                        <div class="text-sm font-bold text-white">Admin User</div>
+                        <div class="text-xs text-white/50">Online</div>
+                    </div>
+                    <div class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center text-white font-bold">A</div>
+                </div>
+            </header>
+
+            <div id="views-container" class="p-4 md:p-8 h-[calc(100vh-80px)]">
+                
+                <div id="view-dashboard" class="view-section fade-in">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                        <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a]">
+                            <div class="text-white/50 text-sm mb-1">Total Users</div>
+                            <div class="text-3xl font-bold">124</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-messaging" class="view-section hidden-force fade-in flex flex-col h-full pb-4">
+                    <div class="flex gap-6 border-b border-[#2b2f3a] mb-4 overflow-x-auto pb-1 no-scrollbar flex-shrink-0">
+                        <button onclick="crm.switchTab('chats')" class="crm-tab-btn active pb-3 border-b-2 text-white font-medium whitespace-nowrap" data-tab="chats">Live Chats</button>
+                        <button onclick="crm.switchTab('lists')" class="crm-tab-btn pb-3 border-b-2 border-transparent text-white/60 hover:text-white whitespace-nowrap" data-tab="lists">Lists</button>
+                        <button onclick="crm.switchTab('campaigns')" class="crm-tab-btn pb-3 border-b-2 border-transparent text-white/60 hover:text-white whitespace-nowrap" data-tab="campaigns">Campaigns</button>
+                        <button onclick="crm.switchTab('templates')" class="crm-tab-btn pb-3 border-b-2 border-transparent text-white/60 hover:text-white whitespace-nowrap" data-tab="templates">Templates</button>
+                        <button onclick="crm.switchTab('analytics')" class="crm-tab-btn pb-3 border-b-2 border-transparent text-white/60 hover:text-white whitespace-nowrap" data-tab="analytics">Analytics</button>
+                    </div>
+
+                    <div id="crm-tab-content" class="flex-1 overflow-hidden relative">
+                        
+                        <div id="crm-chats" class="crm-view h-full flex gap-4 relative">
+                            <div id="crm-chat-list-panel" class="w-full md:w-1/3 lg:w-1/4 bg-[#1a1d23] border border-[#2b2f3a] rounded-xl flex flex-col h-full">
+                                <div class="p-4 border-b border-[#2b2f3a]">
+                                    <div class="relative">
+                                        <i class="fa-solid fa-search absolute left-3 top-3 text-white/30 text-xs"></i>
+                                        <input type="text" placeholder="Search..." class="w-full bg-[#0f1115] rounded-lg pl-8 pr-3 py-2 text-sm text-white focus:outline-none border border-transparent">
+                                    </div>
+                                </div>
+                                <div id="crm-contact-list" class="flex-1 overflow-y-auto p-2 space-y-1">
+                                    </div>
+                            </div>
+
+                            <div id="crm-chat-window" class="hidden md:flex flex-1 bg-[#1a1d23] border border-[#2b2f3a] rounded-xl flex-col h-full relative overflow-hidden">
+                                <div class="p-3 border-b border-[#2b2f3a] flex justify-between items-center bg-[#202c33] z-10">
+                                    <div class="flex items-center gap-3">
+                                        <button onclick="crm.closeMobileChat()" class="md:hidden text-white/70 mr-2"><i class="fa-solid fa-arrow-left"></i></button>
+                                        <div class="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold relative">
+                                            <span id="chat-header-avatar">?</span>
+                                            </div>
+                                        <div>
+                                            <div class="font-bold text-sm" id="chat-header-name">Select a contact</div>
+                                            <div class="flex items-center gap-2">
+                                                <div id="chat-header-indicator" class="w-2 h-2 rounded-full bg-gray-500"></div>
+                                                <div class="text-xs text-white/50" id="chat-header-status">...</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <div class="flex items-center gap-2 mr-2 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                                            <span class="text-xs text-white/60"><i class="fa-solid fa-robot mr-1"></i> Auto-Pilot</span>
+                                            <button id="ai-toggle-btn" onclick="crm.toggleAI()" class="w-8 h-4 rounded-full bg-gray-600 relative transition-colors">
+                                                <div class="w-2 h-2 bg-white rounded-full absolute top-1 left-1 transition-all"></div>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="crm-messages-area" class="flex-1 overflow-y-auto p-4 space-y-3 bg-[#0b141a] chat-bg relative">
+                                    <div class="flex h-full items-center justify-center text-white/30 text-sm flex-col">
+                                        <i class="fa-brands fa-whatsapp text-4xl mb-3 opacity-50"></i>
+                                        <p>Select a conversation</p>
+                                    </div>
+                                </div>
+
+                                <div id="chat-input-container" class="p-3 bg-[#202c33] flex gap-2 items-center hidden">
+                                    <input type="file" id="chat-file-upload" class="hidden" onchange="alert('File uploaded (Mock)')">
+                                    <button onclick="document.getElementById('chat-file-upload').click()" class="text-white/50 hover:text-white p-2"><i class="fa-solid fa-paperclip"></i></button>
+                                    <input type="text" id="chat-input" placeholder="Type a message..." class="flex-1 bg-[#2a3942] rounded-lg px-4 py-3 text-sm text-white focus:outline-none" onkeypress="if(event.key === 'Enter') crm.sendMessage()">
+                                    <button onclick="crm.sendMessage()" class="p-3 bg-[#005c4b] hover:bg-[#005c4b]/80 rounded-full text-white w-10 h-10 flex items-center justify-center shadow-lg"><i class="fa-solid fa-paper-plane text-sm"></i></button>
+                                </div>
+                                
+                                <div id="chat-input-disabled" class="p-4 bg-[#202c33] text-center text-xs text-white/40 border-t border-[#2b2f3a] hidden">
+                                    <i class="fa-solid fa-robot mr-2"></i> AI Auto-Pilot is active. Turn off to type manually.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="crm-lists" class="crm-view hidden-force h-full overflow-y-auto">
+                            <div id="lists-grid-view">
+                                <div class="bg-[#1a1d23] rounded-xl border border-[#2b2f3a] p-6">
+                                    <div class="flex justify-between items-center mb-6">
+                                        <h3 class="font-bold text-xl">Contact Lists</h3>
+                                        <button onclick="crm.createNewList()" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-sm text-white font-medium">
+                                            <i class="fa-solid fa-plus mr-2"></i> Create List
+                                        </button>
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="crm-lists-container">
+                                        </div>
+                                </div>
+                            </div>
+
+                            <div id="lists-detail-view" class="hidden-force flex flex-col h-full bg-[#1a1d23] rounded-xl border border-[#2b2f3a] overflow-hidden">
+                                <div class="p-4 border-b border-[#2b2f3a] flex items-center justify-between bg-[#232730]">
+                                    <div class="flex items-center gap-4">
+                                        <button onclick="crm.closeListDetails()" class="text-white/60 hover:text-white"><i class="fa-solid fa-arrow-left"></i> Back</button>
+                                        <div>
+                                            <h3 class="font-bold text-lg" id="detail-list-name">List Name</h3>
+                                            <div class="text-xs text-white/50 flex gap-3">
+                                                <span id="detail-list-date">Created: ...</span>
+                                                <span class="text-purple-400" id="detail-list-campaigns">Active: None</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex-1 overflow-auto">
+                                    <table class="w-full text-left">
+                                        <thead class="bg-[#14161a] text-xs uppercase text-white/50 sticky top-0">
+                                            <tr>
+                                                <th class="p-4">Name</th>
+                                                <th class="p-4">Phone</th>
+                                                <th class="p-4">Last Interaction</th>
+                                                <th class="p-4">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="detail-list-tbody" class="text-sm divide-y divide-[#2b2f3a]"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="crm-campaigns" class="crm-view hidden-force h-full overflow-y-auto">
+                             <div class="bg-[#1a1d23] rounded-xl border border-[#2b2f3a] p-6 mb-6">
+                                <div class="flex justify-between items-center mb-6">
+                                    <h3 class="font-bold text-xl">Broadcast Campaigns</h3>
+                                    <button onclick="document.getElementById('campaign-modal').classList.remove('hidden-force')" class="px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg text-sm text-white font-medium">
+                                        <i class="fa-solid fa-bullhorn mr-2"></i> New Campaign
+                                    </button>
+                                </div>
+                                <table class="w-full text-left">
+                                    <thead class="bg-[#232730] text-xs uppercase text-white/50">
+                                        <tr>
+                                            <th class="p-4 rounded-tl-lg">Name</th>
+                                            <th class="p-4">List</th>
+                                            <th class="p-4">Scheduled</th>
+                                            <th class="p-4">Status</th>
+                                            <th class="p-4 rounded-tr-lg">AI Assist</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="crm-campaigns-table" class="text-sm divide-y divide-[#2b2f3a]"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div id="crm-templates" class="crm-view hidden-force h-full overflow-y-auto">
+                            <div class="bg-[#1a1d23] rounded-xl border border-[#2b2f3a] p-6">
+                                <div class="flex justify-between items-center mb-6">
+                                    <h3 class="font-bold text-xl">Message Templates</h3>
+                                    <button onclick="crm.openTemplateModal()" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-sm text-white font-medium">
+                                        <i class="fa-solid fa-plus mr-2"></i> New Template
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="crm-templates-container"></div>
+                            </div>
+                        </div>
+
+                         <div id="crm-analytics" class="crm-view hidden-force h-full overflow-y-auto">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                                <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a]">
+                                    <div class="text-white/50 text-sm mb-1 uppercase tracking-wider">Messages Sent</div>
+                                    <div class="text-3xl font-bold text-white" id="stat-sent">0</div>
+                                </div>
+                                <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a]">
+                                    <div class="text-white/50 text-sm mb-1 uppercase tracking-wider">Read Rate</div>
+                                    <div class="text-3xl font-bold text-blue-400" id="stat-read">0%</div>
+                                </div>
+                                <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a]">
+                                    <div class="text-white/50 text-sm mb-1 uppercase tracking-wider">AI Replied</div>
+                                    <div class="text-3xl font-bold text-purple-400" id="stat-ai">0</div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="campaign-modal" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm hidden-force">
+        <div class="w-full max-w-lg bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] shadow-2xl overflow-hidden">
+            <div class="p-5 border-b border-[#2b2f3a] flex justify-between items-center bg-[#232730]">
+                <h3 class="font-bold text-lg">Create Broadcast</h3>
+                <button onclick="document.getElementById('campaign-modal').classList.add('hidden-force')" class="text-white/50 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="crm.createCampaign(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs text-white/50 mb-1">Campaign Name</label>
+                    <input type="text" name="name" required class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-lg p-2.5 text-white focus:border-purple-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-white/50 mb-1">Target List</label>
+                        <select name="list" id="camp-list-select" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-lg p-2.5 text-white focus:border-purple-500 outline-none"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-white/50 mb-1">Template</label>
+                        <select name="template" id="camp-temp-select" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-lg p-2.5 text-white focus:border-purple-500 outline-none"></select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs text-white/50 mb-1">Schedule</label>
+                    <input type="datetime-local" name="schedule" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-lg p-2.5 text-white focus:border-purple-500 outline-none">
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="camp-ai" name="ai_enabled" class="accent-purple-500 w-4 h-4">
+                    <label for="camp-ai" class="text-sm text-white/80">Enable AI Auto-Replies for responses</label>
+                </div>
+                <div class="pt-4 flex justify-end gap-3">
+                    <button type="button" onclick="document.getElementById('campaign-modal').classList.add('hidden-force')" class="px-4 py-2 text-white/60 hover:text-white text-sm">Cancel</button>
+                    <button type="submit" class="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-medium text-sm">Schedule Broadcast</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="template-modal" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-md hidden-force p-4">
+        <div class="w-full max-w-6xl h-[90vh] bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] shadow-2xl overflow-hidden flex flex-col">
+            <div class="p-4 border-b border-[#2b2f3a] flex justify-between items-center bg-[#232730]">
+                <h3 class="font-bold text-lg">Create Message Template</h3>
+                <button onclick="document.getElementById('template-modal').classList.add('hidden-force')" class="text-white/50 hover:text-white"><i class="fa-solid fa-xmark fa-lg"></i></button>
+            </div>
+            
+            <div class="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-12">
+                
+                <div class="md:col-span-7 p-6 overflow-y-auto border-r border-[#2b2f3a] space-y-6">
+                    <div>
+                        <label class="block text-xs text-white/50 mb-1">Template Name</label>
+                        <input type="text" id="t-name" onkeyup="crm.formatTemplateName(this)" placeholder="e.g. welcome_offer" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-lg p-3 text-white focus:border-purple-500 outline-none">
+                        <p class="text-[10px] text-white/40 mt-1">Lowercase, numbers and underscores only.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-white/50 mb-1">Category</label>
+                        <select id="t-category" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-lg p-3 text-white focus:border-purple-500 outline-none">
+                            <option value="MARKETING">Marketing (Default)</option>
+                            <option value="UTILITY">Utility</option>
+                            <option value="AUTHENTICATION">Authentication</option>
+                        </select>
+                    </div>
+
+                    <div class="p-4 bg-[#0f1115] rounded-lg border border-[#2b2f3a]">
+                        <h4 class="text-sm font-bold mb-3">Header <span class="text-white/40 font-normal">(Optional)</span></h4>
+                        <select id="t-header-type" onchange="crm.updateTemplatePreview()" class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded-lg p-2 text-xs text-white mb-2">
+                            <option value="none">None</option>
+                            <option value="media">Media (Image/Video)</option>
+                        </select>
+                        <div id="t-header-media-input" class="hidden">
+                             <div class="border-2 border-dashed border-[#2b2f3a] rounded-lg p-4 text-center cursor-pointer hover:bg-white/5" onclick="document.getElementById('t-media-upload').click()">
+                                <i class="fa-solid fa-cloud-arrow-up text-white/50 mb-1"></i>
+                                <div class="text-xs text-white/50">Upload Sample Media</div>
+                                <input type="file" id="t-media-upload" class="hidden" onchange="alert('Sample Media Selected (Mock)')">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="block text-xs text-white/50">Body Text</label>
+                            <button onclick="crm.insertVariable()" class="text-xs text-purple-400 hover:text-purple-300 font-medium">+ Add Variable</button>
+                        </div>
+                        <textarea id="t-body" oninput="crm.updateTemplatePreview()" rows="5" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-lg p-3 text-white focus:border-purple-500 outline-none resize-none" placeholder="Enter text here..."></textarea>
+                    </div>
+
+                    <div id="t-variable-samples" class="space-y-2 hidden">
+                        <label class="block text-xs text-white/50">Samples for Body Variables</label>
+                        <div id="t-vars-input-list" class="grid grid-cols-2 gap-2"></div>
+                        <p class="text-[10px] text-white/40">These samples help Meta approve your template.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-white/50 mb-1">Footer <span class="text-white/40 font-normal">(Optional)</span></label>
+                        <input type="text" id="t-footer" oninput="crm.updateTemplatePreview()" placeholder="e.g. Reply STOP to unsubscribe" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-lg p-3 text-white focus:border-purple-500 outline-none">
+                    </div>
+
+                    <div class="p-4 bg-[#0f1115] rounded-lg border border-[#2b2f3a]">
+                        <h4 class="text-sm font-bold mb-3">Buttons <span class="text-white/40 font-normal">(Optional)</span></h4>
+                        <div id="t-buttons-list" class="space-y-2">
+                            </div>
+                        <button onclick="crm.addTemplateButton()" class="mt-2 w-full py-2 border border-dashed border-[#2b2f3a] text-white/50 hover:text-white rounded text-xs"><i class="fa-solid fa-plus"></i> Add Button</button>
+                    </div>
+                </div>
+
+                <div class="md:col-span-5 bg-[#0b141a] chat-bg flex items-center justify-center p-8 relative">
+                    <div class="absolute top-4 right-4 bg-black/60 px-3 py-1 rounded text-xs text-white font-mono">WhatsApp Preview</div>
+                    
+                    <div class="w-full max-w-sm bg-[#202c33] rounded-lg shadow-xl overflow-hidden" style="border-radius: 0 16px 16px 16px;">
+                        <div id="preview-media" class="h-40 bg-gray-700 flex items-center justify-center hidden">
+                            <i class="fa-solid fa-image text-4xl text-white/20"></i>
+                        </div>
+                        
+                        <div class="p-3">
+                            <p id="preview-body" class="text-[#e9edef] text-sm whitespace-pre-wrap leading-relaxed">Your message text will appear here...</p>
+                            
+                            <p id="preview-footer" class="text-[#8696a0] text-[11px] mt-2 hidden"></p>
+                        </div>
+                        
+                        <div id="preview-buttons" class="border-t border-[#2a3942] divide-y divide-[#2a3942]">
+                            </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-[#2b2f3a] bg-[#232730] flex justify-end gap-3">
+                <button onclick="document.getElementById('template-modal').classList.add('hidden-force')" class="px-5 py-2.5 rounded-lg text-white/70 hover:bg-white/5 transition-colors text-sm font-medium">Cancel</button>
+                <button onclick="crm.submitTemplate()" class="px-6 py-2.5 rounded-lg bg-green-600 hover:bg-green-500 text-white shadow-lg text-sm font-bold">Submit for Approval</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. DATA STORE ---
+        const crmStore = {
+            contacts: [
+                { id: 'c1', name: 'John Doe', phone: '+254711223344', plan: 'Pro', avatar: 'J' },
+                { id: 'c2', name: 'Sarah Smith', phone: '+254722334455', plan: 'Free', avatar: 'S' },
+                { id: 'c3', name: 'Tech Corp', phone: '+254733445566', plan: 'Pro', avatar: 'T' }
+            ],
+            conversations: [
+                { id: 'conv1', contactId: 'c1', ai_enabled: true, unread: 0, lastMsg: 'Thanks!', lastUserMsgTime: Date.now() - (2 * 60 * 60 * 1000) }, // 2 hrs ago (Active)
+                { id: 'conv2', contactId: 'c2', ai_enabled: false, unread: 2, lastMsg: 'How much?', lastUserMsgTime: Date.now() - (25 * 60 * 60 * 1000) }, // 25 hrs ago (Expired)
+                { id: 'conv3', contactId: 'c3', ai_enabled: true, unread: 0, lastMsg: 'Invoice?', lastUserMsgTime: Date.now() - (23 * 60 * 60 * 1000) } // 23 hrs ago (Active)
+            ],
+            messages: [
+                { id: 1, convId: 'conv1', sender: 'contact', text: 'Hi help needed.', time: '10:00 AM' },
+                { id: 2, convId: 'conv1', sender: 'ai', text: 'Sure, checking.', time: '10:01 AM' }
+            ],
+            lists: [
+                { id: 'l1', name: 'VIP Customers', contactIds: ['c1', 'c3'], created: '2023-11-01', activeCampaigns: ['Nov Promo'] },
+                { id: 'l2', name: 'New Leads', contactIds: ['c2'], created: '2023-11-10', activeCampaigns: [] }
+            ],
+            campaigns: [
+                { id: 'camp1', name: 'Nov Promo', listId: 'l1', templateId: 't1', status: 'Sent', ai: true, sent: 120 }
+            ],
+            templates: [],
+            activeChatId: null,
+            templateBuilder: { buttons: [] }
+        };
+
+        // --- 2. AUTH ---
+        const auth = {
+            login(pin) {
+                if (pin === '1234') {
+                    document.getElementById('login-view').classList.add('hidden-force');
+                    document.getElementById('app-layout').classList.remove('hidden-force');
+                    router.navigate('messaging');
+                } else {
+                    document.getElementById('login-error').classList.remove('hidden');
+                }
+            },
+            logout() { location.reload(); }
+        };
+        document.getElementById('login-form').addEventListener('submit', (e) => { e.preventDefault(); auth.login(document.getElementById('login-pin').value); });
+
+        // --- 3. CRM LOGIC ---
+        const crm = {
+            switchTab(tab) {
+                document.querySelectorAll('.crm-tab-btn').forEach(b => {
+                    b.classList.remove('active', 'border-purple-500', 'text-white');
+                    b.classList.add('border-transparent', 'text-white/60');
+                    if(b.dataset.tab === tab) {
+                        b.classList.add('active', 'border-purple-500', 'text-white');
+                        b.classList.remove('border-transparent', 'text-white/60');
+                    }
+                });
+                document.querySelectorAll('.crm-view').forEach(v => v.classList.add('hidden-force'));
+                document.getElementById(`crm-${tab}`).classList.remove('hidden-force');
+                
+                if(tab === 'chats') this.renderContacts();
+                if(tab === 'lists') this.renderLists();
+                if(tab === 'campaigns') this.renderCampaigns();
+                if(tab === 'templates') this.renderTemplates();
+                if(tab === 'analytics') this.renderAnalytics();
+            },
+
+            // --- CHATS & 24HR LOGIC ---
+            isWindowActive(timestamp) {
+                const now = Date.now();
+                const diff = now - timestamp;
+                return diff < (24 * 60 * 60 * 1000); // Less than 24 hours
+            },
+
+            renderContacts() {
+                const list = document.getElementById('crm-contact-list');
+                list.innerHTML = crmStore.conversations.map(conv => {
+                    const contact = crmStore.contacts.find(c => c.id === conv.contactId);
+                    const isActiveWindow = this.isWindowActive(conv.lastUserMsgTime);
+                    const isSelected = conv.id === crmStore.activeChatId;
+                    
+                    // Indicators
+                    const activeDot = isActiveWindow ? `<div class="absolute bottom-0 left-0 w-3 h-3 bg-green-500 border-2 border-[#1a1d23] rounded-full"></div>` : '';
+                    const aiIcon = conv.ai_enabled ? `<div class="absolute -top-1 -left-1 bg-[#202c33] border border-gray-600 rounded-full w-4 h-4 flex items-center justify-center"><i class="fa-solid fa-robot text-[9px] text-purple-400"></i></div>` : '';
+                    
+                    return `
+                        <div onclick="crm.openChat('${conv.id}')" class="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${isSelected ? 'bg-white/10' : 'hover:bg-white/5'}">
+                            <div class="relative w-10 h-10">
+                                <div class="w-full h-full rounded-full bg-gray-700 flex items-center justify-center text-white font-bold text-sm">${contact.avatar}</div>
+                                ${activeDot}
+                                ${aiIcon}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-medium text-sm truncate">${contact.name}</span>
+                                    <span class="text-[10px] text-white/40">10:00</span>
+                                </div>
+                                <p class="text-xs text-white/50 truncate">${conv.lastMsg}</p>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            },
+
+            openChat(convId) {
+                crmStore.activeChatId = convId;
+                const conv = crmStore.conversations.find(c => c.id === convId);
+                const contact = crmStore.contacts.find(c => c.id === conv.contactId);
+                const isWindowActive = this.isWindowActive(conv.lastUserMsgTime);
+
+                // Mobile Handling
+                if(window.innerWidth < 768) {
+                    document.getElementById('crm-chat-list-panel').classList.add('mobile-chat-list-hidden');
+                    document.getElementById('crm-chat-window').classList.add('mobile-chat-view-active');
+                    document.getElementById('crm-chat-window').style.display = 'flex';
+                }
+
+                // Header Update
+                document.getElementById('chat-header-name').textContent = contact.name;
+                document.getElementById('chat-header-avatar').textContent = contact.avatar;
+                
+                const statusEl = document.getElementById('chat-header-status');
+                const indEl = document.getElementById('chat-header-indicator');
+                
+                if(isWindowActive) {
+                    statusEl.textContent = "Active Session (24h window open)";
+                    statusEl.className = "text-xs text-green-400";
+                    indEl.className = "w-2 h-2 rounded-full bg-green-500";
+                } else {
+                    statusEl.textContent = "Session Expired (Templates only)";
+                    statusEl.className = "text-xs text-yellow-500";
+                    indEl.className = "w-2 h-2 rounded-full bg-yellow-500";
+                }
+
+                // AI Toggle UI
+                const toggle = document.getElementById('ai-toggle-btn');
+                const dot = toggle.querySelector('div');
+                const inputContainer = document.getElementById('chat-input-container');
+                const disabledContainer = document.getElementById('chat-input-disabled');
+
+                if(conv.ai_enabled) {
+                    toggle.classList.replace('bg-gray-600', 'bg-green-500');
+                    dot.style.transform = 'translateX(100%)';
+                    inputContainer.classList.add('hidden');
+                    disabledContainer.classList.remove('hidden');
+                } else {
+                    toggle.classList.replace('bg-green-500', 'bg-gray-600');
+                    dot.style.transform = 'translateX(0)';
+                    inputContainer.classList.remove('hidden');
+                    disabledContainer.classList.add('hidden');
+                }
+
+                this.renderMessages(convId);
+                this.renderContacts(); // Refresh list to show active state
+            },
+
+            closeMobileChat() {
+                document.getElementById('crm-chat-list-panel').classList.remove('mobile-chat-list-hidden');
+                document.getElementById('crm-chat-window').classList.remove('mobile-chat-view-active');
+                document.getElementById('crm-chat-window').style.display = 'none';
+                crmStore.activeChatId = null;
+                this.renderContacts();
+            },
+
+            toggleAI() {
+                if(!crmStore.activeChatId) return;
+                const conv = crmStore.conversations.find(c => c.id === crmStore.activeChatId);
+                conv.ai_enabled = !conv.ai_enabled;
+                this.openChat(conv.id); // Re-render logic
+            },
+
+            renderMessages(convId) {
+                const area = document.getElementById('crm-messages-area');
+                const msgs = crmStore.messages.filter(m => m.convId === convId);
+                area.innerHTML = msgs.map(m => {
+                    const isUser = m.sender === 'admin';
+                    const isAI = m.sender === 'ai';
+                    let bubbleClass = isUser || isAI ? 'chat-bubble-user' : 'chat-bubble-contact';
+                    let align = isUser || isAI ? 'justify-end' : 'justify-start';
+                    
+                    return `
+                        <div class="flex ${align}">
+                            <div class="${bubbleClass} max-w-[75%] p-2 px-3 shadow relative">
+                                ${isAI ? '<span class="text-[9px] text-purple-300 block mb-0.5"><i class="fa-solid fa-robot mr-1"></i>AI Pilot</span>' : ''}
+                                <span class="text-sm leading-relaxed">${m.text}</span>
+                                <div class="text-[10px] text-white/50 text-right mt-1 flex items-center justify-end gap-1">
+                                    ${m.time} ${m.sender !== 'contact' ? '<i class="fa-solid fa-check-double text-blue-300"></i>' : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                area.scrollTop = area.scrollHeight;
+            },
+
+            sendMessage() {
+                const input = document.getElementById('chat-input');
+                const text = input.value.trim();
+                if(!text || !crmStore.activeChatId) return;
+                
+                crmStore.messages.push({
+                    id: Date.now(),
+                    convId: crmStore.activeChatId,
+                    sender: 'admin',
+                    text: text,
+                    time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                });
+                input.value = '';
+                this.renderMessages(crmStore.activeChatId);
+            },
+
+            // --- LISTS & DETAILS ---
+            renderLists() {
+                const container = document.getElementById('crm-lists-container');
+                // Dropdown population for Campaign Modal
+                const campSelect = document.getElementById('camp-list-select');
+                campSelect.innerHTML = crmStore.lists.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+
+                container.innerHTML = crmStore.lists.map(l => `
+                    <div onclick="crm.openListDetails('${l.id}')" class="bg-[#0f1115] p-5 rounded-lg border border-[#2b2f3a] hover:border-purple-500/50 cursor-pointer transition-colors">
+                        <div class="flex justify-between mb-2">
+                             <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400"><i class="fa-solid fa-users text-lg"></i></div>
+                             <span class="text-xs text-white/40">${l.contactIds.length} Contacts</span>
+                        </div>
+                        <h4 class="font-bold text-white text-lg">${l.name}</h4>
+                        <p class="text-xs text-white/50 mt-1">Campaigns: ${l.activeCampaigns.join(', ') || 'None'}</p>
+                    </div>
+                `).join('');
+            },
+
+            createNewList() {
+                const name = prompt("List Name:");
+                if(name) {
+                    crmStore.lists.push({ id: 'l'+Date.now(), name, contactIds: [], created: new Date().toISOString().split('T')[0], activeCampaigns: [] });
+                    this.renderLists();
+                }
+            },
+
+            openListDetails(listId) {
+                const list = crmStore.lists.find(l => l.id === listId);
+                document.getElementById('lists-grid-view').classList.add('hidden-force');
+                document.getElementById('lists-detail-view').classList.remove('hidden-force');
+                
+                document.getElementById('detail-list-name').innerText = list.name;
+                document.getElementById('detail-list-date').innerText = `Created: ${list.created}`;
+                document.getElementById('detail-list-campaigns').innerText = `Active: ${list.activeCampaigns.join(', ') || 'None'}`;
+
+                const tbody = document.getElementById('detail-list-tbody');
+                tbody.innerHTML = list.contactIds.map(cid => {
+                    const c = crmStore.contacts.find(x => x.id === cid);
+                    return `
+                        <tr class="hover:bg-white/5">
+                            <td class="p-4 font-medium">${c.name}</td>
+                            <td class="p-4 text-white/70">${c.phone}</td>
+                            <td class="p-4 text-xs text-white/50">Today</td>
+                            <td class="p-4"><span class="bg-green-500/20 text-green-400 text-xs px-2 py-1 rounded">Active</span></td>
+                        </tr>
+                    `;
+                }).join('');
+            },
+
+            closeListDetails() {
+                document.getElementById('lists-detail-view').classList.add('hidden-force');
+                document.getElementById('lists-grid-view').classList.remove('hidden-force');
+            },
+
+            // --- CAMPAIGNS ---
+            renderCampaigns() {
+                const tbody = document.getElementById('crm-campaigns-table');
+                tbody.innerHTML = crmStore.campaigns.map(c => {
+                    const lName = crmStore.lists.find(l => l.id === c.listId)?.name;
+                    return `
+                        <tr>
+                            <td class="p-4 font-medium">${c.name}</td>
+                            <td class="p-4"><a href="#" onclick="crm.switchTab('lists'); setTimeout(()=>crm.openListDetails('${c.listId}'),100)" class="text-blue-400 hover:underline">${lName}</a></td>
+                            <td class="p-4 text-xs">Tomorrow</td>
+                            <td class="p-4"><span class="px-2 py-1 rounded bg-green-500/10 text-green-400 text-xs">${c.status}</span></td>
+                            <td class="p-4 text-center">${c.ai ? '✅' : '-'}</td>
+                        </tr>
+                    `;
+                }).join('');
+            },
+
+            createCampaign(e) {
+                e.preventDefault();
+                // ... (Existing logic same as before, just adding to mock store)
+                crmStore.campaigns.push({ id: 'c'+Date.now(), name: e.target.name.value, listId: e.target.list.value, status: 'Scheduled', ai: e.target.ai_enabled.checked });
+                document.getElementById('campaign-modal').classList.add('hidden-force');
+                this.renderCampaigns();
+            },
+
+            // --- TEMPLATES (META STYLE) ---
+            openTemplateModal() {
+                document.getElementById('template-modal').classList.remove('hidden-force');
+                crmStore.templateBuilder = { buttons: [] }; // Reset
+                this.updateTemplatePreview();
+            },
+
+            formatTemplateName(input) {
+                input.value = input.value.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+            },
+
+            insertVariable() {
+                const body = document.getElementById('t-body');
+                const currentText = body.value;
+                // Simple regex to find count of {{n}}
+                const count = (currentText.match(/\{\{\d+\}\}/g) || []).length + 1;
+                body.value += ` {{${count}}}`;
+                
+                // Add sample input field
+                const container = document.getElementById('t-variable-samples');
+                const list = document.getElementById('t-vars-input-list');
+                container.classList.remove('hidden');
+                
+                const div = document.createElement('div');
+                div.innerHTML = `<input type="text" placeholder="Content for {{${count}}}" class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded p-2 text-xs text-white" oninput="crm.updateTemplatePreview()">`;
+                list.appendChild(div);
+
+                this.updateTemplatePreview();
+            },
+
+            addTemplateButton() {
+                const list = document.getElementById('t-buttons-list');
+                const idx = crmStore.templateBuilder.buttons.length;
+                if(idx >= 3) return; // Limit 3
+
+                const div = document.createElement('div');
+                div.className = "flex gap-2";
+                div.innerHTML = `
+                    <select class="bg-[#1a1d23] border border-[#2b2f3a] rounded p-2 text-xs text-white w-1/3" onchange="crm.updateTemplatePreview()">
+                        <option value="QUICK_REPLY">Quick Reply</option>
+                        <option value="URL">Visit Website</option>
+                        <option value="PHONE">Call Phone</option>
+                    </select>
+                    <input type="text" placeholder="Button Text" class="bg-[#1a1d23] border border-[#2b2f3a] rounded p-2 text-xs text-white w-2/3" oninput="crm.updateTemplatePreview()">
+                `;
+                list.appendChild(div);
+                crmStore.templateBuilder.buttons.push(div);
+                this.updateTemplatePreview();
+            },
+
+            updateTemplatePreview() {
+                // Header
+                const hType = document.getElementById('t-header-type').value;
+                document.getElementById('t-header-media-input').className = hType === 'media' ? 'block' : 'hidden';
+                document.getElementById('preview-media').className = hType === 'media' ? 'h-40 bg-gray-700 flex items-center justify-center mb-2 rounded-lg' : 'hidden';
+
+                // Body & Variables
+                let bodyText = document.getElementById('t-body').value;
+                const sampleInputs = document.querySelectorAll('#t-vars-input-list input');
+                sampleInputs.forEach((input, index) => {
+                    const val = input.value || `{{${index+1}}}`;
+                    bodyText = bodyText.replace(`{{${index+1}}}`, val); // Simple replace
+                });
+                document.getElementById('preview-body').innerText = bodyText || "Your text...";
+
+                // Footer
+                const footer = document.getElementById('t-footer').value;
+                const fEl = document.getElementById('preview-footer');
+                fEl.innerText = footer;
+                fEl.className = footer ? "text-[#8696a0] text-[11px] mt-2 block" : "hidden";
+
+                // Buttons
+                const btnContainer = document.getElementById('preview-buttons');
+                btnContainer.innerHTML = '';
+                const btnRows = document.querySelectorAll('#t-buttons-list > div');
+                btnRows.forEach(row => {
+                    const type = row.querySelector('select').value;
+                    const text = row.querySelector('input').value || 'Button';
+                    const icon = type === 'URL' ? '<i class="fa-solid fa-arrow-up-right-from-square ml-2"></i>' : (type === 'PHONE' ? '<i class="fa-solid fa-phone ml-2"></i>' : '');
+                    
+                    btnContainer.innerHTML += `
+                        <div class="h-10 flex items-center justify-center text-[#00a884] text-sm font-medium cursor-pointer bg-[#202c33] hover:bg-[#2a3942] transition-colors">
+                            ${text} ${icon}
+                        </div>
+                    `;
+                });
+            },
+
+            submitTemplate() {
+                alert("Template Submitted for Approval!");
+                document.getElementById('template-modal').classList.add('hidden-force');
+                crmStore.templates.push({
+                    id: 't'+Date.now(),
+                    name: document.getElementById('t-name').value,
+                    status: 'Pending',
+                    body: document.getElementById('t-body').value
+                });
+                this.renderTemplates();
+            },
+
+            renderTemplates() {
+                const container = document.getElementById('crm-templates-container');
+                container.innerHTML = crmStore.templates.map(t => `
+                    <div class="bg-[#0f1115] p-5 rounded-lg border border-[#2b2f3a]">
+                         <div class="flex justify-between items-start mb-2">
+                             <h4 class="font-bold text-white text-lg">${t.name}</h4>
+                             <span class="text-xs bg-yellow-500/10 text-yellow-500 px-2 py-0.5 rounded">${t.status}</span>
+                         </div>
+                         <p class="text-sm text-white/60 line-clamp-2">${t.body}</p>
+                    </div>
+                `).join('');
+                
+                // Add to modal select
+                const select = document.getElementById('camp-temp-select');
+                select.innerHTML = crmStore.templates.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+            },
+
+            renderAnalytics() {
+                document.getElementById('stat-sent').innerText = "1,240";
+                document.getElementById('stat-read').innerText = "88%";
+                document.getElementById('stat-ai').innerText = "432";
+            }
+        };
+
+        // --- 4. ROUTER ---
+        const router = {
+            navigate(target) {
+                document.querySelectorAll('.sidebar-link').forEach(btn => {
+                    btn.classList.remove('active');
+                    if(btn.dataset.target === target) btn.classList.add('active');
+                });
+                document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden-force'));
+                const view = document.getElementById(`view-${target}`);
+                if(view) view.classList.remove('hidden-force');
+                
+                // Mobile Sidebar close
+                if(window.innerWidth < 1024) {
+                    document.getElementById('sidebar').classList.remove('open');
+                    document.getElementById('sidebar-overlay').classList.add('hidden');
+                }
+
+                if(target === 'messaging') crm.switchTab('chats');
+            }
+        };
+
+        // Init Sidebar Toggles
+        document.getElementById('sidebar-toggle').addEventListener('click', () => {
+             document.getElementById('sidebar').classList.add('open');
+             document.getElementById('sidebar-overlay').classList.remove('hidden');
+        });
+        document.getElementById('sidebar-overlay').addEventListener('click', () => {
+             document.getElementById('sidebar').classList.remove('open');
+             document.getElementById('sidebar-overlay').classList.add('hidden');
+        });
+    </script>
+</body>
+</html>
