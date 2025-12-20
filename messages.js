@@ -31,8 +31,8 @@ const crm = {
         this.setupRealtime();
     },
 
-    // --- REALTIME ---
     setupRealtime() {
+        // Listen for ANY change in the conversations table for this business
         getSupabase()
             .channel('sidebar_updates')
             .on('postgres_changes', { 
@@ -40,23 +40,42 @@ const crm = {
                 schema: 'public', 
                 table: 'conversations', 
                 filter: `business_id=eq.${crmStore.businessId}` 
-            }, () => this.loadConversations())
+            }, (payload) => {
+                console.log("Sidebar update received:", payload);
+                this.loadConversations(); // Automatically refreshes the list
+            })
             .subscribe();
     },
-
     async subscribeToMessages(convId) {
         if (crmStore.activeSubscription) getSupabase().removeChannel(crmStore.activeSubscription);
 
         crmStore.activeSubscription = getSupabase()
             .channel(`chat_${convId}`)
+            // Listen for new messages
             .on('postgres_changes', { 
                 event: 'INSERT', 
                 schema: 'public', 
                 table: 'messages', 
                 filter: `conversation_id=eq.${convId}` 
             }, (payload) => {
-                crmStore.messages.push(payload.new);
-                this.renderMessages(convId);
+                // Prevent duplicate if optimistic UI is still active
+                if (!crmStore.messages.find(m => m.id === payload.new.id)) {
+                    crmStore.messages.push(payload.new);
+                    this.renderMessages(convId);
+                }
+            })
+            // Listen for status updates (e.g., sent -> delivered -> read)
+            .on('postgres_changes', { 
+                event: 'UPDATE', 
+                schema: 'public', 
+                table: 'messages', 
+                filter: `conversation_id=eq.${convId}` 
+            }, (payload) => {
+                const index = crmStore.messages.findIndex(m => m.id === payload.new.id);
+                if (index !== -1) {
+                    crmStore.messages[index] = payload.new;
+                    this.renderMessages(convId);
+                }
             })
             .subscribe();
     },
@@ -67,9 +86,9 @@ const crm = {
             .from('conversations')
             .select('*, contacts(*)')
             .eq('business_id', crmStore.businessId)
-            .order('last_user_message_at', { ascending: false });
+            .order('updated_at', { ascending: false }); // Orders by newest activity
 
-        if (!error) {
+        if (!error && data) {
             crmStore.conversations = data;
             this.renderContacts();
         }
@@ -162,6 +181,7 @@ const crm = {
         document.getElementById('chat-header-indicator').className = isActive ? "w-2 h-2 rounded-full bg-green-500" : "w-2 h-2 rounded-full bg-yellow-500";
 
         this.updateAIToggleUI(conv.ai_enabled);
+        this.renderContacts();
         
         const { data } = await getSupabase().from('messages').select('*').eq('conversation_id', convId).order('created_at', { ascending: true });
         crmStore.messages = data || [];
@@ -180,24 +200,82 @@ const crm = {
     },
 
     async sendMessage() {
-        const input = document.getElementById('chat-input'); // Corrected ID from index.html
-        if (!input) return;
-        const text = input.value.trim();
-        if (!text || !crmStore.activeChatId) return;
+    const input = document.getElementById('chat-input');
+    if (!input) return;
 
+    const text = input.value.trim();
+    if (!text || !crmStore.activeChatId) return;
+
+    const conv = crmStore.conversations.find(c => c.id === crmStore.activeChatId);
+    if (!conv) return;
+ // Inside crm.init() logic
+const chatInput = document.getElementById('chat-input');
+let typingTimeout;
+
+chatInput.addEventListener('input', () => {
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(async () => {
         const conv = crmStore.conversations.find(c => c.id === crmStore.activeChatId);
-        
-        const { error } = await getSupabase().from('messages').insert({
-            conversation_id: crmStore.activeChatId,
-            contact_id: conv.contact_id.toString(),
-            business_id: crmStore.businessId,
-            direction: 'out',
-            role: 'admin',
-            content: { text: text }
+        if (!conv) return;
+
+        // Fire and forget typing signal
+        fetch('https://xgtnbxdxbbywvzrttixf.supabase.co/functions/v1/send-agent-message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                to: conv.contacts.phone,
+                action: 'typing' // This tells the Edge Function to only send typing signal
+            })
+        });
+    }, 1000); 
+});
+    // 1. Optimistic UI: Add message with 'pending' status (the clock)
+    const tempId = 'temp-' + Date.now();
+    const optimisticMessage = {
+        id: tempId,
+        conversation_id: crmStore.activeChatId,
+        direction: 'out',
+        role: 'admin',
+        content: { text: text },
+        status: 'pending', 
+        created_at: new Date().toISOString()
+    };
+
+    crmStore.messages.push(optimisticMessage);
+    this.renderMessages(crmStore.activeChatId);
+    input.value = '';
+
+    try {
+        const response = await fetch('https://xgtnbxdxbbywvzrttixf.supabase.co/functions/v1/send-agent-message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                to: conv.contacts.phone, // Matching your contacts join name
+                conversationId: crmStore.activeChatId,
+                businessId: crmStore.businessId,
+                payload: {
+                    type: 'text',
+                    text: text,
+                    role: 'admin',
+                    contact_id: conv.contact_id
+                }
+            })
         });
 
-        if (!error) input.value = '';
-    },
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error);
+
+        // Success: The real message will arrive via Realtime and replace this list.
+        // We filter out the temp message to avoid flickering.
+        crmStore.messages = crmStore.messages.filter(m => m.id !== tempId);
+
+    } catch (err) {
+        console.error("Send Error:", err.message);
+        const msg = crmStore.messages.find(m => m.id === tempId);
+        if (msg) msg.status = 'error';
+        this.renderMessages(crmStore.activeChatId);
+    }
+},
 
     async toggleAI() {
         if(!crmStore.activeChatId) return;
@@ -222,21 +300,62 @@ const crm = {
     },
 
     renderMessages(convId) {
-        const area = document.getElementById('crm-messages-area');
-        if (!area) return;
-        area.innerHTML = crmStore.messages.map(m => {
-            const isMe = m.direction === 'out';
-            return `
-                <div class="flex ${isMe ? 'justify-end' : 'justify-start'} mb-2">
-                    <div class="${isMe ? 'chat-bubble-user' : 'chat-bubble-contact'} max-w-[75%] p-2 px-3 rounded-lg">
-                        ${m.role === 'ai' ? '<span class="text-[9px] text-purple-300 block">AI Pilot</span>' : ''}
-                        <span class="text-sm">${m.content?.text || ''}</span>
-                    </div>
-                </div>`;
-        }).join('');
-        area.scrollTop = area.scrollHeight;
-    },
+    const area = document.getElementById('crm-messages-area');
+    if (!area) return;
 
+    // Filter messages for active chat - using flexible matching for field names
+    const msgs = crmStore.messages.filter(m => (m.conversation_id === convId || m.convId === convId));
+
+    area.innerHTML = msgs.map(m => {
+        // 1. Determine Identity (Support both your local names and DB names)
+        const isOutgoing = m.direction === 'out' || m.sender === 'admin' || m.sender === 'ai';
+        const isAI = m.role === 'ai' || m.sender === 'ai';
+        
+        // 2. Formatting Logic
+        const align = isOutgoing ? 'justify-end' : 'justify-start';
+        
+        // Use WhatsApp Green (#005c4b) for Admin/AI, Dark Grey for Contact
+        const bubbleClass = isOutgoing ? 'bg-[#005c4b] text-white rounded-tr-none' : 'bg-[#202c33] text-white rounded-tl-none';
+        
+        // 3. Status Ticks Logic (Only for outgoing)
+        let statusIcon = '';
+        if (isOutgoing) {
+            const s = m.status;
+            if (s === 'read') statusIcon = '<i class="fa-solid fa-check-double text-[10px] text-[#53bdeb]"></i>';
+            else if (s === 'delivered') statusIcon = '<i class="fa-solid fa-check-double text-[10px] opacity-50"></i>';
+            else if (s === 'sent') statusIcon = '<i class="fa-solid fa-check text-[10px] opacity-50"></i>';
+            else if (s === 'pending') statusIcon = '<i class="fa-regular fa-clock text-[10px] opacity-40"></i>';
+            else statusIcon = '<i class="fa-solid fa-check text-[10px] opacity-50"></i>';
+        }
+
+        // 4. Time Handling (Support both formatted string or ISO date)
+        const displayTime = m.time || (m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '');
+
+        // 5. Text Handling (Support both m.text or m.content.text)
+        const displayText = m.text || m.content?.text || '';
+
+        return `
+            <div class="flex ${align} mb-2 px-4">
+                <div class="${bubbleClass} max-w-[75%] p-2 px-3 shadow-sm rounded-xl relative min-w-[70px]">
+                    ${isAI ? `
+                        <div class="flex items-center gap-1 text-[10px] text-green-300 font-bold mb-1 uppercase tracking-tight">
+                            <i class="fa-solid fa-robot"></i> AI ASSISTANT
+                        </div>` : ''}
+                    
+                    <span class="text-[14.5px] leading-relaxed whitespace-pre-wrap">${displayText}</span>
+                    
+                    <div class="flex items-center justify-end gap-1 mt-1 leading-none">
+                        <span class="text-[10px] opacity-50">${displayTime}</span>
+                        ${statusIcon}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    area.scrollTop = area.scrollHeight;
+},
+    
     // --- LISTS UI ---
     renderLists() {
         const container = document.getElementById('crm-lists-container');

@@ -772,14 +772,14 @@
     <script src="auth.js"></script>
 
     <script>
-        // --- 1. CONFIGURATION & SUPABASE SETUP ---
-        const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co'; // Replace
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ'; // Replace
-        // Business id comes from logged-in user (auth.js). If null, some actions will be disabled.
-        const BUSINESS_ID = (window.authUtils && window.authUtils.getBusinessId) ? window.authUtils.getBusinessId() : null;
+        // --- 1. UTILITIES & HELPERS ---
+        
+        const APP_CONFIG = (window && window.__APP_CONFIG) ? window.__APP_CONFIG : {};
+        const SUPABASE_URL = APP_CONFIG.SUPABASE_URL || "https://xgtnbxdxbbywvzrttixf.supabase.co";
+        const SUPABASE_KEY = APP_CONFIG.SUPABASE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ";
 
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        
+
         // Helper: Convert storage path to public URL (no-op for absolute URLs)
         function getPublicImageUrl(path) {
             console.debug('[getPublicImageUrl] input:', path);
