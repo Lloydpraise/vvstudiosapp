@@ -125,6 +125,9 @@
         .task-completed .task-number { background: rgba(34,197,94,0.15); color: #22c55e; }
         .badge-completed { background: rgba(34,197,94,0.12); color: #bbf7d0; padding: 6px 10px; border-radius: 999px; font-weight:700; font-size:0.75rem; display:inline-flex; gap:8px; align-items:center; }
     </style>
+    <script>(function(){try{var t=null;try{t=localStorage.getItem('vvTheme')}catch(e){} if(!t) t='light'; if(t==='light') document.documentElement.setAttribute('data-theme','light'); else document.documentElement.removeAttribute('data-theme');}catch(e){} })();</script>
+    <link rel="stylesheet" href="theme.css">
+    <script src="theme-toggle.js" defer></script>
 </head>
 <body class="bg-[#0f1115] text-white">
 
@@ -561,7 +564,20 @@
         const SUPABASE_URL = APP_CONFIG.SUPABASE_URL || "https://xgtnbxdxbbywvzrttixf.supabase.co";
         const SUPABASE_KEY = APP_CONFIG.SUPABASE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ";
 
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // Initialize a single global Supabase client instance used across pages.
+        if (!window.supabaseClient) {
+            if (window.supabase && typeof window.supabase.createClient === 'function') {
+                try {
+                    window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                } catch (e) {
+                    console.warn('Failed to create window.supabaseClient in free.html', e);
+                    window.supabaseClient = null;
+                }
+            } else {
+                console.warn('Supabase library not available to initialize window.supabaseClient');
+                window.supabaseClient = null;
+            }
+        }
 
         // --- 2. GET USER / BUSINESS ID ---
         function getBusinessId() {

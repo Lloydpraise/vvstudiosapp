@@ -63,6 +63,9 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
     </style>
+    <script>(function(){try{var t=null;try{t=localStorage.getItem('vvTheme')}catch(e){} if(!t) t='light'; if(t==='light') document.documentElement.setAttribute('data-theme','light'); else document.documentElement.removeAttribute('data-theme');}catch(e){} })();</script>
+    <link rel="stylesheet" href="theme.css">
+    <script src="theme-toggle.js" defer></script>
 </head>
 <body class="bg-[#0f1115] text-white min-h-screen flex flex-col">
 
@@ -73,7 +76,7 @@
             <span class="font-bold text-xl tracking-tight">VV Studios <span class="text-white/40 font-normal">| Projections</span></span>
         </div>
         <a href="index.html" class="text-sm text-white/60 hover:text-white transition-colors">
-            <i class="fa-solid fa-arrow-left mr-1"></i> Back to Dashboard
+            <i class="fa-solid fa-arrow-left mr-1"></i> Back
         </a>
     </header>
 

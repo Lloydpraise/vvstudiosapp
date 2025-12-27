@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script>(function(){try{var t=null;try{t=localStorage.getItem('vvTheme')}catch(e){} if(!t) t='light'; if(t==='light') document.documentElement.setAttribute('data-theme','light'); else document.documentElement.removeAttribute('data-theme');}catch(e){} })();</script>
     <link rel="stylesheet" href="theme.css">
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0f1115; color: white; }
@@ -20,6 +21,7 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .progress-bar-fill { transition: width 5s linear; }
     </style>
+    <script src="theme-toggle.js" defer></script>
 </head>
 <body class="bg-[#0f1115] text-white min-h-screen flex flex-col">
 

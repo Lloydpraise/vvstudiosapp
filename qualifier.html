@@ -88,6 +88,18 @@
         .btn-secondary { background-color: rgba(255,255,255,0.05); color: white; font-weight: 500; padding: 0.75rem 1.5rem; border-radius: 0.75rem; border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; }
         .btn-secondary:hover { background-color: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
 
+        /* Add custom category button (blue) */
+        .add-cat-btn {
+            background-color: #0b5fff !important;
+            color: #ffffff !important;
+            font-weight: 600;
+            padding: 0.6rem 1rem;
+            border-radius: 0.6rem;
+            border: 1px solid rgba(11,95,255,0.15) !important;
+            transition: all 0.18s ease;
+        }
+        .add-cat-btn:hover { background-color: #084ecf !important; box-shadow: 0 8px 24px rgba(11,95,255,0.12); }
+
         /* Hide sections initially */
         .app-view { display: none; }
         .app-view.active { display: block; animation: fadeIn 0.4s ease-out forwards; }
@@ -102,8 +114,11 @@
         .create-container { max-height: calc(100vh - 140px); overflow-y: auto; padding-bottom: 4rem; }
 
     </style>
+    <script>(function(){try{var t=null;try{t=localStorage.getItem('vvTheme')}catch(e){} if(!t) t='light'; if(t==='light') document.documentElement.setAttribute('data-theme','light'); else document.documentElement.removeAttribute('data-theme');}catch(e){} })();</script>
+    <link rel="stylesheet" href="theme.css">
+    <script src="theme-toggle.js" defer></script>
 </head>
-<body class="min-h-screen flex flex-col overflow-hidden">
+<body class="min-h-screen flex flex-col overflow-auto">
 
     <header class="h-16 px-6 flex justify-between items-center border-b border-white/5 bg-[#0f1115] z-40">
         <div class="flex items-center gap-3">
@@ -209,7 +224,7 @@
                             <label class="block text-sm text-white/40 mb-2">Add Custom Category</label>
                             <div class="flex gap-2">
                                 <input type="text" id="new-cat-input" class="input-dark" placeholder="e.g. Technical Feasibility">
-                                <button onclick="addNewCategory()" class="btn-secondary whitespace-nowrap"><i class="fa-solid fa-plus"></i> Add</button>
+                                <button onclick="addNewCategory()" class="add-cat-btn whitespace-nowrap"><i class="fa-solid fa-plus"></i> Add</button>
                             </div>
                         </div>
                     </div>

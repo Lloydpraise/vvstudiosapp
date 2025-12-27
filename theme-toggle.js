@@ -19,7 +19,7 @@
     function init(){
         let saved = null;
         try { saved = localStorage.getItem(THEME_KEY); } catch(e){}
-        if(!saved) saved = 'dark';
+        if(!saved) saved = 'light';
         setTheme(saved);
 
         document.addEventListener('click', function(e){

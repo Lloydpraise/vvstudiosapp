@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -10,15 +10,47 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+    <script>
+        tailwind.config = {
+            darkMode: ['class', '[data-theme="dark"]'],
+            theme: {
+                extend: {
+                    colors: {
+                        page: 'var(--bg-page)',
+                        card: 'var(--card-bg)',
+                        main: 'var(--text-main)',
+                        muted: 'var(--text-muted)',
+                        border: 'var(--border-color)',
+                        input: 'var(--input-bg)'
+                    }
+                }
+            }
+        }
+    </script>
+
     <style>
         /* --- Dynamic Theme Variables --- */
         :root {
+            /* Light Theme (Default) */
+            --bg-page: #f9fafb; /* Soft gray-white */
+            --card-bg: #ffffff; /* Pure white cards */
+            --text-main: #111827; /* Deep slate text */
+            --text-muted: #6b7280;
+            --border-color: #e5e7eb;
+            --input-bg: #f3f4f6;
+            
+            --primary-color: #7c3aed; 
+            --secondary-color: #ea580c; 
+        }
+
+        [data-theme="dark"] {
+            /* Dark Theme */
             --bg-page: #0f1115;
             --card-bg: #1a1d23;
             --text-main: #ffffff;
             --text-muted: #9ca3af;
-            --primary-color: #7c3aed; 
-            --secondary-color: #ea580c; 
+            --border-color: rgba(255,255,255,0.1);
+            --input-bg: #252830;
         }
 
         body {
@@ -27,40 +59,46 @@
             color: var(--text-main);
             min-height: 100vh;
             overflow-x: hidden;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         /* Utility */
-        .btn-primary { background-color: var(--primary-color); }
+        .btn-primary { background-color: var(--primary-color); color: white; }
         .text-primary { color: var(--primary-color); }
         .text-secondary { color: var(--secondary-color); }
         .border-primary { border-color: var(--primary-color); }
+        
+        /* Inputs & Cards */
+        .theme-card { background-color: var(--card-bg); border: 1px solid var(--border-color); }
+        .theme-input { background-color: var(--input-bg); color: var(--text-main); border: 1px solid var(--border-color); }
+        .theme-input:focus { border-color: var(--primary-color); outline: none; }
 
         /* Gallery & UI */
         .gallery-thumb.active { border-color: var(--primary-color); opacity: 1; }
+        .var-btn { background-color: var(--card-bg); color: var(--text-main); border: 1px solid var(--border-color); }
+        .var-btn:hover { border-color: var(--primary-color); }
         .var-btn.selected { background-color: var(--primary-color); border-color: var(--primary-color); color: white; }
-        .loader { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--primary-color); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        
+        .loader { border: 3px solid var(--text-muted); border-top: 3px solid var(--primary-color); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         /* Pricing Styles */
         .old-price { text-decoration: line-through; color: var(--secondary-color); font-size: 0.9em; margin-right: 8px; opacity: 0.8; }
         .flash-badge { background-color: var(--secondary-color); color: white; }
         
-        /* Mobile Sticky Button (mobile only by default) */
+        /* Mobile Sticky Button */
         .mobile-sticky-btn {
             position: fixed; bottom: 0; left: 0; width: 100%;
-            background: rgba(15, 17, 21, 0.95); backdrop-filter: blur(8px);
-            border-top: 1px solid rgba(43,47,58,1); padding: 16px; z-index: 50; display: block;
+            background: var(--card-bg); 
+            border-top: 1px solid var(--border-color); padding: 16px; z-index: 40; display: block;
+            box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
         }
         @media (min-width: 768px) { .mobile-sticky-btn { display: none; } }
 
         @media (max-width: 767px) {
             #purchase-panel .availability-row { display: none; }
             #purchase-panel .inblock-whatsapp { display: none !important; }
-            header { padding-left: 72px; padding-right: 72px; }
-            #biz-name { margin-top: 6px; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(100% - 32px); }
-            #biz-logo { height: 36px; }
-
-            /* Prevent the main content from being covered by the sticky button on small screens */
+            header { padding-left: 1rem; padding-right: 1rem; }
             #main-content { padding-bottom: 140px; }
         }
 
@@ -68,71 +106,74 @@
         #announcement-bar {
             background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
             color: white; text-align: center; padding: 8px; font-size: 0.85rem; font-weight: 600;
-            display: none; /* Hidden by default */
+            display: none;
         }
 
-        /* Desktop: position the purchase panel higher and make WhatsApp button compact */
+        /* Desktop Adjustments */
         @media (min-width: 768px) {
-            /* Make the purchase panel sit nearer the top of the right column */
-            #purchase-panel { align-self: flex-start; margin-top: 1rem; }
-
-            /* Make the in-panel WhatsApp button fill the purchase panel on desktop */
-            /* Force full width inside the purchase panel regardless of flex container */
+            #purchase-panel { align-self: flex-start; margin-top: 1rem; position: sticky; top: 20px; }
             #purchase-panel > div { display: flex; }
-            #purchase-panel .inblock-whatsapp { flex: none !important; display: block !important; width: 100% !important; min-width: 0; }
-            #purchase-panel .inblock-whatsapp i { margin-right: 0.5rem; }
-
-            /* If the panel has inner padding, nudge the button to span edge-to-edge visually */
-            #purchase-panel .inblock-whatsapp.full-span {
-                width: calc(100% + 48px) !important;
-                margin-left: -24px !important;
-                border-radius: 0.75rem !important;
-            }
+            #purchase-panel .inblock-whatsapp { flex: none !important; display: block !important; width: 100% !important; }
         }
+
+        /* Modal Transitions */
+        .modal-backdrop {
+            opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        }
+        .modal-backdrop.open { opacity: 1; pointer-events: auto; }
+        .modal-content { transform: scale(0.95); transition: transform 0.3s ease; }
+        .modal-backdrop.open .modal-content { transform: scale(1); }
     </style>
+    <script>(function(){try{var t=null;try{t=localStorage.getItem('vvTheme')}catch(e){} if(!t) t='light'; if(t==='light') document.documentElement.setAttribute('data-theme','light'); else document.documentElement.removeAttribute('data-theme');}catch(e){} })();</script>
+    <link rel="stylesheet" href="theme.css">
+    <script src="theme-toggle.js" defer></script>
 </head>
 <body>
+
+    <div class="fixed top-4 right-4 z-50">
+        <button onclick="toggleTheme()" class="w-10 h-10 rounded-full theme-card shadow-lg flex items-center justify-center text-main hover:text-primary transition-colors">
+            <i id="theme-icon" class="fa-solid fa-moon"></i>
+        </button>
+    </div>
 
     <div id="announcement-bar">
         <i class="fa-solid fa-truck-fast mr-2"></i> <span id="announcement-text"></span>
     </div>
 
-    <div id="loading-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0f1115]">
+    <div id="loading-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-page">
         <div class="loader mb-4"></div>
-        <p class="text-white/50 animate-pulse">Loading Product Details...</p>
+        <p class="text-muted animate-pulse">Loading Product Details...</p>
     </div>
 
     <div class="mobile-sticky-btn">
-        <button onclick="handleWhatsAppPurchase()" class="w-full bg-[#25D366] text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform">
+        <button onclick="openOrderModal()" class="w-full bg-[#25D366] text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform">
             <i class="fa-brands fa-whatsapp text-xl"></i>
             <span id="mobile-cta-text">Order on WhatsApp</span>
         </button>
     </div>
 
-    <div id="error-screen" class="hidden fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0f1115] p-6 text-center">
+    <div id="error-screen" class="hidden fixed inset-0 z-50 flex flex-col items-center justify-center bg-page p-6 text-center">
         <div class="text-4xl mb-4">😕</div>
-        <h2 class="text-xl font-bold mb-2">Product Not Found</h2>
-        <p class="text-white/50 max-w-md">The product link might be incorrect or expired.</p>
+        <h2 class="text-xl font-bold mb-2 text-main">Product Not Found</h2>
+        <p class="text-muted max-w-md">The product link might be incorrect or expired.</p>
     </div>
 
     <div id="main-content" class="hidden max-w-7xl mx-auto px-4 py-6 lg:py-12">
         
         <header class="w-full max-w-6xl px-4 py-4 flex items-center justify-between relative mb-2">
-            <div class="absolute left-4 top-1/2 -translate-y-1/2">
+            <div class="flex items-center gap-3">
                 <img id="biz-logo" src="" alt="Logo" class="h-10 w-auto object-contain hidden"> 
-                <div id="logo-placeholder" class="h-10 w-10 bg-white/10 rounded-full flex items-center justify-center">
-                    <i class="fa-solid fa-store text-white/50"></i>
+                <div id="logo-placeholder" class="h-10 w-10 theme-card rounded-full flex items-center justify-center shadow-sm">
+                    <i class="fa-solid fa-store text-muted"></i>
                 </div>
-            </div>
-            <div class="w-full text-center">
-                <h1 id="biz-name" class="font-brand font-semibold text-lg text-white/90 uppercase tracking-widest">Store</h1>
+                <h1 id="biz-name" class="font-brand font-semibold text-lg text-main uppercase tracking-widest">Store</h1>
             </div>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16">
             
             <div class="space-y-4">
-                <div class="aspect-square w-full rounded-2xl overflow-hidden bg-white/5 relative group">
+                <div class="aspect-square w-full rounded-2xl overflow-hidden bg-gray-100 relative group theme-card shadow-sm">
                     <img id="main-image" src="" alt="Product Image" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
                     
                     <div id="offer-badge" class="hidden absolute top-4 left-4 flash-badge text-xs font-bold px-3 py-1 rounded-full shadow-lg z-10">
@@ -144,542 +185,152 @@
 
             <div class="flex flex-col">
                 <div class="mb-6">
-                    <h1 id="product-title" class="text-3xl md:text-4xl font-bold mb-3">...</h1>
+                    <h1 id="product-title" class="text-3xl md:text-4xl font-bold mb-3 text-main">...</h1>
                     
                     <div class="flex items-center flex-wrap gap-3 text-2xl">
                         <span id="price-old" class="hidden old-price"></span>
                         <span id="price-current" class="font-bold text-primary">...</span>
                     </div>
 
-                    <div id="offer-timer" class="hidden mt-3 p-2 bg-white/5 border border-white/10 rounded-lg inline-flex items-center gap-3">
-                        </div>
+                    <div id="offer-timer" class="hidden mt-3 p-2 theme-card border border-primary/20 rounded-lg inline-flex items-center gap-3 shadow-sm">
+                    </div>
                 </div>
 
-                <div class="prose prose-invert mb-6">
-                    <p id="product-desc-short" class="text-lg text-white/80 leading-relaxed">...</p>
+                <div class="prose mb-6">
+                    <p id="product-desc-short" class="text-lg text-muted leading-relaxed">...</p>
                 </div>
 
-                <div id="bundle-container" class="hidden mb-6 bg-gradient-to-r from-[var(--card-bg)] to-[#252830] border border-[var(--secondary-color)] rounded-xl p-4 relative overflow-hidden">
-                    <div class="absolute top-0 right-0 bg-[var(--secondary-color)] text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">
+                <div id="bundle-container" class="hidden mb-6 bg-gradient-to-r from-gray-50 to-gray-100 border border-secondary rounded-xl p-4 relative overflow-hidden shadow-sm">
+                    <div class="absolute top-0 right-0 bg-secondary text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">
                         SPECIAL OFFER
                     </div>
                     <div class="flex items-center gap-4">
-                        <img id="bundle-img" src="" class="w-16 h-16 rounded-lg object-cover bg-white/10">
+                        <img id="bundle-img" src="" class="w-16 h-16 rounded-lg object-cover bg-white shadow-sm">
                         <div>
-                            <p id="bundle-label" class="text-sm font-bold text-[var(--secondary-color)] mb-0.5">FREE GIFT INCLUDED</p>
-                            <p id="bundle-title" class="text-white font-medium text-sm">...</p>
-                            <p class="text-xs text-white/50 mt-1">When you order this item today.</p>
+                            <p id="bundle-label" class="text-sm font-bold text-secondary mb-0.5">FREE GIFT INCLUDED</p>
+                            <p id="bundle-title" class="text-gray-900 font-medium text-sm">...</p>
+                            <p class="text-xs text-gray-500 mt-1">When you order this item today.</p>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Full Details (collapsible) -->
-                <div class="mt-4 bg-[var(--card-bg)] border border-white/10 rounded-2xl overflow-hidden">
-                    <button id="desc-toggle" class="w-full px-6 py-4 flex justify-between items-center hover:bg-white/5 transition-colors">
-                        <span class="font-semibold text-white/90">Full Details</span>
-                        <i class="fa-solid fa-chevron-down transition-transform text-white/50" id="desc-chevron"></i>
-                    </button>
-                    <div id="desc-content" class="hidden bg-[#14161a]">
-                        <div class="p-6 text-white/70 text-sm leading-relaxed" id="product-desc-long"></div>
                     </div>
                 </div>
 
                 <div id="variations-container" class="space-y-6 mb-8"></div>
 
-                <div id="purchase-panel" class="bg-white/5 p-6 rounded-2xl border border-white/10">
+                <div id="purchase-panel" class="theme-card p-6 rounded-2xl shadow-sm">
                     <div class="flex items-center justify-between mb-4 availability-row">
-                        <span class="text-sm text-white/60">Availability</span>
-                        <span id="stock-status" class="font-medium text-green-400">Checking...</span>
+                        <span class="text-sm text-muted">Availability</span>
+                        <span id="stock-status" class="font-medium text-green-500">Checking...</span>
                     </div>
 
                     <div class="flex gap-4">
-                        <button id="btn-whatsapp" onclick="handleWhatsAppPurchase()" class="inblock-whatsapp flex-1 bg-[#25D366] hover:opacity-90 text-white font-bold py-4 px-6 rounded-xl flex items-center justify-center space-x-2 transition-all">
+                        <button id="btn-whatsapp" onclick="openOrderModal()" class="inblock-whatsapp flex-1 bg-[#25D366] hover:opacity-90 text-white font-bold py-4 px-6 rounded-xl flex items-center justify-center space-x-2 transition-all shadow-md">
                             <i class="fa-brands fa-whatsapp text-xl"></i>
                             <span id="desktop-cta-text">Order on WhatsApp</span>
                         </button>
                     </div>
                 </div>
 
-                
-
+                <div class="mt-8 theme-card rounded-2xl overflow-hidden shadow-sm">
+                    <button id="desc-toggle" class="w-full px-6 py-4 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                        <span class="font-semibold text-main">Full Details</span>
+                        <i class="fa-solid fa-chevron-down transition-transform text-muted" id="desc-chevron"></i>
+                    </button>
+                    <div id="desc-content" class="hidden border-t border-border">
+                        <div class="p-6 text-muted text-sm leading-relaxed" id="product-desc-long"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Customer Reviews -->
-        <section class="mb-12 bg-[var(--card-bg)] border border-white/10 rounded-2xl p-6">
+        <section class="mt-12 mb-12 theme-card rounded-2xl p-6 shadow-sm">
             <div class="flex items-center justify-between mb-6">
-                <h2 class="text-xl font-bold">Customer Reviews</h2>
+                <h2 class="text-xl font-bold text-main">Customer Reviews</h2>
                 <div class="text-orange-500 flex items-center gap-1">
                     <i class="fa-solid fa-star"></i>
-                    <span class="font-bold text-white" id="avg-rating">0.0</span>
+                    <span class="font-bold text-main" id="avg-rating">0.0</span>
                 </div>
             </div>
             <div id="reviews-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
         </section>
 
         <div class="flex justify-center mt-6 mb-16">
-            <button id="help-btn" onclick="handleHelpClick()" class="px-6 py-3 rounded-xl border border-white/10 text-white/40 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all text-sm font-medium flex items-center gap-2">
+            <button id="help-btn" onclick="openDiscountModal()" class="px-6 py-3 rounded-xl border border-border text-muted hover:text-primary hover:border-primary hover:bg-page transition-all text-sm font-medium flex items-center gap-2">
                 <i class="fa-regular fa-circle-question"></i>
                 Unable to Place Order Now? Click Here
             </button>
         </div>
     </div>
 
-    <script>
-        // --- CONFIGURATION ---
-        const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co'; 
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ'; 
-        
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        // Helper: Image URL Generator
-        function getPublicImageUrl(path) {
-            if (!path) return "";
-            if (path.startsWith("http") || path.startsWith("//")) return path;
-            const bucketName = "ecommerce-assets"; 
-            const cleanPath = path.replace(new RegExp(`^${bucketName}\/`), "");
-            const { data } = supabase.storage.from(bucketName).getPublicUrl(cleanPath);
-            return data.publicUrl;
-        }
-
-        // --- STATE ---
-        let productData = null;
-        let businessData = null;
-        let activeOffers = []; // Holds all active offers
-        let selectedVariations = {}; 
-        let currentPrice = 0;
-        let currentOfferLabel = ""; // For WhatsApp message
-
-        // --- INITIALIZATION ---
-        document.addEventListener('DOMContentLoaded', async () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const productId = urlParams.get('id');
+    <div id="modal-order" class="modal-backdrop fixed inset-0 z-[60] flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm">
+        <div class="modal-content w-full max-w-md theme-card rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-border flex justify-between items-center bg-page">
+                <h3 class="font-bold text-main">Confirm Order Details</h3>
+                <button onclick="closeModals()" class="text-muted hover:text-red-500 transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
             
-            // App Back Button Logic (Preserved)
-            try {
-                if (urlParams.get('from_app') === '1') {
-                    const header = document.querySelector('header');
-                    const backBtn = document.createElement('button');
-                    backBtn.className = 'absolute right-4 top-1/2 -translate-y-1/2 text-sm text-white/80 bg-white/5 hover:bg-white/10 py-1 px-3 rounded-lg';
-                    backBtn.innerText = '← Back';
-                    backBtn.onclick = () => window.history.back();
-                    header.appendChild(backBtn);
-                }
-            } catch(e){}
-
-            if (!productId) return showError();
-
-            try {
-                await loadProduct(productId);
-            } catch (err) {
-                console.error(err);
-                showError();
-            }
-
-                // Desc Toggle (safe attach)
-                const descToggle = document.getElementById('desc-toggle');
-                if (descToggle) {
-                    descToggle.addEventListener('click', () => {
-                        const c = document.getElementById('desc-content');
-                        if (!c) return;
-                        c.classList.toggle('hidden');
-                        const chevron = document.getElementById('desc-chevron');
-                        if (chevron) chevron.style.transform = c.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
-                    });
-                }
-        });
-
-        // --- CORE FUNCTIONS ---
-
-        async function loadProduct(productId) {
-            // 1. Fetch Product
-            const { data: product, error: prodError } = await supabase
-                .from('products').select('*').eq('id', productId).single();
-            if (prodError || !product) throw new Error("Product not found");
-            productData = product;
-
-            // 2. Fetch Business Settings
-            const { data: biz } = await supabase
-                .from('business_settings').select('*').eq('business_id', product.business_id).single();
-            businessData = biz || { brand_colors: {} };
-
-            // 3. Fetch ALL Active Offers (Sorted by priority)
-            const { data: offers } = await supabase
-                .from('offers')
-                .select('*')
-                .eq('product_id', productId)
-                .eq('is_active', true)
-                .gte('end_date', new Date().toISOString())
-                .order('priority', { ascending: true }); // Priority 1 comes first
-            
-            activeOffers = offers || [];
-
-            renderPage(product, businessData, activeOffers);
-        }
-
-        async function renderPage(product, biz, offers) {
-            // --- Theme Setup ---
-            const colors = biz.brand_colors || {};
-            const root = document.documentElement;
-            if(colors.primary) root.style.setProperty('--primary-color', colors.primary);
-            if(colors.secondary) root.style.setProperty('--secondary-color', colors.secondary);
-            if(colors.background) root.style.setProperty('--bg-page', colors.background);
-
-            // --- Basic Product Data ---
-            if (biz.logo_url) {
-                const logo = document.getElementById('biz-logo');
-                logo.src = getPublicImageUrl(biz.logo_url);
-                logo.classList.remove('hidden');
-                document.getElementById('logo-placeholder').classList.add('hidden');
-            }
-            if (biz.business_name) document.getElementById('biz-name').textContent = biz.business_name;
-            document.getElementById('product-title').innerText = product.title;
-            document.getElementById('product-desc-short').innerText = product.description_short || '';
-            document.getElementById('product-desc-long').innerHTML = (product.description_long || '').replace(/\n/g, '<br>');
-
-            // --- Images ---
-            const images = product.images || [];
-            if (images.length > 0) {
-                document.getElementById('main-image').src = getPublicImageUrl(images[0]);
-                // Thumbnails logic (support multiple images and active state)
-                const tCon = document.getElementById('image-thumbnails');
-                tCon.innerHTML = '';
-                images.forEach((img, i) => {
-                    const thumb = document.createElement('img');
-                    thumb.src = getPublicImageUrl(img);
-                    thumb.alt = `${product.title} - ${i+1}`;
-                    thumb.dataset.src = img;
-                    thumb.className = `gallery-thumb w-14 h-14 rounded-md object-cover border border-transparent cursor-pointer hover:border-white/50 opacity-90`;
-                    if (i === 0) thumb.classList.add('active');
-                    thumb.onclick = () => {
-                        // update main image
-                        document.getElementById('main-image').src = getPublicImageUrl(img);
-                        // update active marker
-                        Array.from(tCon.children).forEach(c => c.classList.remove('active'));
-                        thumb.classList.add('active');
-                    };
-                    tCon.appendChild(thumb);
-                });
-            }
-
-            // --- OFFER LOGIC ENGINE ---
-            let price = product.price;
-            currentPrice = price; 
-            let primaryOffer = null;
-            let secondaryOffer = null; // Usually Shipping
-
-            // Separate offers
-            if(offers.length > 0) {
-                // Find stackable offer (usually shipping)
-                secondaryOffer = offers.find(o => o.offer_type === 'SHIPPING');
-                // Find primary offer (Discount, Flash Sale, BOGO, Bundle)
-                primaryOffer = offers.find(o => o.offer_type !== 'SHIPPING');
-            }
-
-            // 1. Handle Primary Offer (Affects Price/Badges)
-            if (primaryOffer) {
-                const type = primaryOffer.offer_type;
-                const config = primaryOffer.configuration || {};
-                const badge = document.getElementById('offer-badge');
-                
-                badge.classList.remove('hidden');
-
-                if (type === 'FLASH_SALE' || type === 'DISCOUNT') {
-                    // Calculate Discount
-                    let finalPrice = price;
-                    let label = "";
-
-                    if (config.percent) {
-                        finalPrice = price * (1 - (config.percent / 100));
-                        label = `-${config.percent}%`;
-                    } else if (config.amount) {
-                        finalPrice = price - config.amount;
-                        label = `-KES ${config.amount}`;
-                    } else if (primaryOffer.discount_value) {
-                         // Fallback for legacy table structure if used
-                         if(primaryOffer.discount_type === 'percent') finalPrice = price * (1 - (primaryOffer.discount_value/100));
-                         else finalPrice = price - primaryOffer.discount_value;
-                    }
-
-                    // Render Price
-                    document.getElementById('price-old').innerText = `KES ${price.toLocaleString()}`;
-                    document.getElementById('price-old').classList.remove('hidden');
-                    document.getElementById('price-current').innerText = `KES ${finalPrice.toLocaleString()}`;
-                    badge.innerText = type === 'FLASH_SALE' ? `FLASH SALE ${label}` : `${label} OFF`;
-                    currentPrice = finalPrice;
-                    currentOfferLabel = `Discount Applied (${label})`;
-
-                    // Timer for Flash Sale
-                    if (type === 'FLASH_SALE' && primaryOffer.end_date) {
-                        startTimer(primaryOffer.end_date);
-                    }
-                } 
-                else if (type === 'BOGO') {
-                    // Logic: Price stays same (usually), but CTA changes
-                    const buy = config.buy_qty || 1;
-                    const get = config.get_qty || 1;
-                    badge.innerText = `BUY ${buy} GET ${get} FREE`;
-                    document.getElementById('price-current').innerText = `KES ${price.toLocaleString()}`;
-                    currentOfferLabel = `Offer: Buy ${buy} Get ${get} Free`;
-                    
-                    // Update CTA Text
-                    const ctaText = `Buy ${buy} Get ${get} Free - Order Now`;
-                    document.getElementById('desktop-cta-text').innerText = ctaText;
-                    document.getElementById('mobile-cta-text').innerText = ctaText;
-                }
-                else if (type === 'BUNDLE') {
-                    // Logic: Price might be fixed bundle price OR same price + free gift
-                    if (config.bundle_price) {
-                        document.getElementById('price-old').innerText = `KES ${price.toLocaleString()}`;
-                        document.getElementById('price-old').classList.remove('hidden');
-                        currentPrice = config.bundle_price;
-                    }
-                    document.getElementById('price-current').innerText = `KES ${currentPrice.toLocaleString()}`;
-                    badge.innerText = "FREE GIFT";
-                    currentOfferLabel = "Bundle Offer Included";
-
-                    // Load Tied Product Data
-                    if (config.gift_product_id) {
-                        loadBundleItem(config.gift_product_id);
-                    }
-                }
-            } else {
-                // No Price Offer
-                document.getElementById('price-current').innerText = `KES ${price.toLocaleString()}`;
-                if(product.old_price > price) {
-                    document.getElementById('price-old').innerText = `KES ${product.old_price.toLocaleString()}`;
-                    document.getElementById('price-old').classList.remove('hidden');
-                }
-            }
-
-            // 2. Handle Secondary Offer (Shipping)
-            if (secondaryOffer && secondaryOffer.offer_type === 'SHIPPING') {
-                const bar = document.getElementById('announcement-bar');
-                const text = document.getElementById('announcement-text');
-                const config = secondaryOffer.configuration || {};
-                
-                bar.style.display = 'block';
-                if (config.threshold) {
-                    text.innerText = `FREE SHIPPING ON ORDERS OVER KES ${config.threshold}`;
-                } else {
-                    text.innerText = secondaryOffer.name || "FREE SHIPPING ON THIS ITEM";
-                }
-                // Push header down slightly so bar doesn't overlap logo
-                try {
-                    const headerEl = document.querySelector('header');
-                    if (headerEl) headerEl.style.marginTop = `${bar.offsetHeight}px`;
-                } catch(e){}
-            }
-
-            // --- Variations ---
-            const varContainer = document.getElementById('variations-container');
-            (product.variations || []).forEach(v => {
-                const group = document.createElement('div');
-                group.innerHTML = `<h3 class="text-sm font-medium text-white/70 mb-2 uppercase tracking-wide">${v.name}</h3>`;
-                const optsDiv = document.createElement('div');
-                optsDiv.className = 'flex flex-wrap gap-2';
-                v.options.forEach((opt, i) => {
-                    const btn = document.createElement('button');
-                    btn.className = `var-btn px-4 py-2 rounded-lg border border-white/20 hover:border-white/50 transition-colors text-sm ${i===0 ? 'selected' : ''}`;
-                    btn.innerText = opt;
-                    if(i===0) selectedVariations[v.name] = opt;
-                    btn.onclick = () => {
-                        Array.from(optsDiv.children).forEach(c => c.classList.remove('selected'));
-                        btn.classList.add('selected');
-                        selectedVariations[v.name] = opt;
-                    };
-                    optsDiv.appendChild(btn);
-                });
-                group.appendChild(optsDiv);
-                varContainer.appendChild(group);
-            });
-
-            // Reveal Page
-            // Ensure offer elements are placed correctly relative to layout changes
-            placeOfferElements(primaryOffer, secondaryOffer);
-
-            document.getElementById('loading-screen').classList.add('hidden');
-            document.getElementById('main-content').classList.remove('hidden');
-
-            // Render reviews if present
-            try {
-                renderReviews(product.reviews || []);
-            } catch (err) {
-                console.warn('renderReviews error:', err);
-            }
-
-            // Stock Logic
-            const stockEl = document.getElementById('stock-status');
-            if(product.stock_quantity <= 0) {
-                stockEl.innerText = "Out of Stock"; stockEl.className = "text-red-500 font-bold";
-                document.getElementById('btn-whatsapp').disabled = true;
-                document.getElementById('btn-whatsapp').classList.add('opacity-50');
-            } else if (product.stock_quantity < 5) {
-                stockEl.innerText = `Only ${product.stock_quantity} Left!`; stockEl.className = "text-orange-500 font-bold";
-            } else {
-                stockEl.innerText = "In Stock";
-            }
-        }
-
-        // --- HELPER LOGIC ---
-
-        async function loadBundleItem(giftId) {
-            const { data } = await supabase.from('products').select('title, images').eq('id', giftId).single();
-            if (data) {
-                document.getElementById('bundle-container').classList.remove('hidden');
-                document.getElementById('bundle-title').innerText = data.title;
-                if(data.images && data.images.length > 0) {
-                    document.getElementById('bundle-img').src = getPublicImageUrl(data.images[0]);
-                }
-            }
-        }
-
-    // Ensure offer UI elements are placed into the correct containers after layout changes
-    function placeOfferElements(primaryOffer, secondaryOffer) {
-        try {
-            // 1. Offer badge should live inside the image container for visibility
-            const badge = document.getElementById('offer-badge');
-            const imageContainer = document.querySelector('.aspect-square') || document.getElementById('main-image')?.parentElement;
-            if (badge && imageContainer && badge.parentElement !== imageContainer) {
-                imageContainer.appendChild(badge);
-            }
-
-            // 2. Offer timer should appear near the price/current price area
-            const timer = document.getElementById('offer-timer');
-            const priceEl = document.getElementById('price-current');
-            if (timer && priceEl) {
-                const priceContainer = priceEl.parentElement;
-                if (priceContainer && timer.parentElement !== priceContainer) {
-                    priceContainer.appendChild(timer);
-                }
-            }
-
-            // 3. Bundle container: place before variations so it's visible above selectors
-            const bundle = document.getElementById('bundle-container');
-            const variations = document.getElementById('variations-container');
-            if (bundle && variations && bundle.nextElementSibling !== variations) {
-                variations.parentElement.insertBefore(bundle, variations);
-            }
-
-            // 4. Announcement bar handled where it's shown — ensure header has margin adjusted
-            const bar = document.getElementById('announcement-bar');
-            const headerEl = document.querySelector('header');
-            if (bar && headerEl) {
-                if (bar.style.display && bar.style.display !== 'none') headerEl.style.marginTop = `${bar.offsetHeight}px`;
-                else headerEl.style.marginTop = '';
-            }
-        } catch (e) {
-            console.warn('placeOfferElements error', e);
-        }
-    }
-
-        // --- Reviews Renderer (from old product page) ---
-        function renderReviews(reviews) {
-            const grid = document.getElementById('reviews-grid');
-            if (!grid) return;
-            if (!reviews || !reviews.length) {
-                grid.innerHTML = '<div class="col-span-full text-center text-white/30 italic">No reviews yet.</div>';
-                document.getElementById('avg-rating') && (document.getElementById('avg-rating').textContent = '0.0');
-                return;
-            }
-            // Update average
-            const avg = (reviews.reduce((a, b) => a + (b.rating || 0), 0) / reviews.length).toFixed(1);
-            document.getElementById('avg-rating') && (document.getElementById('avg-rating').textContent = avg);
-
-            grid.innerHTML = reviews.map(r => `
-                <div class="bg-[#14161a] border border-[#2b2f3a] rounded-xl p-5 card-animate">
-                    <div class="flex justify-between items-start mb-2">
-                        <div class="font-bold text-white text-sm">${r.name || 'Anonymous'}</div>
-                        <div class="text-xs text-white/30">${r.date || ''}</div>
+            <div class="p-6 overflow-y-auto">
+                <div class="flex gap-4 mb-6 bg-page p-3 rounded-xl border border-border">
+                    <img id="modal-img" src="" class="w-16 h-16 object-cover rounded-lg bg-gray-200">
+                    <div>
+                        <p id="modal-title" class="font-bold text-sm text-main line-clamp-1">Product Name</p>
+                        <p id="modal-variant" class="text-xs text-muted mb-1">Standard</p>
+                        <p id="modal-price" class="font-bold text-primary">KES 0</p>
                     </div>
-                    <div class="text-orange-500 text-[12px] mb-2">
-                        ${'<i class="fa-solid fa-star"></i>'.repeat(r.rating || 0)}
-                    </div>
-                    <p class="text-white/60 text-sm leading-relaxed">${r.comment || ''}</p>
                 </div>
-            `).join('');
-        }
 
-        function startTimer(endDate) {
-            const el = document.getElementById('offer-timer');
-            el.classList.remove('hidden');
-            
-            const tick = () => {
-                const now = new Date().getTime();
-                const end = new Date(endDate).getTime();
-                const diff = end - now;
-                
-                if (diff < 0) {
-                    el.innerHTML = '<span class="text-red-400 font-bold">Offer Expired</span>';
-                    return;
-                }
-                
-                const d = Math.floor(diff / (1000 * 60 * 60 * 24));
-                const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                const s = Math.floor((diff % (1000 * 60)) / 1000);
-                
-                el.innerHTML = `
-                    <div class="text-[var(--secondary-color)] animate-pulse"><i class="fa-solid fa-bolt"></i></div>
-                    <div class="text-white text-sm font-mono">
-                        Ends in <span class="font-bold text-white">${d}d ${h}h ${m}m ${s}s</span>
+                <form id="order-form" onsubmit="handleOrderSubmit(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-muted uppercase mb-1">Shipping Address / Location</label>
+                        <textarea id="inp-address" required rows="2" class="w-full theme-input rounded-xl p-3 text-sm" placeholder="e.g. CBD, Nairobi, Near Tuskys..."></textarea>
                     </div>
-                `;
-            };
-            tick();
-            setInterval(tick, 1000);
-        }
+                    <div>
+                        <label class="block text-xs font-bold text-muted uppercase mb-1">WhatsApp Number</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted"><i class="fa-brands fa-whatsapp"></i></span>
+                            <input id="inp-phone" type="tel" required class="w-full theme-input rounded-xl pl-10 p-3 text-sm" placeholder="07XX XXX XXX">
+                        </div>
+                    </div>
+                    
+                    <div class="pt-2">
+                        <button type="submit" id="btn-confirm-order" class="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all">
+                            <span>Confirm & Order</span>
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                        <p class="text-[10px] text-center text-muted mt-3">
+                            Clicking confirm generates an Order ID and opens WhatsApp.
+                        </p>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
-        async function handleWhatsAppPurchase() {
-            if (!productData || !businessData) return;
-            const phone = (businessData.whatsapp_number || '').replace(/[^0-9]/g, '');
+    <div id="modal-discount" class="modal-backdrop fixed inset-0 z-[60] flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm">
+        <div class="modal-content w-full max-w-sm theme-card rounded-2xl shadow-2xl overflow-hidden p-6 text-center">
+            <div class="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+                <i class="fa-solid fa-gift"></i>
+            </div>
             
-            let msg = `Hi, I want to order *${productData.title}*.\n`;
-            msg += `Price: KES ${currentPrice.toLocaleString()}\n`;
-            if(currentOfferLabel) msg += `🔥 ${currentOfferLabel}\n`;
-            if (Object.keys(selectedVariations).length) {
-                msg += `Options: ${Object.entries(selectedVariations).map(([k,v]) => `${k}: ${v}`).join(', ')}\n`;
-            }
-            msg += `Link: ${window.location.href}`;
-            
-            window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
-        }
+            <h3 class="text-xl font-bold text-main mb-2">That's Understandable!</h3>
+            <p class="text-muted text-sm mb-6 leading-relaxed">
+                Not ready to buy today? No problem. <br>
+                <span class="text-secondary font-bold">Our next Flash Sale is 30% OFF!</span><br>
+                Leave your WhatsApp number to get alerted.
+            </p>
 
-        function handleHelpClick() {
-            alert("This will open a support form or chat in the future.");
-        }
-
-        // Keep mobile sticky WhatsApp in sync with the in-panel button and ensure help button visible
-        (function syncMobileUI(){
-            const sticky = document.querySelector('.mobile-sticky-btn');
-            const inblock = document.getElementById('btn-whatsapp');
-            const helpBtn = document.getElementById('help-btn');
-
-            function updateStickyVisibility(){
-                if (!sticky) return;
-                if (inblock && inblock.disabled) {
-                    sticky.style.display = 'none';
-                } else {
-                    sticky.style.display = '';
-                }
-            }
-
-            function ensureHelpVisible(){
-                if (!helpBtn) return;
-                if (window.innerWidth <= 767) {
-                    helpBtn.style.scrollMarginBottom = '160px';
-                    const rect = helpBtn.getBoundingClientRect();
-                    if (rect.bottom > window.innerHeight - 80) {
-                        window.scrollBy({ top: rect.bottom - (window.innerHeight - 80) + 16, behavior: 'smooth' });
-                    }
-                }
-            }
-
-            document.addEventListener('DOMContentLoaded', updateStickyVisibility);
-            window.addEventListener('resize', updateStickyVisibility);
-            setTimeout(() => { updateStickyVisibility(); ensureHelpVisible(); }, 600);
-        })();
-    </script>
+            <form id="discount-form" onsubmit="handleDiscountSubmit(event)" class="space-y-4">
+                <input id="inp-lead-phone" type="tel" required class="w-full theme-input rounded-xl p-3 text-sm text-center" placeholder="Enter WhatsApp Number">
+                
+                <button type="submit" id="btn-join-waitlist" class="w-full btn-primary font-bold py-3 rounded-xl shadow-lg transition-transform active:scale-95">
+                    Notify Me for 30% Off
+                </button>
+                
+                <button type="button" onclick="closeModals()" class="text-xs text-muted hover:text-main underline">
+                    No thanks, I'll pay full price later
+                </button>
+            </form>
+        </div>
+    </div>
 
     <script src="product.js" defer></script>
 </body>

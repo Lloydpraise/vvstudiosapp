@@ -329,6 +329,9 @@
 }
 @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
     </style>
+    <script>(function(){try{var t=null;try{t=localStorage.getItem('vvTheme')}catch(e){} if(!t) t='light'; if(t==='light') document.documentElement.setAttribute('data-theme','light'); else document.documentElement.removeAttribute('data-theme');}catch(e){} })();</script>
+    <link rel="stylesheet" href="theme.css">
+    <script src="theme-toggle.js" defer></script>
 </head>
 <body>
 
@@ -635,6 +638,19 @@
                     </div>
                 </div>
 
+                <h2 class="text-xl font-semibold border-b border-white/10 pb-3 pt-4">Theme</h2>
+
+                <div class="mt-2 mb-4">
+                    <label class="block text-sm font-medium text-white/70 mb-2">Theme</label>
+                    <div class="theme-toggle-wrapper">
+                        <div class="theme-toggle-buttons">
+                            <button type="button" class="theme-toggle-btn px-3 py-1 bg-[#1a1d23] text-white" data-theme="dark">Dark</button>
+                            <button type="button" class="theme-toggle-btn px-3 py-1 bg-white text-[#0f1115]" data-theme="light">Light</button>
+                        </div>
+                        <div class="text-sm text-white/60">Choose site theme</div>
+                    </div>
+                </div>
+
                 <button onclick="saveBusinessSettings()" id="save-settings-btn" class="btn-primary text-white font-medium py-2 px-4 rounded-xl w-full">Save Settings</button>
             </div>
         </section>
@@ -778,7 +794,41 @@
         const SUPABASE_URL = APP_CONFIG.SUPABASE_URL || "https://xgtnbxdxbbywvzrttixf.supabase.co";
         const SUPABASE_KEY = APP_CONFIG.SUPABASE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ";
 
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // Initialize BUSINESS_ID from stored vvUser (set by index.html or free.html after login)
+        function initializeBusinessId() {
+            try {
+                const userStr = localStorage.getItem('vvUser');
+                if (userStr) {
+                    const user = JSON.parse(userStr);
+                    return user.business_id || user['business id'] || user.id || null;
+                }
+            } catch (e) {
+                console.warn('Failed to parse vvUser from localStorage:', e);
+            }
+            return null;
+        }
+        
+        let BUSINESS_ID = initializeBusinessId();
+        if (!BUSINESS_ID) {
+            console.warn('BUSINESS_ID not found in localStorage. Ecommerce features may not work.');
+        }
+
+        // Use a single global Supabase client instance. Index/free should initialize
+        // `window.supabaseClient`. If it's missing but the CDN `window.supabase`
+        // factory exists, create and assign it to `window.supabaseClient`.
+        if (!window.supabaseClient) {
+            if (window.supabase && typeof window.supabase.createClient === 'function') {
+                try {
+                    window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                } catch (e) {
+                    console.warn('Failed to create window.supabaseClient via CDN factory', e);
+                    window.supabaseClient = null;
+                }
+            } else {
+                console.warn('window.supabaseClient not found; ensure index/free initialize it.');
+                window.supabaseClient = null;
+            }
+        }
 
         // Helper: Convert storage path to public URL (no-op for absolute URLs)
         function getPublicImageUrl(path) {
@@ -790,7 +840,9 @@
             }
 
             try {
-                const { data } = supabase.storage.from('ecommerce-assets').getPublicUrl(path);
+                const client = window.supabaseClient;
+                if (!client) return path;
+                const { data } = client.storage.from('ecommerce-assets').getPublicUrl(path);
                 console.debug('[getPublicImageUrl] storage path -> publicUrl:', path, '=>', data?.publicUrl);
                 return data?.publicUrl || path;
             } catch (e) {
@@ -894,8 +946,18 @@
             // Respect hash or query to open a specific section (e.g., ecommerce.html#products or ?section=products)
             const hash = window.location.hash;
             const qs = new URLSearchParams(window.location.search);
-            if (hash === '#products' || qs.get('section') === 'products') showSection('products');
-            else showSection('analytics');
+            if (hash === '#products' || qs.get('section') === 'products') {
+                showSection('products');
+            } else if (hash === '#offers' || hash === '#offers-create' || qs.get('section') === 'offers') {
+                // Show offers section and, for #offers-create, open the create-offer modal after offers load
+                showSection('offers');
+                try {
+                    if (typeof renderOffers === 'function') await renderOffers();
+                } catch (e) {}
+                if (hash === '#offers-create') {
+                    try { toggleModal('offer-modal', true); } catch(e) {}
+                }
+            } else showSection('analytics');
             
             // Listeners
             document.getElementById('sidebar-toggle').addEventListener('click', toggleSidebar);
@@ -951,7 +1013,9 @@
 
         // --- 4. SETTINGS & BRANDING ---
         async function loadSettings() {
-            const { data, error } = await supabase.from('business_settings').select('*').eq('business_id', BUSINESS_ID).single();
+            const client = window.supabaseClient;
+            if (!client) { console.warn('Supabase client not available in loadSettings'); return; }
+            const { data, error } = await client.from('business_settings').select('*').eq('business_id', BUSINESS_ID).single();
             
             if (data) {
                 // Apply Inputs
@@ -1025,7 +1089,7 @@
                 }
             };
 
-            await supabase.from('business_settings').upsert(payload);
+            if (window.supabaseClient) await window.supabaseClient.from('business_settings').upsert(payload);
             btn.textContent = 'Settings Saved!';
             setTimeout(() => btn.textContent = 'Save Settings', 2000);
         }
@@ -1036,11 +1100,13 @@
             
             document.getElementById('logo-loading').classList.remove('hidden');
             const fileName = `logos/${BUSINESS_ID}-${Date.now()}`;
-            const { error } = await supabase.storage.from('ecommerce-assets').upload(fileName, file);
+            const client = window.supabaseClient;
+            if (!client) { alert('Supabase client not initialized'); document.getElementById('logo-loading').classList.add('hidden'); return; }
+            const { error } = await client.storage.from('ecommerce-assets').upload(fileName, file);
             
             if (!error) {
-                const { data } = supabase.storage.from('ecommerce-assets').getPublicUrl(fileName);
-                await supabase.from('business_settings').upsert({ business_id: BUSINESS_ID, logo_url: data.publicUrl });
+                const { data } = client.storage.from('ecommerce-assets').getPublicUrl(fileName);
+                await client.from('business_settings').upsert({ business_id: BUSINESS_ID, logo_url: data.publicUrl });
                 document.getElementById('logo-preview').src = data.publicUrl;
                 document.getElementById('logo-preview').classList.remove('hidden');
                 document.getElementById('logo-placeholder').classList.add('hidden');
@@ -1052,7 +1118,9 @@
 
         // --- 5. PRODUCTS ---
         async function fetchProducts() {
-            const { data } = await supabase.from('products').select('*').eq('business_id', BUSINESS_ID).order('created_at', { ascending: false });
+            const client = window.supabaseClient;
+            if (!client) { console.warn('Supabase client not available in fetchProducts'); productsCache = []; return productsCache; }
+            const { data } = await client.from('products').select('*').eq('business_id', BUSINESS_ID).order('created_at', { ascending: false });
             productsCache = data || [];
             return productsCache;
         }
@@ -1740,7 +1808,9 @@
             btn.innerText = "Creating...";
             btn.disabled = true;
 
-            const { error } = await supabase.from('offers').insert(payloads);
+            const client = window.supabaseClient;
+            if (!client) { alert('Supabase client not initialized'); btn.innerHTML = originalText; btn.disabled = false; return; }
+            const { error } = await client.from('offers').insert(payloads);
 
             if (error) {
                 console.error(error);
@@ -1974,9 +2044,11 @@
                 // Upload
                 try {
                     const fileName = `products/${BUSINESS_ID}-${Date.now()}-${file.name}`;
-                    const { error } = await supabase.storage.from('ecommerce-assets').upload(fileName, file);
+                    const client = window.supabaseClient;
+                    if (!client) { console.warn('Supabase client missing for image upload'); imgEl.classList.add('opacity-50'); continue; }
+                    const { error } = await client.storage.from('ecommerce-assets').upload(fileName, file);
                     if (!error) {
-                        const { data } = supabase.storage.from('ecommerce-assets').getPublicUrl(fileName);
+                        const { data } = client.storage.from('ecommerce-assets').getPublicUrl(fileName);
                         const publicUrl = data.publicUrl;
                         uploadedImageUrls.push(publicUrl);
                         imgEl.classList.remove('opacity-50');
@@ -2015,7 +2087,9 @@
             try {
                 if (currentEditingProductId) {
                     // Update existing product
-                    const { error } = await supabase.from('products').update(payload).eq('id', currentEditingProductId);
+                    const client = window.supabaseClient;
+                    if (!client) { alert('Supabase client not initialized'); if (pubBtn) { pubBtn.textContent = originalBtnText || 'Publish Product'; pubBtn.disabled = false; } return; }
+                    const { error } = await client.from('products').update(payload).eq('id', currentEditingProductId);
                     if (error) {
                         if (pubBtn) { pubBtn.textContent = originalBtnText || 'Publish Product'; pubBtn.disabled = false; }
                         alert('Error updating product: ' + error.message);
@@ -2026,7 +2100,9 @@
                     const cleanName = title.toLowerCase().replace(/[^a-z0-9]/g, '-').substring(0, 15);
                     const id = `product-${cleanName}-${Math.floor(1000 + Math.random() * 9000)}`;
                     payload.id = id;
-                    const { error } = await supabase.from('products').insert(payload);
+                    const client = window.supabaseClient;
+                    if (!client) { alert('Supabase client not initialized'); if (pubBtn) { pubBtn.textContent = originalBtnText || 'Publish Product'; pubBtn.disabled = false; } return; }
+                    const { error } = await client.from('products').insert(payload);
                     if (error) {
                         if (pubBtn) { pubBtn.textContent = originalBtnText || 'Publish Product'; pubBtn.disabled = false; }
                         alert('Error saving product: ' + error.message);
@@ -2126,12 +2202,16 @@
         }
 
         async function toggleVisibility(id, checked) {
-            await supabase.from('products').update({ is_visible: checked }).eq('id', id);
+            const client = window.supabaseClient;
+            if (!client) { console.warn('Supabase client missing for toggleVisibility'); return; }
+            await client.from('products').update({ is_visible: checked }).eq('id', id);
         }
 
         async function deleteProduct(id) {
             if (confirm('Delete this product?')) {
-                await supabase.from('products').delete().eq('id', id);
+                const client = window.supabaseClient;
+                if (!client) { console.warn('Supabase client missing for deleteProduct'); return; }
+                await client.from('products').delete().eq('id', id);
                 renderProducts();
             }
         }
@@ -2169,7 +2249,9 @@
             const newVars = [...(product.variations || [])];
             newVars.splice(index, 1);
 
-            await supabase.from('products').update({ variations: newVars }).eq('id', currentEditingProductId);
+            const client = window.supabaseClient;
+            if (!client) { console.warn('Supabase client missing for variations update'); return; }
+            await client.from('products').update({ variations: newVars }).eq('id', currentEditingProductId);
             product.variations = newVars;
             renderVariations(newVars);
         }
@@ -2179,7 +2261,9 @@
             // Need products for names
             if (productsCache.length === 0) await fetchProducts();
             
-            const { data: offers } = await supabase.from('offers').select('*').eq('business_id', BUSINESS_ID);
+            const client = window.supabaseClient;
+            if (!client) { console.warn('Supabase client missing for renderOffers'); return; }
+            const { data: offers } = await client.from('offers').select('*').eq('business_id', BUSINESS_ID);
             
             // Populate select dropdown in modal (if present)
             const select = document.getElementById('offer-product-select');
@@ -2230,7 +2314,9 @@
 
         async function deleteOffer(id) {
             if (confirm('Delete this offer?')) {
-                await supabase.from('offers').delete().eq('id', id);
+                const client = window.supabaseClient;
+                if (!client) { console.warn('Supabase client missing for deleteOffer'); return; }
+                await client.from('offers').delete().eq('id', id);
                 renderOffers();
             }
         }
@@ -2271,7 +2357,9 @@
 
         async function updateStock(id) {
             const val = document.getElementById(`stock-${id}`).value;
-            await supabase.from('products').update({ stock_quantity: val }).eq('id', id);
+            const client = window.supabaseClient;
+            if (!client) { console.warn('Supabase client missing for updateStock'); return; }
+            await client.from('products').update({ stock_quantity: val }).eq('id', id);
             renderInventory(); // Refresh labels
         }
 
@@ -2281,7 +2369,9 @@
             if (productsCache.length === 0) await fetchProducts();
 
             // Fetch Analytics Data
-            const { data } = await supabase.from('product_analytics_daily')
+            const client = window.supabaseClient;
+            if (!client) { console.warn('Supabase client missing for renderAnalytics'); return; }
+            const { data } = await client.from('product_analytics_daily')
                 .select('*')
                 .eq('business_id', BUSINESS_ID);
             

@@ -139,6 +139,9 @@
         }
 
     </style>
+    <script>(function(){try{var t=null;try{t=localStorage.getItem('vvTheme')}catch(e){} if(!t) t='light'; if(t==='light') document.documentElement.setAttribute('data-theme','light'); else document.documentElement.removeAttribute('data-theme');}catch(e){} })();</script>
+    <link rel="stylesheet" href="theme.css">
+    <script src="theme-toggle.js" defer></script>
 </head>
 <body class="min-h-screen flex flex-col">
 
@@ -328,7 +331,7 @@
         const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
 
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        window.supabaseClient = window.supabaseClient || window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // --- 2. GLOBAL STATE ---
         // We will fetch data from DB and store it here to avoid re-fetching constantly
@@ -344,13 +347,13 @@
                 // For simplicity, we fetch services first, then we'll fetch details when needed or pre-fetch all
                 
                 // Let's fetch everything to make the UI snappy
-                const { data: services, error: sError } = await supabase.from('services').select('*');
+                const { data: services, error: sError } = await window.supabaseClient.from('services').select('*');
                 if (sError) throw sError;
 
-                const { data: prices, error: pError } = await supabase.from('pricing_tiers').select('*');
+                const { data: prices, error: pError } = await window.supabaseClient.from('pricing_tiers').select('*');
                 if (pError) throw pError;
 
-                const { data: portfolio, error: pfError } = await supabase.from('portfolio_items').select('*');
+                const { data: portfolio, error: pfError } = await window.supabaseClient.from('portfolio_items').select('*');
                 if (pfError) throw pfError;
 
                 // Combine data into a structured array

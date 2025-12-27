@@ -24,14 +24,126 @@
     color: #0f1720 !important; /* slightly lighter than previous black */
 }
 
-/* Convert white-ish text to dark on light theme. Include common Tailwind utility variants. */
-[data-theme="light"] .text-white,
-[data-theme="light"] .text-white\/60,
-[data-theme="light"] .text-white\/70,
-[data-theme="light"] .text-white\/80,
-[data-theme="light"] .text-white\/50 {
+/* Convert white-ish text to readable shades on light theme.
+   Keep true `text-white` as page body/dense text dark, but preserve
+   lighter utility variants as neutral grays so "unselected" UI items
+   remain visually muted (not pure black). */
+[data-theme="light"] .text-white { color: #0f1720 !important; }
+[data-theme="light"] .text-white\/80 { color: #1f2937 !important; }
+[data-theme="light"] .text-white\/70 { color: #334155 !important; }
+[data-theme="light"] .text-white\/60 { color: #475569 !important; }
+[data-theme="light"] .text-white\/50 { color: #6b7280 !important; }
+[data-theme="light"] .text-white\/40 { color: #6b7280 !important; }
+[data-theme="light"] .text-white\/50 { color: #6b7280 !important; }
+
+/* Placeholder and helper text: ensure guidance is visible on light backgrounds */
+[data-theme="light"] input::placeholder,
+[data-theme="light"] textarea::placeholder,
+[data-theme="light"] select::placeholder,
+[data-theme="light"] ::-webkit-input-placeholder,
+[data-theme="light"] ::-moz-placeholder {
+    color: rgba(15,23,32,0.45) !important;
+    opacity: 1 !important;
+}
+
+/* Avoid white-on-white: ensure elements inside white panels don't keep white text */
+[data-theme="light"] .bg-white .text-white,
+[data-theme="light"] .bg-\[\#ffffff\] .text-white {
     color: #0f1720 !important;
 }
+
+/* CRM: contact details button should be white text on grey background in light theme */
+[data-theme="light"] .contact-row .details-btn,
+[data-theme="light"] .btn-details,
+[data-theme="light"] #contact-details-modal .details-btn {
+    background-color: #6b7280 !important;
+    color: #ffffff !important;
+    border-color: transparent !important;
+}
+
+/* Ensure accent buttons (green/orange/blue/purple) keep white text for contrast */
+[data-theme="light"] .btn-primary,
+[data-theme="light"] .btn-create,
+[data-theme="light"] .btn-service,
+[data-theme="light"] .bg-green-500,
+[data-theme="light"] .bg-green-600,
+[data-theme="light"] .bg-orange-500,
+[data-theme="light"] .bg-blue-600,
+[data-theme="light"] .bg-main-purple {
+    color: #ffffff !important;
+}
+
+/* Content Creation: make folder cards lighter on light theme */
+[data-theme="light"] .folder-card-container .folder-file {
+    background-image: none !important;
+    background-color: #f8fafc !important;
+    border: 1px solid #e6e9ee !important;
+    box-shadow: none !important;
+    color: #0f1720 !important;
+}
+[data-theme="light"] .folder-card-container .folder-front {
+    background: #ffffff !important;
+    background-image: none !important;
+    border: 1px solid #e6e9ee !important;
+    box-shadow: none !important;
+    color: #0f1720 !important;
+}
+
+/* Ensure the decorative pseudo element is light too */
+[data-theme="light"] .folder-front::before {
+    background: #ffffff !important;
+    display: none !important;
+}
+
+/* Order button should keep its accent background but readable on light */
+[data-theme="light"] .card-order-btn { color: #ffffff !important; border-color: transparent !important; }
+
+/* Loading overlays and output areas should be readable */
+[data-theme="light"] .modal-backdrop,
+[data-theme="light"] .loading-overlay,
+[data-theme="light"] .loading-screen,
+[data-theme="light"] #loadingText,
+[data-theme="light"] .output-section {
+    background-color: rgba(15,23,32,0.04) !important;
+    color: #0f1720 !important;
+}
+
+/* AI copywriter: ensure unselected items remain visibly muted (light gray) */
+[data-theme="light"] .copywriter-menu .menu-item:not(.selected),
+[data-theme="light"] .copywriter-list .list-item:not(.selected) {
+    color: #6b7280 !important;
+}
+
+/* Small adjustments: ensure inputs/selects inside light theme are readable */
+[data-theme="light"] .theme-input,
+[data-theme="light"] .input-dark {
+    background-color: #ffffff !important;
+    color: #0f1720 !important;
+    border-color: #e6e9ee !important;
+}
+
+/* Make sure any svg/icon inheriting text color is visible */
+[data-theme="light"] svg, [data-theme="light"] .fa-solid { color: inherit !important; }
+
+/* Copywriter specific: make category cards light and unselected state muted */
+[data-theme="light"] .category-card {
+    background-color: #f8fafc !important;
+    border: 1px solid #e6e9ee !important;
+    color: #0f1720 !important;
+}
+[data-theme="light"] .category-card i { color: #6b7280 !important; }
+[data-theme="light"] .category-card:not(.active) .text-sm { color: #374151 !important; }
+[data-theme="light"] .category-card.active { background-color: rgba(124,58,237,0.08) !important; border-color: var(--primary-color) !important; color: var(--primary-color) !important; }
+
+/* AI Output area: ensure dynamic output and loading states are readable on light theme */
+[data-theme="light"] #dynamic-output { background-color: #ffffff !important; color: #0f1720 !important; }
+[data-theme="light"] #loading-state { color: #0f1720 !important; background-color: transparent !important; }
+[data-theme="light"] #empty-state { color: #6b7280 !important; background-color: transparent !important; }
+[data-theme="light"] #result-state .p-4, [data-theme="light"] #result-state .border-t { background-color: #f9fafb !important; color: #0f1720 !important; }
+
+/* Map faint white utilities used in copywriter to readable grays */
+[data-theme="light"] .text-white\/30 { color: #9ca3af !important; }
+[data-theme="light"] .text-white\/40 { color: #6b7280 !important; }
 
 /* Borders that are dark become soft gray in light theme */
 [data-theme="light"] .border-\[\#2b2f3a\],
@@ -85,8 +197,9 @@
 }
 
 /* Ensure the hide/show transform is respected even when other rules set position/z-index */
-[data-theme="light"] #sidebar.-translate-x-full { transform: translateX(-100%) !important; }
-[data-theme="light"] #sidebar:not(.-translate-x-full) { transform: translateX(0) !important; }
+[data-theme="light"] #sidebar.-translate-x-full { transform: translateX(-100%); }
+/* Allow the page to control visible state via the `.open` class; prefer the page's rule unless overridden intentionally. */
+[data-theme="light"] #sidebar.open { transform: translateX(0) !important; }
 
 /* Header controls and small buttons that use explicit dark BG */
 [data-theme="light"] #header-controls > *,
@@ -106,6 +219,57 @@
     color: #0f1720 !important;
     border-color: #e6e9ee !important;
 }
+
+/* Ecommerce / local card overrides: many pages use `card-base` and custom
+   utility classes; ensure these are light in light theme so text is visible. */
+[data-theme="light"] .card-base,
+[data-theme="light"] .task-card,
+[data-theme="light"] .offer-type-card,
+[data-theme="light"] .search-results-dropdown,
+[data-theme="light"] .prod-chip {
+    background-color: #ffffff !important;
+    color: #0f1720 !important;
+    border-color: #e6e9ee !important;
+    box-shadow: none !important;
+}
+
+/* Qualifier page: make the three dashboard cards and category blocks lighter in light theme */
+[data-theme="light"] .dash-card {
+    background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%) !important;
+    border: 1px solid #e6e9ee !important;
+    color: #0f1720 !important;
+    box-shadow: none !important;
+}
+[data-theme="light"] .dash-card .icon-box {
+    background: rgba(15,23,32,0.04) !important;
+    color: #0b1220 !important;
+}
+
+[data-theme="light"] .cat-block,
+[data-theme="light"] .bg-\[\#15171c\] {
+    background-color: #f8fafc !important;
+    border: 1px solid #e6e9ee !important;
+    color: #0f1720 !important;
+    box-shadow: none !important;
+}
+[data-theme="light"] .cat-block.active-block {
+    background-color: #ffffff !important;
+    border-color: #f97316 !important;
+    box-shadow: 0 8px 20px rgba(15,23,32,0.06) !important;
+}
+
+/* Weighting panel in create wizard uses a custom bg; ensure it's light in light theme */
+[data-theme="light"] #weights-container,
+[data-theme="light"] .weights-container {
+    background-color: #f8fafc !important;
+    color: #0f1720 !important;
+    border-color: #e6e9ee !important;
+}
+
+/* Section pills and small toggles used in ecommerce need readable text */
+[data-theme="light"] .section-pill { background: transparent !important; color: #374151 !important; border-color: #e6e9ee !important; }
+[data-theme="light"] .section-pill.active-product { background: var(--primary-color) !important; color: #ffffff !important; border-color: var(--primary-color) !important; }
+[data-theme="light"] .section-pill.active-service { background: #0b5fff !important; color: #ffffff !important; border-color: #0b5fff !important; }
 
 /* Inputs, selects and textareas that used dark background */
 [data-theme="light"] input,
@@ -133,11 +297,47 @@
 [data-theme="light"] a { color: #0b5fff !important; }
 [data-theme="light"] .text-green-400, [data-theme="light"] .text-green-500 { color: #10B981 !important; }
 
+/* Additional text-white intensity mappings used in ecommerce */
+[data-theme="light"] .text-white\/90 { color: #0f1720 !important; }
+[data-theme="light"] .text-white\/95 { color: #0b1220 !important; }
+
+/* KPI / stat large numbers sometimes use text-3xl + text-white; ensure they are dark on light theme */
+[data-theme="light"] .text-3xl.text-white,
+[data-theme="light"] .text-3xl.font-bold.text-white,
+[data-theme="light"] .stat-card .stat-value,
+[data-theme="light"] .card-base .text-3xl { color: #0f1720 !important; }
+
+/* Grey/ghost buttons used across the app (bg-white/3, bg-white/5 etc.) should keep white text for contrast */
+[data-theme="light"] button.bg-white\/3,
+[data-theme="light"] button.bg-white\/5,
+[data-theme="light"] .btn.bg-white\/3,
+[data-theme="light"] .btn.bg-white\/5,
+[data-theme="light"] .bg-white\/3,
+[data-theme="light"] .bg-white\/5 { color: #ffffff !important; }
+
+/* Commonly used complete/grey buttons */
+[data-theme="light"] .btn-complete,
+[data-theme="light"] .complete-btn,
+[data-theme="light"] .btn-muted,
+[data-theme="light"] .btn-secondary { color: #ffffff !important; }
+
 /* Ensure icons that inherit text color switch too */
 [data-theme="light"] .fa-solid, [data-theme="light"] svg { color: inherit !important; }
 
 /* Keep accent backgrounds like bg-blue-600 alone — but ensure text inside is readable on light */
 [data-theme="light"] .bg-blue-600, [data-theme="light"] .bg-green-600, [data-theme="light"] .bg-orange-500 { color: #ffffff !important; }
+
+/* Plans page: billing toggle buttons should have dark text in light theme */
+[data-theme="light"] .billing-btn { color: #0f1720 !important; border-color: #e6e9ee !important; }
+[data-theme="light"] .billing-btn.active { background-color: #f3f4f6 !important; color: #0f1720 !important; border-color: #d1d5db !important; }
+[data-theme="light"] .billing-btn:not(.active) { color: #6b7280 !important; }
+[data-theme="light"] .billing-toggle { background-color: #f8fafc !important; border-color: #e6e9ee !important; }
+
+/* Plans page: make green discount badges more vibrant on light theme */
+[data-theme="light"] .bg-green-500\/20 { background-color: rgba(34, 197, 94, 0.2) !important; }
+[data-theme="light"] .text-green-400 { color: #22c55e !important; }
+[data-theme="light"] .text-green-500 { color: #22c55e !important; }
+[data-theme="light"] .text-green-600 { color: #16a34a !important; }
 
 /* Delete / destructive buttons: ensure red actions remain visible on light backgrounds */
 [data-theme="light"] .text-red-400, [data-theme="light"] .text-red-500, [data-theme="light"] .text-red-600 {
@@ -154,6 +354,24 @@
 [data-theme="light"] .transport-btn.selected {
     color: #ffffff !important;
 }
+
+/* Projections/simulator page: fix dark headers and warnings on light theme */
+[data-theme="light"] #step-results .bg-\[\#1a1d23\] { background-color: #ffffff !important; color: #0f1720 !important; }
+[data-theme="light"] #step-results .text-white\/60 { color: #475569 !important; }
+[data-theme="light"] #step-results .text-white\/40 { color: #9ca3af !important; }
+[data-theme="light"] #step-results .text-white\/30 { color: #d1d5db !important; }
+[data-theme="light"] #step-results .border-\[\#2b2f3a\] { border-color: #e6e9ee !important; }
+
+/* Yellow warning boxes on projections should be more prominent */
+[data-theme="light"] .bg-yellow-500\/10 { background-color: rgba(217, 119, 6, 0.12) !important; }
+[data-theme="light"] .border-yellow-500\/10 { border-color: rgba(217, 119, 6, 0.3) !important; }
+[data-theme="light"] .text-yellow-200 { color: #d97706 !important; }
+
+/* Result stat cards on projections page */
+[data-theme="light"] #step-results .bg-white\/5 { background-color: #f3f4f6 !important; border-color: #e6e9ee !important; color: #0f1720 !important; }
+[data-theme="light"] #step-results .text-blue-400 { color: #3b82f6 !important; }
+[data-theme="light"] #step-results .text-orange-400 { color: #f97316 !important; }
+[data-theme="light"] #step-results .text-green-400 { color: #22c55e !important; }
 
 /* Theme selector: when in light mode, make the dark option have a dark outline and white text for contrast */
 [data-theme="light"] .theme-toggle-btn[data-theme="dark"] {
@@ -258,18 +476,14 @@
 
 /* On mobile when sidebar slides in, ensure it overlays page content cleanly */
 @media (max-width: 1024px) {
-    /* Do not force the transform — keep JS-controlled translate classes to show/hide sidebar.
-       Only ensure the sidebar is fixed when visible, and keep z-index so it overlays content. */
+    /* Keep sidebar transform managed by JS; avoid forcing position which caused mobile/desktop issues.
+       Only ensure stacking order and backdrop visibility for light theme. */
     [data-theme="light"] #sidebar {
-        position: fixed !important;
-        left: 0 !important;
-        top: 0 !important;
-        bottom: 0 !important;
-        /* don't override transform; JS will toggle the translating class */
         z-index: 90 !important;
     }
-    /* Backdrop: stronger veil so underlying content is obscured */
-    [data-theme="light"] #mobile-menu-backdrop { background-color: rgba(15,23,42,0.18) !important; z-index: 88 !important; }
+    /* Backdrop: stronger veil so underlying content is obscured. Target ecommerce-specific backdrop too. */
+    [data-theme="light"] #mobile-menu-backdrop,
+    [data-theme="light"] #sidebar-backdrop { background-color: rgba(15,23,42,0.18) !important; z-index: 88 !important; }
 }
 
 /* Mobile: ensure the sidebar settings button is fixed to the viewport bottom and
@@ -368,6 +582,10 @@
     color: #475569 !important;
 }
 
+/* Disclaimers and fine print should be dark and readable */
+[data-theme="light"] .text-yellow-200\/80 { color: #92400e !important; }
+[data-theme="light"] .italic { color: #1f2937 !important; }
+
 /* Keep the accent heading colors (green/amber/purple) but ensure they are vivid enough */
 [data-theme="light"] .select-plan .text-green-400 { color: #10B981 !important; }
 [data-theme="light"] .select-plan .text-amber-400 { color: #d97706 !important; }
@@ -396,8 +614,104 @@
         visibility: visible !important;
         transition: none !important; /* prevent flicker when toggling */
     }
+    /* If JS mistakenly applies the .open class on desktop, avoid floating shadow */
+    [data-theme="light"] #sidebar.open { box-shadow: none !important; }
 }
 
+/* ─────────────────────────────────────────────────────────────────── */
+/* Additional Light Theme Fixes: mobile metrics, contact btn, outputs, etc. */
+/* ─────────────────────────────────────────────────────────────────── */
+
+/* Index mobile: ensure the first 4 metrics text (labels and values) are dark/black on light background */
+[data-theme="light"] .metric-card,
+[data-theme="light"] #stats-container .stat-item,
+[data-theme="light"] #stats-mobile .stat-card {
+    background-color: #ffffff !important;
+    color: #0f1720 !important;
+}
+[data-theme="light"] .metric-card h3,
+[data-theme="light"] .stat-item .stat-label,
+[data-theme="light"] .stat-card .stat-value,
+[data-theme="light"] .stat-card .stat-label {
+    color: #0f1720 !important;
+}
+[data-theme="light"] .stat-card .stat-accent {
+    color: #0b5fff !important; /* keep blue accents for emphasis */
+}
+
+/* Contact details button: ensure it is visible with white text on gray */
+[data-theme="light"] .details-btn,
+[data-theme="light"] .btn-details,
+[data-theme="light"] .contact-detail-btn {
+    background-color: #6b7280 !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+[data-theme="light"] .details-btn:hover,
+[data-theme="light"] .btn-details:hover {
+    background-color: #5a6470 !important;
+    color: #ffffff !important;
+}
+
+/* Output and loading sections: keep text dark, backgrounds subtle */
+[data-theme="light"] .output-container,
+[data-theme="light"] .output-area,
+[data-theme="light"] #output-section,
+[data-theme="light"] .result-panel {
+    background-color: #ffffff !important;
+    color: #0f1720 !important;
+    border-color: #e6e9ee !important;
+}
+
+[data-theme="light"] .loading-text,
+[data-theme="light"] .loading-message,
+[data-theme="light"] #loadingText,
+[data-theme="light"] #loading-status {
+    color: #0f1720 !important;
+}
+
+/* Folder cards on content creation: ensure they are light and readable */
+[data-theme="light"] .folder-card-container {
+    background-color: #ffffff !important;
+}
+[data-theme="light"] .folder-card-container:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+}
+
+/* Make sure all accent buttons keep white text regardless of container */
+[data-theme="light"] .btn-primary:not(.text-white),
+[data-theme="light"] .btn-create:not(.text-white),
+[data-theme="light"] .btn-service:not(.text-white),
+[data-theme="light"] button[class*="bg-green"],
+[data-theme="light"] button[class*="bg-orange"],
+[data-theme="light"] button[class*="bg-blue"] {
+    color: #ffffff !important;
+}
+
+/* Copywriter: ensure unselected menu items are light gray, not dark */
+[data-theme="light"] .writer-menu .menu-type,
+[data-theme="light"] .copywriter-option:not(.active),
+[data-theme="light"] .content-option:not(.selected) {
+    color: #6b7280 !important;
+    background-color: #f3f4f6 !important;
+}
+
+/* Selected items should remain visible with accent color */
+[data-theme="light"] .writer-menu .menu-type.active,
+[data-theme="light"] .copywriter-option.active,
+[data-theme="light"] .content-option.selected {
+    color: #ffffff !important;
+    background-color: #f97316 !important; /* orange accent */
+}
+
+/* Portal tabs and inactive states */
+[data-theme="light"] .tab-btn {
+    color: #6b7280 !important;
+}
+[data-theme="light"] .tab-btn.active {
+    color: #0f1720 !important;
+    border-color: #f97316 !important;
+}
 /* Global modal sizing & centering improvements --------------------------------------- */
 .modal-backdrop {
     display: flex;
@@ -436,6 +750,69 @@
     align-items: center;
     justify-content: center;
 }
+
+/* -----------------------------
+   Qualifier page (light theme)
+   - Convert dark containers to light cards
+   - Ensure templates/results containers scroll
+   - Make active meeting header more lively and saturate colors
+   ----------------------------- */
+
+[data-theme="light"] #view-templates .bg-\[\#1a1d23\],
+[data-theme="light"] #view-results .bg-\[\#1a1d23\],
+[data-theme="light"] #view-meeting .bg-\[\#1a1d23\],
+[data-theme="light"] .bg-\[\#1a1d23\] {
+    background-color: #ffffff !important;
+    color: #0f1720 !important;
+    border-color: #e6e9ee !important;
+    box-shadow: 0 6px 18px rgba(15,23,42,0.04) !important;
+}
+
+/* Ensure table containers in templates & results can scroll on small viewports */
+[data-theme="light"] #view-templates > div,
+[data-theme="light"] #view-results > div {
+    max-height: calc(70vh);
+    overflow-y: auto !important;
+}
+
+/* Make the inner table body readable on light theme */
+[data-theme="light"] #templates-table-body,
+[data-theme="light"] #results-table-body {
+    color: #0f1720 !important;
+}
+
+/* Force overflow for meeting view containers so questions/notes scroll properly on both themes */
+#view-results > div, #view-templates > div, #meeting-live .h-full.w-full.relative, #meeting-live .p-8 {
+    overflow-y: auto;
+}
+
+/* Active meeting header: lift the grey and add subtle shadow and saturation */
+[data-theme="light"] #meeting-live .flex.justify-between.items-center.mb-6 {
+    background-color: #f3f4f6 !important;
+    border-color: #e6e9ee !important;
+    color: #0f1720 !important;
+    box-shadow: 0 6px 18px rgba(15,23,42,0.05) !important;
+}
+
+/* Badge and progress saturation */
+[data-theme="light"] #q-category {
+    background-color: rgba(124,58,237,0.08) !important;
+    color: #7c3aed !important;
+    border-color: rgba(124,58,237,0.12) !important;
+}
+[data-theme="light"] #progress-bar { background-color: #f97316 !important; box-shadow: 0 8px 20px rgba(249,115,22,0.08) !important; }
+
+/* Ideal answer box - stronger blue on light */
+[data-theme="light"] .bg-blue-500\/10 { background-color: rgba(59,130,246,0.08) !important; }
+[data-theme="light"] .text-blue-200 { color: #1e40af !important; }
+
+/* Make action buttons and toggles more saturated in meeting view */
+[data-theme="light"] #meeting-live .btn-primary { background-color: #f97316 !important; color: #ffffff !important; }
+[data-theme="light"] #meeting-live .btn-secondary, [data-theme="light"] #meeting-live .btn-complete { background-color: #10b981 !important; color: #ffffff !important; }
+
+/* Status dot (LIVE) - keep red vivid on light */
+[data-theme="light"] #meeting-live .bg-red-500 { background-color: #ef4444 !important; }
+
 
 /* Slightly reduce the maximum width on very small viewports so content doesn't feel cramped */
 @media (max-width: 420px) {

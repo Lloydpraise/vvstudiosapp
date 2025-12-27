@@ -69,6 +69,9 @@
         .copy-feedback { animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite; }
         @keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } }
     </style>
+    <script>(function(){try{var t=null;try{t=localStorage.getItem('vvTheme')}catch(e){} if(!t) t='light'; if(t==='light') document.documentElement.setAttribute('data-theme','light'); else document.documentElement.removeAttribute('data-theme');}catch(e){} })();</script>
+    <link rel="stylesheet" href="theme.css">
+    <script src="theme-toggle.js" defer></script>
 </head>
 <body class="min-h-screen flex flex-col">
 

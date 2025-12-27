@@ -36,6 +36,32 @@
         .prose strong { color: white; font-weight: 600; }
         .prose a { color: #3b82f6; text-decoration: underline; }
     </style>
+    <style>
+        /* Ensure top category buttons are black text on white in light theme,
+           and keep selected state as white-on-blue. */
+        /* Default: buttons are white with dark text, but exclude the active blue state */
+        [data-theme="light"] #btn-all:not(.bg-blue-600),
+        [data-theme="light"] #btn-services:not(.bg-blue-600),
+        [data-theme="light"] #btn-learning:not(.bg-blue-600) {
+            background-color: #ffffff !important;
+            color: #0f1720 !important; /* near-black */
+            border-color: #e6e9ee !important;
+            box-shadow: none !important;
+        }
+
+        /* When a button is active, force blue background + white text */
+        [data-theme="light"] #btn-all.bg-blue-600,
+        [data-theme="light"] #btn-services.bg-blue-600,
+        [data-theme="light"] #btn-learning.bg-blue-600 {
+            background-color: #2563eb !important; /* match Tailwind bg-blue-600 */
+            color: #ffffff !important;
+            border-color: transparent !important;
+            box-shadow: 0 12px 20px rgba(37,99,235,0.12) !important;
+        }
+    </style>
+    <script>(function(){try{var t=null;try{t=localStorage.getItem('vvTheme')}catch(e){} if(!t) t='light'; if(t==='light') document.documentElement.setAttribute('data-theme','light'); else document.documentElement.removeAttribute('data-theme');}catch(e){} })();</script>
+    <link rel="stylesheet" href="theme.css">
+    <script src="theme-toggle.js" defer></script>
 </head>
 <body class="bg-[#0f1115] text-white min-h-screen flex flex-col">
 
@@ -120,7 +146,7 @@
         const SUPABASE_URL = APP_CONFIG.SUPABASE_URL || "https://xgtnbxdxbbywvzrttixf.supabase.co";
         const SUPABASE_KEY = APP_CONFIG.SUPABASE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ";
 
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let allArticles = [];
 
@@ -135,7 +161,7 @@
             container.innerHTML = '';
 
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('articles')
                     .select('*')
                     .order('created_at', { ascending: false });
@@ -247,7 +273,7 @@
 
             if (!article) {
                 // If accessed directly via URL
-                const { data } = await supabase.from('articles').select('*').eq('id', id).single();
+                const { data } = await supabaseClient.from('articles').select('*').eq('id', id).single();
                 article = data;
             }
 

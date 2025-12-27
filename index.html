@@ -61,6 +61,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="manifest" href="./manifest.json">
+    <script>(function(){try{var t=null;try{t=localStorage.getItem('vvTheme')}catch(e){} if(!t) t='light'; if(t==='light') document.documentElement.setAttribute('data-theme','light'); else document.documentElement.removeAttribute('data-theme');}catch(e){} })();</script>
     <link rel="stylesheet" href="theme.css">
     <meta name="theme-color" content="#0f1115">
     <meta name="mobile-web-app-capable" content="yes">
@@ -256,6 +257,50 @@
         }
         
     </style>
+    <style>
+        /* Light-theme overrides for login/signup visibility — do not change dark theme */
+        [data-theme="light"] body { background-color: #f8fafc; color: #0f172a; }
+
+        /* Login card */
+        [data-theme="light"] #login-container .card-animate {
+            background: #ffffff; border-color: #e6eef8; color: #0f172a; box-shadow: 0 10px 30px rgba(2,6,23,0.06);
+        }
+        [data-theme="light"] #login-container .card-animate h1 { color: #0f172a; }
+        [data-theme="light"] #login-container .card-animate p { color: #475569; }
+
+        /* Inputs inside login card */
+        [data-theme="light"] #login-container .card-animate input,
+        [data-theme="light"] #login-container .card-animate select,
+        [data-theme="light"] #login-container .card-animate textarea {
+            background: #f8fafc; color: #0f172a; border-color: #e6eef8;
+        }
+        [data-theme="light"] #login-container .card-animate input::placeholder,
+        [data-theme="light"] #login-container .card-animate textarea::placeholder {
+            color: rgba(15,23,42,0.45);
+        }
+
+        /* Signup modal card (first child div inside the modal) */
+        [data-theme="light"] #signup-modal > div {
+            background: #ffffff; border-color: #e6eef8; color: #0f172a; box-shadow: 0 10px 30px rgba(2,6,23,0.06);
+        }
+        [data-theme="light"] #signup-modal input,
+        [data-theme="light"] #signup-modal select,
+        [data-theme="light"] #signup-modal textarea {
+            background: #f8fafc; color: #0f172a; border-color: #e6eef8;
+        }
+        [data-theme="light"] #signup-modal input::placeholder,
+        [data-theme="light"] #signup-modal textarea::placeholder {
+            color: rgba(15,23,42,0.45);
+        }
+
+        /* Small inline texts inside forms */
+        [data-theme="light"] #login-container .text-white\/60,
+        [data-theme="light"] #signup-modal .text-white\/60,
+        [data-theme="light"] #login-container .text-white\/70,
+        [data-theme="light"] #signup-modal .text-white\/70 {
+            color: #64748b; /* slate-500 */
+        }
+    </style>
     <script>
         // Prevent login flash: if user is already logged in (vvUser in localStorage),
         // hide the login container and show the dashboard container before the DOM paints.
@@ -327,6 +372,8 @@
                         else if (window.supabase && typeof window.supabase.createClient === 'function') {
                             try { svcClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch(e){ svcClient = null; }
                         }
+                        // Expose a single global client for other pages to reuse (avoid duplicate const declarations)
+                        if (!window.supabaseClient && svcClient) window.supabaseClient = svcClient;
                         if (!svcClient) { console.warn('No Supabase client available; skipping package card updates.'); return; }
 
                         const { data, error } = await svcClient.from('onboarding_view').select('*').eq('business_id', businessId).maybeSingle();
@@ -443,6 +490,26 @@
                         const discardBtn = document.getElementById('index-bp-discard-btn');
                         const confirmSaveBtn = document.getElementById('index-bp-confirm-save-btn');
 
+                        function showConfirmModal(){
+                            if (!confirmModal) return;
+                            confirmModal.classList.remove('hidden');
+                            confirmModal.style.display = 'flex';
+                            confirmModal.style.position = 'fixed';
+                            confirmModal.style.inset = '0';
+                            confirmModal.style.left = '0';
+                            confirmModal.style.top = '0';
+                            confirmModal.style.alignItems = 'center';
+                            confirmModal.style.justifyContent = 'center';
+                            confirmModal.style.background = confirmModal.style.background || 'rgba(0,0,0,0.65)';
+                            confirmModal.style.zIndex = '100000';
+                        }
+                        function hideConfirmModal(){
+                            if (!confirmModal) return;
+                            confirmModal.classList.add('hidden');
+                            confirmModal.style.display = '';
+                            confirmModal.style.zIndex = '';
+                        }
+
                         // debug helper: confirm handler attachment in console
                         console.log('Business profile: openBtn=', !!openBtn, 'modal=', !!modal, 'form=', !!form);
 
@@ -475,40 +542,123 @@
 
                         async function openModal(e){
                             if (e) e.preventDefault();
-                            console.log('index: openModal called');
-                            // Prefer backend loader (guard and log so it can't block UI)
-                            let ok = false;
-                            try {
-                                console.log('index: attempting populateFromBackend (with timeout)');
-                                // Protect against a backend loader that never resolves by racing with a timeout
-                                ok = await Promise.race([
-                                    populateFromBackend(),
-                                    new Promise((_, reject) => setTimeout(() => reject(new Error('populateFromBackend timeout')), 6000))
-                                ]);
-                                console.log('index: populateFromBackend returned', ok);
-                            } catch (err) {
-                                console.warn('index: populateFromBackend threw or timed out', err);
-                                ok = false;
-                            }
+                            try { businessProfileSnapshot = captureBusinessProfileSnapshot(); } catch(e){}
+                            if (!modal) { console.error('Business profile modal element not found'); return; }
 
-                            if (!ok) {
-                                try {
-                                    console.log('index: falling back to populateFromLocal');
-                                } catch (err) {
-                                    console.warn('index: populateFromLocal failed', err);
+                            // Attempt to populate from backend (crm.js or Supabase) before showing
+                            async function populateBackend(){
+                                if (typeof loadBusinessProfile === 'function'){
+                                    try { await loadBusinessProfile(); return true; } catch(e){ console.warn('loadBusinessProfile failed', e); }
                                 }
+                                // Try using a global supabase client if available
+                                const client = window.supabaseClient || (window.supabase && window.supabase.createClient ? window.supabase : null);
+                                if (!client) return false;
+                                // Determine business id
+                                const u = (function(){ try { return JSON.parse(localStorage.getItem('vvUser')||'{}'); } catch(e){ return {}; } })();
+                                const businessId = (typeof BUSINESS_ID !== 'undefined' && BUSINESS_ID) ? BUSINESS_ID : (localStorage.getItem('business_id') || u.business_id || u['business id'] || null);
+                                if (!businessId) return false;
+                                try {
+                                    const { data, error } = await client.from('business_profile').select('*').eq('business_id', businessId).maybeSingle();
+                                    if (error || !data) return false;
+                                    // populate fields
+                                    try {
+                                        document.getElementById('bp-business-name').value = data.business_name || '';
+                                        document.getElementById('bp-industry').value = data.industry || '';
+                                        document.getElementById('bp-location').value = data.location || '';
+                                        document.getElementById('bp-tagline').value = data.tagline || '';
+                                        document.getElementById('bp-short-desc').value = data.short_description || '';
+                                        document.getElementById('bp-long-desc').value = data.long_description || '';
+                                        document.getElementById('bp-target-audience').value = data.target_audience || '';
+                                        document.getElementById('bp-unique-value').value = data.unique_value || '';
+                                        document.getElementById('bp-main-offer').value = data.main_offer || '';
+                                        document.getElementById('bp-secondary-offers').value = data.secondary_offers || '';
+                                        document.getElementById('bp-tone-of-voice').value = data.tone_of_voice || '';
+                                        // social_links may be an object
+                                        const links = data.social_links || {};
+                                        document.getElementById('bp-website').value = links.website || data.website || '';
+                                        document.getElementById('bp-facebook').value = links.facebook || data.facebook || '';
+                                        document.getElementById('bp-instagram').value = links.instagram || data.instagram || '';
+                                        document.getElementById('bp-twitter').value = links.twitter || data.twitter || '';
+                                    } catch (e) { console.warn('populate from backend failed', e); }
+                                    return true;
+                                } catch (e) { console.warn('populate backend error', e); return false; }
                             }
 
-                            // snapshot for dirty-check
-                            try { businessProfileSnapshot = captureBusinessProfileSnapshot(); } catch(e){ console.warn('index: snapshot failed', e); }
-                            if (modal) {
-                                try { modal.classList.remove('hidden'); } catch(e){ console.warn('index: showing modal failed', e); }
+                            try { await populateBackend(); } catch(e){}
+
+                            // Force a clear full-screen backdrop and center the dialog
+                            try {
+                                modal.classList.remove('hidden');
+                                modal.style.display = 'flex';
+                                modal.style.position = 'fixed';
+                                modal.style.inset = '0';
+                                modal.style.left = '0';
+                                modal.style.top = '0';
+                                modal.style.width = '100vw';
+                                modal.style.height = '100vh';
+                                modal.style.alignItems = 'center';
+                                modal.style.justifyContent = 'center';
+                                modal.style.padding = '1rem';
+                                modal.style.background = modal.style.background || 'rgba(0,0,0,0.6)';
+                                modal.style.zIndex = '99999';
+
+                                // Ensure the inner dialog is large enough and scrollable
+                                const dialog = modal.querySelector('.bg-bg-card') || modal.querySelector('div');
+                                if (dialog) {
+                                    dialog.style.maxWidth = 'min(1100px, 96vw)';
+                                    dialog.style.width = '100%';
+                                    dialog.style.maxHeight = 'calc(100vh - 4rem)';
+                                    dialog.style.overflowY = 'auto';
+                                    dialog.style.boxSizing = 'border-box';
+                                    dialog.style.display = 'flex';
+                                    dialog.style.flexDirection = 'column';
+                                }
+
+                                // Prevent background scroll
+                                document.body.style.overflow = 'hidden';
+
+                                // Debug info
+                                try {
+                                    const cs = window.getComputedStyle(modal);
+                                    console.info('index: openModal -> modal shown', { width: modal.offsetWidth, height: modal.offsetHeight, display: cs.display, position: cs.position, zIndex: cs.zIndex });
+                                    const rect = modal.getBoundingClientRect();
+                                    console.info('index: openModal -> modal rect', rect);
+                                    if (dialog) console.info('index: openModal -> dialog size', { w: dialog.offsetWidth, h: dialog.offsetHeight });
+                                } catch (se) { console.info('index: openModal debug failed', se); }
+                            } catch (err) {
+                                console.error('index: openModal error showing modal', err);
                             }
-                            try { document.body.style.overflow = 'hidden'; } catch(e){}
                         }
 
                         function closeModal(){
+                            if (!modal) return;
+                            // hide and clear any inline styles we set when opening
                             modal.classList.add('hidden');
+                            try { modal.style.display = ''; } catch(e){}
+                            try { modal.style.position = ''; } catch(e){}
+                            try { modal.style.inset = ''; } catch(e){}
+                            try { modal.style.left = ''; } catch(e){}
+                            try { modal.style.top = ''; } catch(e){}
+                            try { modal.style.width = ''; } catch(e){}
+                            try { modal.style.height = ''; } catch(e){}
+                            try { modal.style.alignItems = ''; } catch(e){}
+                            try { modal.style.justifyContent = ''; } catch(e){}
+                            try { modal.style.padding = ''; } catch(e){}
+                            try { modal.style.background = ''; } catch(e){}
+                            try { modal.style.zIndex = ''; } catch(e){}
+                            // reset inner dialog styles
+                            try {
+                                const dialog = modal.querySelector('.bg-bg-card') || modal.querySelector('div');
+                                if (dialog) {
+                                    dialog.style.maxWidth = '';
+                                    dialog.style.width = '';
+                                    dialog.style.maxHeight = '';
+                                    dialog.style.overflowY = '';
+                                    dialog.style.boxSizing = '';
+                                    dialog.style.display = '';
+                                    dialog.style.flexDirection = '';
+                                }
+                            } catch(e){}
                             try { document.body.style.overflow = ''; } catch(e){}
                         }
 
@@ -520,20 +670,20 @@
                         closeBtns.forEach(btn => btn.addEventListener('click', async function(ev){
                             ev.preventDefault();
                             if (isBusinessProfileDirty()) {
-                                if (confirmModal) confirmModal.classList.remove('hidden');
+                                showConfirmModal();
                             } else {
                                 closeModal();
                             }
                         }));
 
                         // backdrop click closes if not dirty
-                        modal && modal.addEventListener('click', function(ev){ if (ev.target === modal) { if (isBusinessProfileDirty()) confirmModal.classList.remove('hidden'); else closeModal(); } });
+                        modal && modal.addEventListener('click', function(ev){ if (ev.target === modal) { if (isBusinessProfileDirty()) showConfirmModal(); else closeModal(); } });
 
                         // Confirm modal handlers
                         discardBtn && discardBtn.addEventListener('click', function(){
                             resetBusinessProfileToSnapshot();
                             businessProfileSnapshot = captureBusinessProfileSnapshot();
-                            document.getElementById('indexbusinessprofile-confirm-modal')?.classList.add('hidden');
+                            hideConfirmModal();
                             closeModal();
                         });
                         confirmSaveBtn && confirmSaveBtn.addEventListener('click', function(){
@@ -548,30 +698,71 @@
                             if (typeof saveBusinessProfile === 'function'){
                                 try { await saveBusinessProfile(ev); } catch(e){ console.warn('saveBusinessProfile failed', e); }
                             } else {
-                                // fallback: save to localStorage.vvUser
+                                // Try to persist to backend using a global Supabase client if available
+                                const client = window.supabaseClient || (window.supabase && window.supabase.createClient ? window.supabase : null);
                                 const u = getVVUser();
-                                u.business_name = document.getElementById('bp-business-name')?.value || '';
-                                u.industry = document.getElementById('bp-industry')?.value || '';
-                                u.location = document.getElementById('bp-location')?.value || '';
-                                u.tagline = document.getElementById('bp-tagline')?.value || '';
-                                u.short_description = document.getElementById('bp-short-desc')?.value || '';
-                                u.long_description = document.getElementById('bp-long-desc')?.value || '';
-                                u.target_audience = document.getElementById('bp-target-audience')?.value || '';
-                                u.unique_value = document.getElementById('bp-unique-value')?.value || '';
-                                u.main_offer = document.getElementById('bp-main-offer')?.value || '';
-                                u.secondary_offers = document.getElementById('bp-secondary-offers')?.value || '';
-                                u.tone_of_voice = document.getElementById('bp-tone-of-voice')?.value || '';
-                                u.website = document.getElementById('bp-website')?.value || '';
-                                u.facebook = document.getElementById('bp-facebook')?.value || '';
-                                u.instagram = document.getElementById('bp-instagram')?.value || '';
-                                u.twitter = document.getElementById('bp-twitter')?.value || '';
-                                saveVVUser(u);
-                                // update header if present
-                                try { document.getElementById('businessName').textContent = u.business_name || document.getElementById('businessName').textContent; } catch(e){}
+                                const businessId = (typeof BUSINESS_ID !== 'undefined' && BUSINESS_ID) ? BUSINESS_ID : (localStorage.getItem('business_id') || u.business_id || u['business id'] || null);
+                                const payload = {
+                                    business_id: businessId || u.business_id || u['business id'] || null,
+                                    business_name: document.getElementById('bp-business-name')?.value || '',
+                                    industry: document.getElementById('bp-industry')?.value || '',
+                                    location: document.getElementById('bp-location')?.value || '',
+                                    tagline: document.getElementById('bp-tagline')?.value || '',
+                                    short_description: document.getElementById('bp-short-desc')?.value || '',
+                                    long_description: document.getElementById('bp-long-desc')?.value || '',
+                                    target_audience: document.getElementById('bp-target-audience')?.value || '',
+                                    unique_value: document.getElementById('bp-unique-value')?.value || '',
+                                    main_offer: document.getElementById('bp-main-offer')?.value || '',
+                                    secondary_offers: document.getElementById('bp-secondary-offers')?.value || '',
+                                    tone_of_voice: document.getElementById('bp-tone-of-voice')?.value || '',
+                                    social_links: {
+                                        website: document.getElementById('bp-website')?.value || '',
+                                        facebook: document.getElementById('bp-facebook')?.value || '',
+                                        instagram: document.getElementById('bp-instagram')?.value || '',
+                                        twitter: document.getElementById('bp-twitter')?.value || ''
+                                    }
+                                };
+                                let backendSaved = false;
+                                if (client && payload.business_id) {
+                                    try {
+                                        const { data, error } = await client.from('business_profile').upsert([payload], { onConflict: 'business_id' }).select().single();
+                                        if (!error && data) {
+                                            // Merge returned data into local vvUser
+                                            try { const cur = getVVUser(); const merged = Object.assign({}, cur, data); localStorage.setItem('vvUser', JSON.stringify(merged)); } catch(e){}
+                                            try { window.dispatchEvent(new CustomEvent('businessProfileUpdated', { detail: data })); } catch(e){}
+                                            console.info('Business profile saved to backend (index)');
+                                            backendSaved = true;
+                                        } else {
+                                            console.warn('backend upsert returned error', error);
+                                        }
+                                    } catch (err) { console.warn('backend upsert failed', err); }
+                                }
+
+                                if (!backendSaved) {
+                                    // fallback to localStorage.vvUser (explicit write)
+                                    u.business_name = payload.business_name;
+                                    u.industry = payload.industry;
+                                    u.location = payload.location;
+                                    u.tagline = payload.tagline;
+                                    u.short_description = payload.short_description;
+                                    u.long_description = payload.long_description;
+                                    u.target_audience = payload.target_audience;
+                                    u.unique_value = payload.unique_value;
+                                    u.main_offer = payload.main_offer;
+                                    u.secondary_offers = payload.secondary_offers;
+                                    u.tone_of_voice = payload.tone_of_voice;
+                                    u.website = payload.social_links.website;
+                                    u.facebook = payload.social_links.facebook;
+                                    u.instagram = payload.social_links.instagram;
+                                    u.twitter = payload.social_links.twitter;
+                                    try { localStorage.setItem('vvUser', JSON.stringify(u)); } catch(e){ saveVVUser(u); }
+                                    try { window.dispatchEvent(new CustomEvent('businessProfileUpdated', { detail: u })); } catch(e){}
+                                    console.info('Business profile saved (index) fallback');
+                                }
                             }
                             // refresh snapshot and close
                             businessProfileSnapshot = captureBusinessProfileSnapshot();
-                            document.getElementById('indexbusinessprofile-confirm-modal')?.classList.add('hidden');
+                            hideConfirmModal();
                             closeModal();
                         });
 
@@ -580,7 +771,7 @@
                         bpCancel && bpCancel.addEventListener('click', function(ev){
                             ev.preventDefault();
                             if (isBusinessProfileDirty()) {
-                                document.getElementById('business-profile-confirm-modal')?.classList.remove('hidden');
+                                showConfirmModal();
                             } else {
                                 closeModal();
                             }
@@ -1058,83 +1249,10 @@
         <h2 class="text-xl font-semibold text-white mb-2">Key Performance Indicators</h2>
         <p class="text-white/80 text-sm italic">Monthly Success Indicators - compares with last month</p>
     </div>
-    <!-- Mobile-specific compact KPI grid (shows only on xs screens) -->
-    <div class="grid grid-cols-2 gap-3 sm:hidden mb-2" id="kpi-mobile-grid">
-        <div class="bg-[#1a1d23] rounded-xl border border-[#2b2f3a] p-4 kpi-mobile-card">
-            <div class="flex items-start gap-3">
-                <div class="w-10 h-10 flex items-center justify-center rounded-lg bg-purple-500/20">
-                    <svg class="w-5 h-5 text-purple-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"></path></svg>
-                </div>
-                <div class="flex-1">
-                    <div class="flex items-center justify-between">
-                        <div class="text-sm text-white/60 font-medium">Sales</div>
-                        <div class="relative">
-                            <button class="metric-info text-white/60 p-1" aria-label="Sales info" type="button"><i class="fa-solid fa-circle-info"></i></button>
-                            <span class="tooltip metric-tooltip">Total sales for the current month.</span>
-                        </div>
-                    </div>
-                    <div class="text-3xl font-bold kpi-mobile-value" data-src="#salesMonthly">Ksh 0</div>
-                </div>
-            </div>
-        </div>
+    <!-- Mobile-only KPI grid removed; using responsive KPI cards below for all sizes -->
 
-        <div class="bg-[#1a1d23] rounded-xl border border-[#2b2f3a] p-4 kpi-mobile-card">
-            <div class="flex items-start gap-3">
-                <div class="w-10 h-10 flex items-center justify-center rounded-lg bg-orange-500/20">
-                    <svg class="w-5 h-5 text-orange-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><circle cx="6" cy="6" r="3"></circle><circle cx="18" cy="18" r="3"></circle></svg>
-                </div>
-                <div class="flex-1">
-                    <div class="flex items-center justify-between">
-                        <div class="text-sm text-white/60 font-medium">Conversion Rate</div>
-                        <div class="relative">
-                            <button class="metric-info text-white/60 p-1" aria-label="Conversion Rate info" type="button"><i class="fa-solid fa-circle-info"></i></button>
-                            <span class="tooltip metric-tooltip">Percent of contacts that became customers this month.</span>
-                        </div>
-                    </div>
-                    <div class="text-3xl font-bold kpi-mobile-value" data-src="#conversionRate">0%</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-[#1a1d23] rounded-xl border border-[#2b2f3a] p-4 kpi-mobile-card">
-            <div class="flex items-start gap-3">
-                <div class="w-10 h-10 flex items-center justify-center rounded-lg bg-blue-500/20">
-                    <svg class="w-5 h-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 5v.01M12 9v.01M12 13v.01M12 17v.01M5 12h.01M9 12h.01M13 12h.01M17 12h.01"></path></svg>
-                </div>
-                <div class="flex-1">
-                    <div class="flex items-center justify-between">
-                        <div class="text-sm text-white/60 font-medium">Life Time Value</div>
-                        <div class="relative">
-                            <button class="metric-info text-white/60 p-1" aria-label="Life Time Value info" type="button"><i class="fa-solid fa-circle-info"></i></button>
-                            <span class="tooltip metric-tooltip">Average total money a customer spends for your business over time.</span>
-                        </div>
-                    </div>
-                    <div class="text-3xl font-bold kpi-mobile-value" data-src="#lifeTimeValue">Ksh 0</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-[#1a1d23] rounded-xl border border-[#2b2f3a] p-4 kpi-mobile-card">
-            <div class="flex items-start gap-3">
-                <div class="w-10 h-10 flex items-center justify-center rounded-lg bg-green-500/20">
-                    <svg class="w-5 h-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 17H7l-3 4-3-4M21 17l-3 4-3-4H2V7h20v10z"></path></svg>
-                </div>
-                <div class="flex-1">
-                    <div class="flex items-center justify-between">
-                        <div class="text-sm text-white/60 font-medium">Cost/Customer</div>
-                        <div class="relative">
-                            <button class="metric-info text-white/60 p-1" aria-label="Cost per customer info" type="button"><i class="fa-solid fa-circle-info"></i></button>
-                            <span class="tooltip metric-tooltip">Average amount you spend on ads to get one new customer.</span>
-                        </div>
-                    </div>
-                    <div class="text-3xl font-bold kpi-mobile-value" data-src="#costOfAcquisition">Ksh 0</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Desktop KPI grid (hidden on xs screens) -->
-    <div class="hidden sm:grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <!-- KPI grid (responsive: shows on mobile and scales up) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6">
         
         <!-- Card 1: Sales for Current Month (KES) -->
         <div class="p-4 sm:p-6 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] card-animate kpi-card">
@@ -1220,38 +1338,7 @@
         </div>
     </div>
 
-    <style>
-        /* Mobile KPI card tweaks */
-        .kpi-mobile-card { box-sizing: border-box; }
-        .kpi-mobile-card .kpi-mobile-value { color: #fff; }
-        /* Make mobile cards closer to ads performance card sizing */
-        .kpi-mobile-card { padding: .85rem; }
-        .kpi-mobile-card .kpi-mobile-value { font-size: 1.75rem; line-height: 1; }
-        @media (max-width:640px){
-            .kpi-mobile-card { padding: .9rem; }
-            .kpi-mobile-card .kpi-mobile-value { font-size: 1.75rem; }
-        }
-    </style>
-
-    <script>
-        // Sync canonical KPI values into mobile-only cards.
-        (function(){
-            function syncOnce(){
-                document.querySelectorAll('.kpi-mobile-value').forEach(function(target){
-                    var src = target.getAttribute('data-src');
-                    if(!src) return;
-                    try{ var s = document.querySelector(src); if(s) target.textContent = s.textContent; }
-                    catch(e){}
-                });
-            }
-            // Sync immediately and for a short period (in case other scripts populate later)
-            document.addEventListener('DOMContentLoaded', function(){
-                syncOnce();
-                var runs = 0;
-                var id = setInterval(function(){ syncOnce(); runs++; if(runs>10) clearInterval(id); }, 250);
-            });
-        })();
-    </script>
+    <!-- Removed mobile-only KPI styles and sync script to rely on responsive desktop/tablet KPI cards -->
 </section>
             <!-- Package-specific Vision Board + About & Learning (copied from free.html, namespaced) -->
             <section id="pkg-vision-section" class="mb-10">
@@ -1374,9 +1461,9 @@
                         <h3 class="text-lg font-bold text-white mb-1">Offer Creator</h3>
                         <p id="pkg-offer-sub" class="text-white/60 text-sm leading-relaxed">Create your first offer</p>
                     </div>
-                    <button id="pkg-create-offer-btn" class="w-full py-3 mt-4 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-colors" onclick="window.location.href='crmlanding.html'">
-                        Create
-                    </button>
+                        <button id="pkg-create-offer-btn" class="w-full py-3 mt-4 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-colors" onclick="window.location.href='ecommerce.html#offers-create'">
+                            Create
+                        </button>
                 </div>
             </div>
 
@@ -1717,7 +1804,7 @@
                         </div>
 
                         <div class="mt-4">
-                            <button type="submit" id="bp-save-btn" class="w-full bg-main-purple hover:bg-purple-700 text-white font-semibold py-3 rounded-xl mb-3">Save Business Profile</button>
+                            <button type="submit" id="bp-save-btn" class="w-full bg-green-600 hover:bg-green-500 text-white font-semibold py-3 rounded-xl mb-3">Save Business Profile</button>
                             <button type="button" id="bp-cancel-btn" class="w-full text-white/60 hover:text-white py-3">Cancel</button>
                         </div>
                     </form>
@@ -1734,7 +1821,7 @@
                 <p class="text-white/60 mb-4">Discard your changes or save them?</p>
                 <div class="flex gap-3">
                     <button id="index-bp-discard-btn" class="flex-1 bg-bg-dark text-white/80 py-3 rounded-lg">Discard</button>
-                    <button id="index-bp-confirm-save-btn" class="flex-1 bg-main-purple text-white py-3 rounded-lg">Save</button>
+                    <button id="index-bp-confirm-save-btn" class="flex-1 bg-green-600 hover:bg-green-500 text-white py-3 rounded-lg">Save</button>
                 </div>
             </div>
         </div>
