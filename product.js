@@ -168,6 +168,7 @@ function renderPage(product, biz, offers) {
             };
             tCon.appendChild(thumb);
         });
+        initMetaPixel(product.business_id, product);
     }
 
     // --- OFFER ENGINE ---
@@ -297,6 +298,7 @@ function renderPage(product, biz, offers) {
         stockEl.innerText = "In Stock";
     }
 }
+
 
 // --- MODAL & CRM LOGIC ---
 
@@ -521,4 +523,41 @@ function startTimer(endDate) {
 function showError() {
     document.getElementById('loading-screen').classList.add('hidden');
     document.getElementById('error-screen').classList.remove('hidden');
+}
+// --- META PIXEL INTEGRATION ---
+async function initMetaPixel(businessId, p) {
+    if (!businessId || !p) return;
+
+    // 1. Get the Pixel ID from business settings
+    const { data } = await supabaseClient
+        .from('business_settings')
+        .select('meta_pixel_id')
+        .eq('business_id', businessId)
+        .single();
+
+    if (!data || !data.meta_pixel_id) return;
+
+    // 2. Standard Meta Pixel Base Code (Prevents duplicates)
+    if (!window.fbq) {
+        !function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+        
+        fbq('init', data.meta_pixel_id);
+    }
+
+    // 3. Track Events
+    fbq('track', 'PageView');
+    fbq('track', 'ViewContent', {
+        content_name: p.title,
+        content_ids: [p.id],
+        content_type: 'product',
+        value: p.price,
+        currency: 'KES'
+    });
 }

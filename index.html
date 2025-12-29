@@ -420,6 +420,10 @@
                 // Business Profile: open modal, load/save using crm.js helpers if present,
                 // otherwise fall back to localStorage. Also include unsaved-changes confirm modal.
                 (function(){
+                    // Supabase settings for fallback backend access (used if crm.js helpers not present)
+                    const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
+                    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
+
                     function getVVUser(){ try { return JSON.parse(localStorage.getItem('vvUser')||'{}'); } catch(e){ return {}; } }
                     function saveVVUser(u){ try { localStorage.setItem('vvUser', JSON.stringify(u)); return true; } catch(e){ console.warn('saveVVUser failed', e); return false; } }
 
@@ -551,7 +555,7 @@
                                     try { await loadBusinessProfile(); return true; } catch(e){ console.warn('loadBusinessProfile failed', e); }
                                 }
                                 // Try using a global supabase client if available
-                                const client = window.supabaseClient || (window.supabase && window.supabase.createClient ? window.supabase : null);
+                                const client = window.supabaseClient || (window.supabase && typeof window.supabase.createClient === 'function' ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null);
                                 if (!client) return false;
                                 // Determine business id
                                 const u = (function(){ try { return JSON.parse(localStorage.getItem('vvUser')||'{}'); } catch(e){ return {}; } })();
@@ -699,7 +703,7 @@
                                 try { await saveBusinessProfile(ev); } catch(e){ console.warn('saveBusinessProfile failed', e); }
                             } else {
                                 // Try to persist to backend using a global Supabase client if available
-                                const client = window.supabaseClient || (window.supabase && window.supabase.createClient ? window.supabase : null);
+                                const client = window.supabaseClient || (window.supabase && typeof window.supabase.createClient === 'function' ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null);
                                 const u = getVVUser();
                                 const businessId = (typeof BUSINESS_ID !== 'undefined' && BUSINESS_ID) ? BUSINESS_ID : (localStorage.getItem('business_id') || u.business_id || u['business id'] || null);
                                 const payload = {
@@ -1687,7 +1691,7 @@
     </script>
 
     <!-- Index Business Profile Modal (duplicate of CRM modal but namespaced for index) -->
-    <div id="indexbusinessprofile-modal" class="modal-backdrop hidden">
+    <div id="indexbusinessprofile-modal" class="modal-backdrop hidden" style="background: rgba(0,0,0,0.6); z-index:99999;">
         <div class="absolute inset-0 flex items-center justify-center p-4">
             <div class="bg-bg-card rounded-2xl border border-border-dark max-w-4xl w-full p-6 card-animate max-h-[calc(100vh-4rem)] overflow-hidden flex flex-col" style="box-sizing: border-box;">
                 <div class="flex justify-between items-center mb-4">

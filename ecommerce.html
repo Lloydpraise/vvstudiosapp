@@ -79,7 +79,14 @@
         /* Mobile Sidebar Open State */
         .sidebar.open {
             transform: translateX(0);
-            box-shadow: 4px 0 15px rgba(0, 0, 0, 0.5);
+            /* Remove heavy shadow on mobile (can obscure/feel like an overlay).
+               Only apply a stronger shadow on larger screens via media query. */
+            box-shadow: none;
+        }
+
+        /* Desktop: keep a subtle shadow when sidebar is permanently visible */
+        @media (min-width: 1024px) {
+            .sidebar.open { box-shadow: 4px 0 15px rgba(0, 0, 0, 0.45); }
         }
 
         /* Sidebar Backdrop for Mobile */
@@ -89,12 +96,15 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.5);
+            background: transparent; /* removed veil so no overlay shadow */
             z-index: 40;
             display: none;
+            transition: background 180ms ease;
+            pointer-events: none; /* do not intercept clicks while hidden */
         }
         .sidebar-backdrop.show {
             display: block;
+            pointer-events: auto; /* only intercept when visible */
         }
 
         /* Nav Item Active State */
@@ -337,7 +347,7 @@
 
     <!-- Shared global loading is provided by loading.js (no local overlay here) -->
 
-    <div class="lg:hidden fixed top-0 left-0 right-0 p-4 card-base z-40 flex justify-between items-center h-16 rounded-none border-x-0 border-t-0 bg-[#0f1115]">
+    <div class="lg:hidden fixed top-0 left-0 right-0 p-4 card-base z-40 flex justify-between items-center h-16 rounded-none border-x-0 border-t-0 bg-[#0f1115]" style="z-index:100;">
         <div class="flex items-center space-x-3">
             <button id="back-button" onclick="goBackOrHome(event)" class="text-white text-2xl px-2 focus:outline-none lg:hidden" aria-label="Back">←</button>
             <h1 class="text-lg font-bold text-white">Ecommerce</h1>
@@ -650,7 +660,24 @@
                         <div class="text-sm text-white/60">Choose site theme</div>
                     </div>
                 </div>
+                <h2 class="text-xl font-semibold border-b border-white/10 pb-3 pt-4">Meta Integration</h2>
 
+<div class="mt-4 p-4 rounded-xl bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-white/5">
+    <div class="mb-4">
+        <label class="block text-sm font-medium text-white/70 mb-1">Meta Pixel ID</label>
+        <input type="text" id="setting-meta-pixel-id" class="w-full" placeholder="e.g. 1234567890">
+        <p class="text-xs text-white/40 mt-1">Found in Meta Events Manager. Tracks page views automatically.</p>
+    </div>
+
+    <div class="mb-2">
+        <label class="block text-sm font-medium text-white/70 mb-1">Product Feed URL</label>
+        <div class="flex space-x-2">
+            <input type="text" id="setting-feed-url" readonly class="flex-1 w-full bg-black/20 text-white/50 select-all cursor-pointer font-mono text-xs" value="Loading...">
+            <button onclick="copyFeedUrl()" class="btn-primary px-4 rounded-lg text-sm whitespace-nowrap">Copy URL</button>
+        </div>
+        <p class="text-xs text-white/40 mt-1">Paste this URL into Meta Commerce Manager > Data Sources > Data Feed.</p>
+    </div>
+</div>
                 <button onclick="saveBusinessSettings()" id="save-settings-btn" class="btn-primary text-white font-medium py-2 px-4 rounded-xl w-full">Save Settings</button>
             </div>
         </section>
@@ -1048,6 +1075,17 @@
                     img.classList.remove('hidden');
                     document.getElementById('logo-placeholder').classList.add('hidden');
                 }
+                document.getElementById('setting-meta-pixel-id').value = data.meta_pixel_id || '';
+
+    if (data.meta_feed_key) {
+        // Replace with your actual project project URL prefix
+        const PROJECT_REF = "xgtnbxdxbbywvzrttixf"; 
+        const feedUrl = `https://xgtnbxdxbbywvzrttixf.supabase.co/functions/v1/meta-product-feed?key=${data.meta_feed_key}`;
+        document.getElementById('setting-feed-url').value = feedUrl;
+    } else {
+        document.getElementById('setting-feed-url').value = "Save settings to generate URL";
+    }
+
             }
         }
 
@@ -1086,7 +1124,8 @@
                     primary: document.getElementById('setting-primary-color').value,
                     secondary: document.getElementById('setting-secondary-color').value,
                     background: document.getElementById('setting-bg-color').value
-                }
+                },
+                meta_pixel_id: document.getElementById('setting-meta-pixel-id').value.trim()
             };
 
             if (window.supabaseClient) await window.supabaseClient.from('business_settings').upsert(payload);
@@ -2225,6 +2264,17 @@
             toggleModal('variation-manage', true);
         }
 
+            function copyFeedUrl() {
+    const el = document.getElementById('setting-feed-url');
+    el.select();
+    navigator.clipboard.writeText(el.value).then(() => {
+        // Optional: visual feedback
+        const btn = event.target;
+        const original = btn.innerText;
+        btn.innerText = "Copied!";
+        setTimeout(() => btn.innerText = original, 2000);
+    });
+}
         function renderVariations(vars) {
             const container = document.getElementById('current-variations-list');
             if (!vars || vars.length === 0) {

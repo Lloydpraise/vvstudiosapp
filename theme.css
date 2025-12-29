@@ -481,9 +481,10 @@
     [data-theme="light"] #sidebar {
         z-index: 90 !important;
     }
-    /* Backdrop: stronger veil so underlying content is obscured. Target ecommerce-specific backdrop too. */
-    [data-theme="light"] #mobile-menu-backdrop,
-    [data-theme="light"] #sidebar-backdrop { background-color: rgba(15,23,42,0.18) !important; z-index: 88 !important; }
+    /* Backdrop: keep mobile menu veil but avoid overlay on the ecommerce sidebar backdrop */
+    [data-theme="light"] #mobile-menu-backdrop { background-color: rgba(15,23,42,0.18) !important; z-index: 88 !important; }
+    /* Ensure ecommerce sidebar backdrop does not cast a shadow in light theme */
+    [data-theme="light"] #sidebar-backdrop { background-color: transparent !important; z-index: 88 !important; }
 }
 
 /* Mobile: ensure the sidebar settings button is fixed to the viewport bottom and
