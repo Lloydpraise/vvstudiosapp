@@ -2264,17 +2264,35 @@
             toggleModal('variation-manage', true);
         }
 
-            function copyFeedUrl() {
-    const el = document.getElementById('setting-feed-url');
-    el.select();
-    navigator.clipboard.writeText(el.value).then(() => {
-        // Optional: visual feedback
-        const btn = event.target;
-        const original = btn.innerText;
-        btn.innerText = "Copied!";
-        setTimeout(() => btn.innerText = original, 2000);
-    });
-}
+            function copyFeedUrl(e) {
+        const el = document.getElementById('setting-feed-url');
+        if (!el) return;
+        try { if (el.select) el.select(); } catch (err) {}
+        const text = el.value || el.getAttribute('value') || '';
+
+        const handleFeedback = (btn) => {
+            if (!btn) return;
+            const original = btn.innerText;
+            btn.innerText = "Copied!";
+            setTimeout(() => btn.innerText = original, 2000);
+        };
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = (e && (e.currentTarget || e.target)) || (el.parentElement && el.parentElement.querySelector('button'));
+                handleFeedback(btn);
+            }).catch(() => {
+                try { prompt('Copy this link:', text); } catch (err) {}
+            });
+        } else {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); alert('Link copied to clipboard'); } catch (e) { try { prompt('Copy this link:', text); } catch (err) {} }
+            ta.remove();
+        }
+    }
         function renderVariations(vars) {
             const container = document.getElementById('current-variations-list');
             if (!vars || vars.length === 0) {

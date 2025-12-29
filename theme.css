@@ -715,8 +715,11 @@
 }
 /* Global modal sizing & centering improvements --------------------------------------- */
 .modal-backdrop {
-    display: flex;
-    align-items: center; /* center vertically by default */
+    /* Display is controlled by the page (open/closed). Avoid forcing the
+       overlay to be visible at all times which can block clicks. Keep
+       alignment helpers so when the page shows the backdrop it centers
+       modal content as expected. */
+    align-items: center;
     justify-content: center;
     padding: 20px; /* keep some breathing room on small viewports */
 }
