@@ -127,6 +127,25 @@
     </style>
     <script>(function(){try{var t=null;try{t=localStorage.getItem('vvTheme')}catch(e){} if(!t) t='light'; if(t==='light') document.documentElement.setAttribute('data-theme','light'); else document.documentElement.removeAttribute('data-theme');}catch(e){} })();</script>
     <link rel="stylesheet" href="theme.css">
+    <style>
+        /* Light-theme modal & onboarding overrides for free.html */
+        [data-theme="light"] .modal-backdrop { background-color: rgba(15,23,32,0.04) !important; color: #0f1720 !important; }
+        [data-theme="light"] .modal-bottom-content, [data-theme="light"] .modal-card { background: #ffffff !important; background-image: none !important; color: #0f1720 !important; border: 1px solid #e6e9ee !important; box-shadow: 0 10px 30px rgba(15,23,32,0.06) !important; }
+        /* Ensure onboarding "Get Started" cards are light (remove dark gradient) */
+        [data-theme="light"] .task-card { background: #ffffff !important; background-image: none !important; color: #0f1720 !important; border: 1px solid #e6e9ee !important; box-shadow: none !important; }
+        [data-theme="light"] .task-card .task-number { background: rgba(15,23,32,0.04) !important; color: #0f1720 !important; }
+        [data-theme="light"] .w-32.h-2.bg-\[\#2b2f3a\] { background-color: #e6e9ee !important; }
+        /* Make action buttons and dark utility backgrounds inside task cards light */
+        [data-theme="light"] .task-card .bg-\[\#2b2f3a\],
+        [data-theme="light"] .task-card .bg-\[\#0f1115\],
+        [data-theme="light"] .task-card button,
+        [data-theme="light"] .task-card a {
+            background-color: #f3f4f6 !important;
+            color: #0f1720 !important;
+            border-color: #e6e9ee !important;
+        }
+        [data-theme="light"] .task-card .badge-completed { background-color: rgba(34,197,94,0.12) !important; color: #065f46 !important; }
+    </style>
     <script src="theme-toggle.js" defer></script>
 </head>
 <body class="bg-[#0f1115] text-white">
@@ -270,8 +289,17 @@
                             <p id="profileName" class="font-medium text-sm hidden sm:block">Admin</p>
                         </div>
                         
-                        <div id="profile-dropdown" class="absolute top-14 right-0 z-50 w-48 bg-[#1a1d23] rounded-xl border border-[#2b2f3a] p-2 shadow-lg hidden transition-opacity duration-200">
+                        <div id="profile-dropdown" class="absolute top-14 right-0 z-50 w-56 bg-[#1a1d23] rounded-xl border border-[#2b2f3a] p-2 shadow-lg hidden transition-opacity duration-200">
                             <button id="startTourButton" onclick="(function(){ if(window.startTour){ window.startTour(true); } else { var s=document.createElement('script'); s.src='tour.js'; s.onload=function(){ if(window.startTour) window.startTour(true); }; document.body.appendChild(s); } })()" class="block w-full text-left p-2 text-sm text-white hover:bg-[#2b2f3a] rounded-lg transition-colors">Start Tour</button>
+                            <div class="block p-2 rounded-lg">
+                                <div class="theme-toggle-wrapper">
+                                    <span class="text-sm text-white/80">Theme</span>
+                                    <div class="theme-toggle-buttons">
+                                        <button type="button" class="theme-toggle-btn px-2 py-1 bg-[#1a1d23] text-white" data-theme="dark">Dark</button>
+                                        <button type="button" class="theme-toggle-btn px-2 py-1 bg-white text-[#0f1115]" data-theme="light">Light</button>
+                                    </div>
+                                </div>
+                            </div>
                             <a href="#" id="logoutButton" class="block p-2 text-sm text-red-400 hover:bg-[#2b2f3a] rounded-lg transition-colors">Logout</a>
                         </div>
                     </div>
@@ -283,7 +311,7 @@
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-4">
                         <div>
                             <h2 class="text-3xl md:text-5xl font-bold mb-2 text-gradient-welcome">Welcome to VV Studios!</h2>
-                            <p class="text-white/60 text-lg">Get Ready to show more, sell more and scale faster!</p>
+                            <p class="text-white/60 text-lg">This new year Get Ready to show more, sell more and scale faster!</p>
                         </div>
                         
                         <a href="plans.html" class="hidden md:flex bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-xl items-center gap-2 transition-all transform hover:scale-105 shadow-lg shadow-blue-900/40 btn-upgrade">
@@ -579,6 +607,17 @@
             }
         }
 
+        // Ensure we have a usable Supabase client variable in this page context.
+        // Use a page-local name to avoid clashing with other scripts that may
+        // declare `supabase` in the global scope.
+        const supabaseClientLocal = (function(){
+            if (window.supabaseClient) return window.supabaseClient;
+            if (window.supabase && typeof window.supabase.createClient === 'function') {
+                try { return window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch(e){ console.warn('Failed to create local supabase client', e); }
+            }
+            return null;
+        })();
+
         // --- 2. GET USER / BUSINESS ID ---
         function getBusinessId() {
             try {
@@ -607,7 +646,13 @@
             const businessId = getBusinessId();
 
             try {
-                const { data, error } = await supabase
+                if (!supabaseClientLocal) {
+                    console.warn('Supabase client not available in loadVisionBoard');
+                    loadingState.classList.add('hidden');
+                    emptyState.classList.remove('hidden');
+                    return;
+                }
+                const { data, error } = await supabaseClientLocal
                     .from('vision_boards')
                     .select('*')
                     .eq('business_id', businessId)
@@ -660,7 +705,11 @@
         async function loadOnboardingStatus() {
             const businessId = getBusinessId();
             try {
-                const { data, error } = await supabase
+                if (!supabaseClientLocal) {
+                    console.warn('Supabase client not available in loadOnboardingStatus');
+                    return;
+                }
+                const { data, error } = await supabaseClientLocal
                     .from('onboarding_view')
                     .select('*')
                     .eq('business_id', businessId)

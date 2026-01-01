@@ -191,6 +191,18 @@
             opacity: 1;
         }
 
+        /* Light-theme overrides: ensure modals are light when data-theme="light" */
+        [data-theme="light"] .modal-backdrop {
+            background-color: rgba(15,23,32,0.04) !important;
+            color: #0f1720 !important;
+        }
+        [data-theme="light"] .modal-card {
+            background-color: #ffffff !important;
+            color: #0f1720 !important;
+            border: 1px solid #e6e9ee !important;
+            box-shadow: 0 10px 30px rgba(15,23,32,0.06) !important;
+        }
+
         /* Styled scrollbar for the offer modal to improve visibility on dark background */
         #offer-modal {
             scrollbar-width: thin;
@@ -1426,9 +1438,13 @@
             currentEditingType = product.type === 'service' ? 'service' : 'product';
 
             document.getElementById('prod-title').value = product.title || '';
-            // populate key features from saved short description (stored as newline separated)
-            const rawShort = product.description_short || '';
-            keyFeatures = rawShort ? rawShort.split('\n') : [];
+            // populate key features: prefer the new `key_features` array column, fallback to description_short
+            if (Array.isArray(product.key_features) && product.key_features.length) {
+                keyFeatures = [...product.key_features];
+            } else {
+                const rawShort = product.description_short || '';
+                keyFeatures = rawShort ? rawShort.split('\n') : [];
+            }
             renderKeyFeatures();
             document.getElementById('prod-long-desc').value = product.description_long || '';
             document.getElementById('prod-price').value = product.price || '';
@@ -2112,6 +2128,7 @@
                 business_id: BUSINESS_ID,
                 title: title,
                 description_short: (keyFeatures && keyFeatures.length) ? keyFeatures.join('\n') : '',
+                key_features: (keyFeatures && keyFeatures.length) ? keyFeatures : [],
                 description_long: document.getElementById('prod-long-desc').value,
                 price: parseFloat(document.getElementById('prod-price').value) || 0,
                 old_price: null,

@@ -62,17 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const productId = urlParams.get('id');
     
-    // Back Button for App
-    if (urlParams.get('from_app') === '1') {
-        try {
-            const header = document.querySelector('header');
-            const backBtn = document.createElement('button');
-            backBtn.className = 'theme-card text-main hover:text-primary py-2 px-4 rounded-lg shadow-sm mr-4 text-sm font-medium';
-            backBtn.innerHTML = '<i class="fa-solid fa-arrow-left mr-1"></i> Back';
-            backBtn.onclick = () => window.history.back();
-            header.insertBefore(backBtn, header.firstChild);
-        } catch(e){}
-    }
+    // Back button insertion disabled — product page uses centered header
 
     if (!productId) return showError();
 
@@ -93,6 +83,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (chevron) chevron.style.transform = c.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
         });
     }
+
+    // Update preview area for first line of long description once product is loaded
+    const previewEl = document.getElementById('desc-preview');
+    if (previewEl) previewEl.innerText = '';
 });
 
 // --- CORE FUNCTIONS ---
@@ -149,7 +143,12 @@ function renderPage(product, biz, offers) {
     if (biz.business_name) document.getElementById('biz-name').textContent = biz.business_name;
     document.getElementById('product-title').innerText = product.title;
     document.getElementById('product-desc-short').innerText = product.description_short || '';
-    document.getElementById('product-desc-long').innerHTML = (product.description_long || '').replace(/\n/g, '<br>');
+    const longDesc = product.description_long || '';
+    document.getElementById('product-desc-long').innerHTML = longDesc.replace(/\n/g, '<br>');
+    // Show the first non-empty line as preview under Full Details
+    const firstLine = (longDesc.split(/\r?\n/).find(l => l.trim().length > 0) || '').trim();
+    const previewEl2 = document.getElementById('desc-preview');
+    if (previewEl2) previewEl2.innerText = firstLine;
 
     // Images
     const images = product.images || [];
@@ -255,6 +254,10 @@ function renderPage(product, biz, offers) {
         try { document.querySelector('header').style.marginTop = `${bar.offsetHeight}px`; } catch(e){}
     }
 
+    // Render Key Features: try product.key_features (array) or parse from product.key_features_text
+    const keyFeaturesArr = product.key_features || (product.key_features_text ? product.key_features_text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean) : []);
+    renderKeyFeatures(keyFeaturesArr);
+
     // Variations
     const varContainer = document.getElementById('variations-container');
     (product.variations || []).forEach(v => {
@@ -344,47 +347,46 @@ async function handleOrderSubmit(e) {
     const address = document.getElementById('inp-address').value;
     const phone = document.getElementById('inp-phone').value;
     
-    // Generate Order ID
-    const orderId = 'ORD-' + Math.random().toString(36).substr(2, 5).toUpperCase();
+    // 1. Generate unique Order ID (e.g., #100 + random suffix)
+    const orderId = '#' + (100 + Math.floor(Math.random() * 900)) + '-' + Math.random().toString(36).substr(2, 3).toUpperCase();
 
-    // 1. SAVE TO CONTACTS (Upsert) & DEALS
     try {
-        // Upsert Contact
+        // 2. SAVE TO CONTACTS
+        // We use upsert on 'phone' and 'business_id' to avoid duplicates
         const { data: contact, error: cErr } = await supabaseClient
             .from('contacts')
             .upsert({ 
                 phone: phone, 
-                last_active: new Date(), 
-                tags: ['whatsapp_order_attempt'] 
-            }, { onConflict: 'phone' })
+                name: `Order ${orderId}`, // Order ID as name
+                notes: `Shipping Address: ${address}`, // Address in notes
+                business_id: productData.business_id
+            }, { onConflict: 'phone, business_id' })
             .select()
             .single();
 
-        // Insert Deal (if table exists)
+        if (cErr) throw cErr;
+
+        // 3. CREATE THE DEAL
+        const variantsStr = Object.entries(selectedVariations).map(([k,v]) => `${k}: ${v}`).join(', ') || 'Standard';
+        
         const dealData = {
-            contact_id: contact?.id, 
-            phone: phone, // fallback
-            product_id: productData.id,
-            product_name: productData.title,
+            deal_name: `${productData.title} - ${orderId}`,
+            contact_id: contact.id, 
+            stage: 'New Leads', // Matching your ENUM default
             amount: currentPrice,
-            status: 'new',
-            stage: 'whatsapp_clicked',
-            order_id: orderId,
-            details: {
-                address: address,
-                variations: selectedVariations,
-                offer: currentOfferLabel
-            }
+            notes: `Product: ${productData.title}\nVariants: ${variantsStr}\nAddress: ${address}\nOffer: ${currentOfferLabel || 'None'}`,
+            business_id: productData.business_id
         };
 
-        // Try inserting into deals, ignore error if table structure is different
-        await supabaseClient.from('deals').insert(dealData).catch(err => console.log('Deal insert skipped/failed', err));
+        const { error: dErr } = await supabaseClient.from('deals').insert(dealData);
+        if (dErr) console.error("Deal insert error:", dErr);
 
     } catch (err) {
-        console.error("CRM Save Error (non-blocking):", err);
+        console.error("CRM Save Error:", err);
+        // We continue to WhatsApp even if CRM fails so you don't lose the sale
     }
 
-    // 2. REDIRECT TO WHATSAPP
+    // 4. REDIRECT TO WHATSAPP
     const phoneClean = (businessData.whatsapp_number || '').replace(/[^0-9]/g, '');
     let msg = `*New Order: ${orderId}*\n`;
     msg += `------------------\n`;
@@ -405,7 +407,6 @@ async function handleOrderSubmit(e) {
     btn.disabled = false;
     closeModals();
 }
-
 // CRM ACTION: Handle Discount Waitlist
 async function handleDiscountSubmit(e) {
     e.preventDefault();
@@ -560,4 +561,22 @@ async function initMetaPixel(businessId, p) {
         value: p.price,
         currency: 'KES'
     });
+}
+
+function renderKeyFeatures(features) {
+    const container = document.getElementById('key-features-inline');
+    const longContainer = document.getElementById('product-desc-long');
+    if (!container && !longContainer) return;
+
+    // build HTML with header 'Key Features' then checkmarked bullets
+    if (features && features.length) {
+        const bullets = features.map(f => `<div class="flex items-start gap-3 mb-2"><div class="text-green-500 mt-0.5"><i class="fa-solid fa-check-circle"></i></div><div class="text-sm text-muted">${f}</div></div>`).join('');
+        if (container) container.innerHTML = `<div class="font-semibold text-main mb-2">Key Features</div>${bullets}`;
+        if (longContainer) {
+            // append to full details at the top
+            longContainer.innerHTML = `<div class="font-semibold text-main mb-3">Full Details; Key Features</div><div class=\"mb-4\">${longContainer.innerHTML}</div><div>${bullets}</div>`;
+        }
+    } else {
+        if (container) container.innerHTML = '';
+    }
 }

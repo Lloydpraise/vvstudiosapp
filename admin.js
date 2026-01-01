@@ -8,6 +8,14 @@ function getPublicImageUrl(path) {
     if (!path) return '';
     if (path.startsWith('http') || path.startsWith('//')) return path;
 
+
+// Avatar menu toggle helper
+function toggleAvatarMenu() {
+    const menu = document.getElementById('avatar-menu');
+    if (!menu) return;
+    if (menu.classList.contains('hidden')) menu.classList.remove('hidden');
+    else menu.classList.add('hidden');
+}
     try {
         if (typeof path === 'string' && (path.trim().startsWith('[') || path.trim().startsWith('{'))) {
             const parsed = JSON.parse(path);
@@ -122,7 +130,8 @@ const auth = {
         document.getElementById('app-layout').classList.add('hidden-force');
         document.getElementById('login-view').classList.remove('hidden-force');
         document.getElementById('login-pin').value = '';
-        localStorage.removeItem('vvManagerPin');
+        // remove saved pin and any manager-specific cached keys
+        try { localStorage.removeItem('vvManagerPin'); } catch(e) {}
     }
 };
 document.getElementById('login-form').addEventListener('submit', (e) => {
@@ -430,7 +439,10 @@ const explorer = {
         } catch (e) {
             document.getElementById('exp-business-id').textContent = user.business_id;
         }
-        document.getElementById('exp-package').textContent = user.package;
+        // update package display without overwriting the edit icon
+        const pkgTextEl = document.getElementById('exp-package-text');
+        if (pkgTextEl) pkgTextEl.textContent = user.package;
+        try { updateExpPackageDisplay(user.package); } catch(e) {}
         try {
             document.getElementById('exp-business-id').dataset.phone = user.phone_number || user.phone || '';
         } catch (e) {}
@@ -451,6 +463,58 @@ const explorer = {
 
         const { data } = await supabase.from('admin_notes').select('note_body').eq('business_id', businessId).eq('admin_id', auth.currentAdminId).single();
         document.getElementById('notes-body').value = data ? data.note_body : '';
+        modal.classList.remove('hidden-force');
+    },
+
+    // Refresh package value from DB and update explorer display
+    async refreshPackage() {
+        try {
+            const businessId = this.currentBusinessId;
+            if (!businessId) return;
+            const { data, error } = await supabase.from('logins').select('package').eq('business id', businessId).single();
+            if (error) {
+                console.warn('Failed to refresh package:', error);
+                return;
+            }
+            const pkg = data && data.package ? data.package : null;
+            if (pkg) {
+                this.currentUserData = this.currentUserData || {};
+                this.currentUserData.package = pkg;
+                const pkgTextEl = document.getElementById('exp-package-text');
+                if (pkgTextEl) pkgTextEl.textContent = pkg;
+                try { updateExpPackageDisplay(pkg); } catch (e) {}
+            }
+        } catch (e) { console.error('refreshPackage error', e); }
+    },
+
+    // Open package change modal (from explorer header pen icon)
+    openPackageModal() {
+        const modal = document.getElementById('package-modal');
+        if (!modal) return alert('Modal not found');
+        const bNameEl = document.getElementById('pkg-modal-business');
+        const pkgOptions = document.querySelectorAll('#pkg-options .pkg-btn');
+        const currentPkg = (this.currentUserData && this.currentUserData.package) ? this.currentUserData.package : 'Free';
+        modal.dataset.businessId = this.currentBusinessId || '';
+        modal.dataset.pending = currentPkg;
+        bNameEl.textContent = this.currentUserData ? this.currentUserData.business_name : this.currentBusinessId || 'Business';
+
+        const colors = { 'Free': '#9CA3AF', 'Growth': '#10B981', 'Pro': '#D97706', 'Premium': '#7C3AED' };
+
+        pkgOptions.forEach(btn => {
+            const pkg = btn.dataset.pkg;
+            // reset
+            btn.style.background = 'rgba(255,255,255,0.03)';
+            btn.style.color = 'rgba(255,255,255,0.6)';
+            btn.style.borderColor = 'rgba(255,255,255,0.06)';
+            btn.style.boxShadow = 'none';
+
+            // apply small color highlight for current package
+            if (pkg === currentPkg) {
+                btn.style.borderColor = colors[pkg] || '#9CA3AF';
+                btn.style.boxShadow = `0 0 0 3px ${ (colors[pkg]||'#9CA3AF') }22`;
+            }
+        });
+
         modal.classList.remove('hidden-force');
     },
     
@@ -872,6 +936,92 @@ const router = {
         }
     }
 };
+
+// Package modal handlers (global)
+function packageModalSelect(e) {
+    const btn = e.currentTarget || e.target;
+    const pkg = btn && btn.dataset ? btn.dataset.pkg : null;
+    if (!pkg) return;
+    const colors = { 'Free': '#9CA3AF', 'Growth': '#10B981', 'Pro': '#D97706', 'Premium': '#7C3AED' };
+    const modal = document.getElementById('package-modal');
+    if (!modal) return;
+    modal.dataset.pending = pkg;
+
+    document.querySelectorAll('#pkg-options .pkg-btn').forEach(b => {
+        b.style.borderColor = 'rgba(255,255,255,0.06)';
+        b.style.boxShadow = 'none';
+        b.style.color = 'rgba(255,255,255,0.6)';
+        b.style.background = 'rgba(255,255,255,0.03)';
+    });
+
+    btn.style.borderColor = colors[pkg] || '#9CA3AF';
+    btn.style.boxShadow = `0 0 0 3px ${ (colors[pkg]||'#9CA3AF') }22`;
+    btn.style.color = 'rgba(255,255,255,0.95)';
+}
+
+async function packageModalSave() {
+    const modal = document.getElementById('package-modal');
+    if (!modal) return;
+    const selected = modal.dataset.pending;
+    const businessId = modal.dataset.businessId;
+    const saveBtn = document.getElementById('pkg-save-btn');
+    if (!selected || !businessId) return closePackageModal();
+    try {
+        if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
+        const { data, error } = await supabase.from('logins').update({ package: selected }).eq('business id', businessId);
+        if (error) throw error;
+
+        // update explorer UI if open
+        if (window.explorer && explorer.currentBusinessId === businessId && explorer.currentUserData) {
+            explorer.currentUserData.package = selected;
+            const pText = document.getElementById('exp-package-text');
+            if (pText) pText.textContent = selected;
+            updateExpPackageDisplay(selected);
+        }
+
+        // update users table in-memory and re-render
+        if (window.userManager && Array.isArray(userManager.allUsers)) {
+            userManager.allUsers = userManager.allUsers.map(u => { if (u.business_id === businessId) u.package = selected; return u; });
+            userManager.renderTable(userManager.allUsers);
+        }
+
+        closePackageModal();
+    } catch (err) {
+        console.error('Package save error', err);
+        alert('Error saving package: ' + (err.message || err.error || String(err)));
+    } finally {
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save'; }
+    }
+}
+
+function closePackageModal() {
+    const modal = document.getElementById('package-modal');
+    if (!modal) return;
+    modal.classList.add('hidden-force');
+    modal.dataset.pending = '';
+    document.querySelectorAll('#pkg-options .pkg-btn').forEach(b => {
+        b.style.borderColor = 'rgba(255,255,255,0.06)';
+        b.style.boxShadow = 'none';
+        b.style.color = 'rgba(255,255,255,0.6)';
+        b.style.background = 'rgba(255,255,255,0.03)';
+    });
+}
+
+function updateExpPackageDisplay(pkg) {
+    const wrap = document.getElementById('exp-package');
+    const text = document.getElementById('exp-package-text');
+    if (!wrap || !text) return;
+    const map = {
+        'Free': { bg: 'rgba(255,255,255,0.03)', text: 'rgba(255,255,255,0.8)' },
+        'Growth': { bg: 'rgba(16,185,129,0.08)', text: '#10B981' },
+        'Pro': { bg: 'rgba(217,119,6,0.08)', text: '#D97706' },
+        'Premium': { bg: 'rgba(124,58,237,0.08)', text: '#7C3AED' }
+    };
+    const s = map[pkg] || map['Free'];
+    wrap.style.background = s.bg;
+    text.style.color = s.text;
+    text.textContent = pkg;
+}
 
 // --- WHATSAPP HELPERS ---
 (function(){

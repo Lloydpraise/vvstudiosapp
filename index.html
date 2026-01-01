@@ -1159,8 +1159,31 @@
                             </svg>
                         </button>
                         <div class="flex-1 min-w-[200px]">
-                            <h1 id="businessName" class="text-3xl lg:text-4xl font-bold mb-1">Business Name</h1>
-                            <p class="text-white/60 text-sm">Good to see you <span id="welcomeName" class="font-bold"></span>.</p>
+                            <div class="relative group">
+                                <div class="flex items-center gap-2">
+                                    <h1 id="businessName" class="text-3xl lg:text-4xl font-bold mb-1 cursor-pointer select-none relative">
+                                        Business Name
+                                    </h1>
+                                    <button id="business-switcher-btn" class="mt-1 text-white/40 hover:text-white transition-colors">
+                                        <i class="fa-solid fa-chevron-down text-xl"></i>
+                                    </button>
+                                    <button id="add-business-trigger" class="opacity-0 group-hover:opacity-100 transition-opacity duration-300 ml-2 bg-blue-600 hover:bg-blue-500 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-lg transform scale-90 hover:scale-100">
+                                        <i class="fa-solid fa-plus"></i>
+                                    </button>
+                                </div>
+                                
+                                <div id="business-dropdown" class="absolute top-full left-0 mt-2 w-64 bg-[#1a1d23] border border-[#2b2f3a] rounded-xl shadow-2xl z-50 hidden flex-col overflow-hidden">
+                                    <div class="p-3 border-b border-[#2b2f3a] text-xs text-white/40 uppercase font-bold tracking-wider">Switch Business</div>
+                                    <div id="business-list-container" class="max-h-60 overflow-y-auto">
+                                    </div>
+                                    <div class="p-2 border-t border-[#2b2f3a]">
+                                        <button id="dropdown-add-btn" class="w-full flex items-center gap-2 p-2 text-sm text-blue-400 hover:bg-[#2b2f3a] rounded-lg transition-colors">
+                                            <i class="fa-solid fa-plus-circle"></i> Add New Business
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="text-white/60 text-sm">Happy New Year <span id="welcomeName" class="font-bold"></span> — Let's make it your best!</p>
                         </div>
                     </div>
                     <div id="header-controls" class="absolute right-4 top-4 z-50 flex items-center space-x-4 md:relative md:right-0 md:top-0 md:mt-0 mt-4 lg:mt-0">
@@ -1171,7 +1194,7 @@
                         
                         <div id="profile-menu-button" class="flex items-center space-x-2 p-2 bg-[#1a1d23] rounded-xl cursor-pointer">
                             <div id="profile-avatar" class="rounded-full w-8 h-8 bg-blue-500 flex items-center justify-center text-white font-bold text-sm">L</div>
-                            <p id="profileName" class="font-medium text-sm hidden sm:block"><span id="welcomeName" class="font-bold"></p>
+                            <p id="profileName" class="font-medium text-sm hidden sm:block"></p>
                         </div>
                         
                         <div id="profile-dropdown" class="absolute top-14 right-0 z-50 w-48 bg-[#1a1d23] rounded-xl border border-[#2b2f3a] p-2 shadow-lg hidden transition-opacity duration-200">
@@ -1830,6 +1853,40 @@
             </div>
         </div>
     </div>
+    <div id="invite-team-modal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-80 hidden backdrop-blur-sm transition-opacity duration-300">
+    <div class="bg-[#1a1d23] p-6 md:p-8 rounded-2xl border border-[#2b2f3a] max-w-md w-full text-center relative shadow-2xl transform scale-100">
+        <button id="close-invite-modal" class="absolute top-4 right-4 text-white/40 hover:text-white transition-colors">
+            <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+        
+        <div class="w-14 h-14 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-5">
+            <i class="fa-brands fa-whatsapp text-green-500 text-3xl"></i>
+        </div>
+        
+        <h3 class="text-2xl font-bold text-white mb-2">Invite Team Member</h3>
+        <p class="text-white/60 text-sm mb-6">Send a direct WhatsApp link to your team member to join this business dashboard.</p>
+
+        <form id="invite-form" class="space-y-4 text-left">
+            <div>
+                <label class="text-xs font-bold text-white/40 uppercase tracking-widest mb-1 block">Team Member Name</label>
+                <input type="text" id="invite-name" placeholder="e.g. Sarah" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all">
+            </div>
+            <div>
+                <label class="text-xs font-bold text-white/40 uppercase tracking-widest mb-1 block">Phone Number</label>
+                <input type="tel" id="invite-phone" placeholder="07xxxxxxxx" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all">
+            </div>
+            
+            <div id="invite-status" class="text-center p-3 rounded-lg bg-[#0f1115] border border-[#2b2f3a] hidden">
+                <div class="loader mx-auto"></div>
+            </div>
+
+            <button type="submit" id="send-invite-btn" class="w-full bg-[#25D366] hover:bg-[#1da851] text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-green-900/20 flex items-center justify-center gap-2 group">
+                <i class="fa-brands fa-whatsapp text-xl group-hover:scale-110 transition-transform"></i>
+                <span>Send via WhatsApp</span>
+            </button>
+        </form>
+    </div>
+</div>
     <script>
 document.addEventListener("DOMContentLoaded", () => {
     const menuBtn = document.getElementById("mobile-menu-button");
@@ -2205,5 +2262,68 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
         </script>
+</script>
+
+<!-- Add Business Modal -->
+<div id="add-business-modal" class="fixed inset-0 z-[70] flex items-center justify-center bg-black bg-opacity-80 hidden backdrop-blur-sm">
+    <div class="bg-[#1a1d23] p-6 md:p-8 rounded-2xl border border-[#2b2f3a] max-w-lg w-full relative card-animate overflow-y-auto max-h-[90vh]">
+        <button id="close-add-business" class="absolute top-4 right-4 text-white/40 hover:text-white">
+            <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+        
+        <div class="flex items-center gap-3 mb-6">
+            <div class="w-12 h-12 bg-blue-600/20 rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-briefcase text-blue-500 text-xl"></i>
+            </div>
+            <div>
+                <h3 class="text-2xl font-bold text-white">Add New Business</h3>
+                <p class="text-white/60 text-sm">Expand your empire.</p>
+            </div>
+        </div>
+
+        <form id="add-business-form" class="space-y-4">
+            <div>
+                <label class="text-sm text-white/70 mb-1 block">Business Name</label>
+                <input type="text" id="new-biz-name" placeholder="e.g. Apex Consulting" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-blue-500" required>
+            </div>
+
+            <div>
+                <label class="text-sm text-white/70 mb-1 block">Industry</label>
+                <select id="new-biz-industry" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl py-3 px-3 text-white">
+                    <option value="retail">Retail</option>
+                    <option value="services">Services</option>
+                    <option value="food_beverage">Food & Beverage</option>
+                    <option value="technology">Technology</option>
+                    <option value="education">Education</option>
+                    <option value="health">Health</option>
+                    <option value="real_estate">Real Estate</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-sm text-white/70 mb-1 block">Your Role</label>
+                    <select id="new-biz-role" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl py-3 px-3 text-white">
+                        <option value="owner">Owner</option>
+                        <option value="manager">Manager</option>
+                        <option value="marketer">Marketer</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-sm text-white/70 mb-1 block">Employees</label>
+                    <input type="number" id="new-biz-employees" placeholder="e.g. 5" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-blue-500">
+                </div>
+            </div>
+
+            <div id="add-biz-error" class="text-red-400 text-sm hidden text-center bg-red-400/10 p-2 rounded-lg"></div>
+
+            <button type="submit" id="create-biz-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-900/20 mt-2">
+                Create Business
+            </button>
+        </form>
+    </div>
+</div>
+
 </body>
 </html>

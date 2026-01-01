@@ -123,6 +123,12 @@
         .modal-backdrop.open { opacity: 1; pointer-events: auto; }
         .modal-content { transform: scale(0.95); transition: transform 0.3s ease; }
         .modal-backdrop.open .modal-content { transform: scale(1); }
+
+        /* Force WhatsApp CTA text to remain white in light theme */
+        [data-theme="light"] .inblock-whatsapp,
+        [data-theme="light"] .mobile-sticky-btn button {
+            color: white !important;
+        }
     </style>
     <script>(function(){try{var t=null;try{t=localStorage.getItem('vvTheme')}catch(e){} if(!t) t='light'; if(t==='light') document.documentElement.setAttribute('data-theme','light'); else document.documentElement.removeAttribute('data-theme');}catch(e){} })();</script>
     <link rel="stylesheet" href="theme.css">
@@ -131,8 +137,8 @@
 <body>
 
     <div class="fixed top-4 right-4 z-50">
-        <button onclick="toggleTheme()" class="w-10 h-10 rounded-full theme-card shadow-lg flex items-center justify-center text-main hover:text-primary transition-colors">
-            <i id="theme-icon" class="fa-solid fa-moon"></i>
+        <button onclick="toggleTheme()" class="w-8 h-8 rounded-full theme-card shadow-lg flex items-center justify-center text-main hover:text-primary transition-colors">
+            <i id="theme-icon" class="fa-solid fa-moon text-sm"></i>
         </button>
     </div>
 
@@ -160,7 +166,7 @@
 
     <div id="main-content" class="hidden max-w-7xl mx-auto px-4 py-6 lg:py-12">
         
-        <header class="w-full max-w-6xl px-4 py-4 flex items-center justify-between relative mb-2">
+        <header class="w-full max-w-6xl px-4 py-4 flex items-center justify-center relative mb-2">
             <div class="flex items-center gap-3">
                 <img id="biz-logo" src="" alt="Logo" class="h-10 w-auto object-contain hidden"> 
                 <div id="logo-placeholder" class="h-10 w-10 theme-card rounded-full flex items-center justify-center shadow-sm">
@@ -230,10 +236,18 @@
                     </div>
                 </div>
 
+                <div id="key-functions" class="mb-6 theme-card p-4 rounded-2xl text-sm text-muted">
+                    <div class="font-semibold text-main mb-2">Key Functions</div>
+                    <div id="key-features-inline" class="text-muted"></div>
+                </div>
+
                 <div class="mt-8 theme-card rounded-2xl overflow-hidden shadow-sm">
-                    <button id="desc-toggle" class="w-full px-6 py-4 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
-                        <span class="font-semibold text-main">Full Details</span>
-                        <i class="fa-solid fa-chevron-down transition-transform text-muted" id="desc-chevron"></i>
+                    <button id="desc-toggle" class="w-full px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                        <div>
+                            <span class="font-semibold text-main">Full Details</span>
+                            <p id="desc-preview" class="text-sm text-muted mt-1"></p>
+                        </div>
+                        <i class="fa-solid fa-chevron-down transition-transform text-muted mt-3 sm:mt-0" id="desc-chevron"></i>
                     </button>
                     <div id="desc-content" class="hidden border-t border-border">
                         <div class="p-6 text-muted text-sm leading-relaxed" id="product-desc-long"></div>

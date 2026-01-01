@@ -42,6 +42,230 @@ export function normalizePhoneNumber(phone) {
     return normalized;
 }
 
+// --- MULTI-BUSINESS LOGIC ---
+
+// 1. Initialize Header UI (Hover/Hold Logic)
+function initBusinessHeaderUI() {
+    const nameEl = document.getElementById('businessName');
+    const triggerBtn = document.getElementById('add-business-trigger');
+    const switcherBtn = document.getElementById('business-switcher-btn');
+    const dropdown = document.getElementById('business-dropdown');
+    const addModal = document.getElementById('add-business-modal');
+    
+    if(!nameEl) return;
+
+    // Mobile Long Press Logic for "+" button
+    let pressTimer;
+    nameEl.addEventListener('touchstart', () => {
+        pressTimer = setTimeout(() => {
+            triggerBtn.classList.remove('opacity-0'); // Show button
+        }, 800); // 800ms hold
+    });
+    nameEl.addEventListener('touchend', () => clearTimeout(pressTimer));
+
+    // Open Modal Handlers
+    const openAddModal = (e) => {
+        if(e && e.preventDefault) e.preventDefault();
+        if(e && e.stopPropagation) e.stopPropagation();
+        if (dropdown) dropdown.classList.add('hidden'); // Close dropdown if open
+        if (addModal) addModal.classList.remove('hidden');
+    };
+    
+    if(triggerBtn) triggerBtn.addEventListener('click', openAddModal);
+    if(document.getElementById('dropdown-add-btn')) document.getElementById('dropdown-add-btn').addEventListener('click', openAddModal);
+
+    // Dropdown Toggle
+    const toggleDropdown = (e) => {
+        if(e && e.preventDefault) e.preventDefault();
+        if(e && e.stopPropagation) e.stopPropagation();
+        if(!dropdown) return;
+        dropdown.classList.toggle('hidden');
+        if(!dropdown.classList.contains('hidden')) fetchAndRenderBusinessList();
+    };
+
+    if(switcherBtn) switcherBtn.addEventListener('click', toggleDropdown);
+    // Also toggle when clicking the name itself on desktop/tap
+    nameEl.addEventListener('click', toggleDropdown);
+
+    // Close Dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        try {
+            if (!dropdown) return;
+            if (!dropdown.contains(e.target) && !(switcherBtn && switcherBtn.contains(e.target)) && !nameEl.contains(e.target)) {
+                dropdown.classList.add('hidden');
+            }
+        } catch (err) { /* ignore */ }
+    });
+
+    // Close Modal Handler
+    document.getElementById('close-add-business')?.addEventListener('click', () => {
+        if(addModal) addModal.classList.add('hidden');
+    });
+}
+
+// 2. Fetch & Render Business List
+async function fetchAndRenderBusinessList() {
+    const listContainer = document.getElementById('business-list-container');
+    const user = JSON.parse(localStorage.getItem('vvUser') || '{}');
+    const currentBid = user.business_id || user['business id'];
+    const phone = user.phone_number || user.phone; // Assuming normalized
+
+    if(!phone) return;
+
+    if(listContainer) listContainer.innerHTML = '<div class="p-4 text-center text-white/40 text-xs"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>';
+
+    try {
+        // Query business_members to get all business_ids for this phone
+        const { data: memberships, error } = await supabase
+            .from('business_members')
+            .select(`
+                business_id,
+                businesses ( name, industry )
+            `)
+            .eq('phone_number', phone);
+
+        if(error) throw error;
+
+        if(listContainer) listContainer.innerHTML = '';
+
+        if(!memberships || memberships.length === 0) {
+            // Fallback if sync hasn't run: just show current localstorage business
+            if(listContainer) renderBusinessItem(listContainer, { business_id: currentBid, name: user.business_name }, true);
+            return;
+        }
+
+        memberships.forEach(m => {
+            const biz = m.businesses; // joined data
+            const isCurrent = m.business_id === currentBid;
+            // Create item object
+            const item = {
+                business_id: m.business_id,
+                name: (biz && biz.name) ? biz.name : 'Unnamed Business',
+                industry: (biz && biz.industry) ? biz.industry : ''
+            };
+            if(listContainer) renderBusinessItem(listContainer, item, isCurrent);
+        });
+
+    } catch(e) {
+        console.error('Error fetching businesses', e);
+        if(listContainer) listContainer.innerHTML = '<div class="p-2 text-red-400 text-xs text-center">Failed to load list</div>';
+    }
+}
+
+function renderBusinessItem(container, biz, isCurrent) {
+    const div = document.createElement('div');
+    div.className = `p-3 border-b border-[#2b2f3a] hover:bg-[#2b2f3a] cursor-pointer transition-colors flex justify-between items-center group ${isCurrent ? 'bg-[#2b2f3a]/50' : ''}`;
+    div.innerHTML = `
+        <div>
+            <div class="font-medium text-white text-sm ${isCurrent ? 'text-blue-400' : ''}">${biz.name}</div>
+            ${biz.industry ? `<div class="text-[10px] text-white/40">${biz.industry}</div>` : ''}
+        </div>
+        ${isCurrent ? '<i class="fa-solid fa-check text-blue-500 text-xs"></i>' : '<i class="fa-solid fa-arrow-right text-white/20 group-hover:text-white/60 text-xs"></i>'}
+    `;
+    
+    if(!isCurrent) {
+        div.addEventListener('click', () => switchBusiness(biz));
+    }
+    container.appendChild(div);
+}
+
+// 3. Switch Business Logic
+function switchBusiness(biz) {
+    // 1. Update LocalStorage
+    const user = JSON.parse(localStorage.getItem('vvUser') || '{}');
+    user.business_id = biz.business_id;
+    user['business id'] = biz.business_id; // Support both keys
+    user.business_name = biz.name;
+    // Keep other user fields (phone, name, etc) the same
+    localStorage.setItem('vvUser', JSON.stringify(user));
+
+    // 2. Show loading feedback
+    const dd = document.getElementById('business-dropdown');
+    if(dd) dd.classList.add('hidden');
+    const nameEl = document.getElementById('businessName');
+    if(nameEl) nameEl.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Switching...';
+
+    // 3. Reload Page to refresh all data
+    setTimeout(() => window.location.reload(), 500);
+}
+
+// 4. Create New Business Logic
+async function handleCreateBusiness(e) {
+    e.preventDefault();
+    const btn = document.getElementById('create-biz-btn');
+    const errEl = document.getElementById('add-biz-error');
+    const user = JSON.parse(localStorage.getItem('vvUser') || '{}');
+    
+    // Inputs
+    const name = document.getElementById('new-biz-name').value.trim();
+    const industry = document.getElementById('new-biz-industry').value;
+    const role = document.getElementById('new-biz-role').value;
+    const employees = document.getElementById('new-biz-employees').value;
+    
+    if(!name) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Creating...';
+    errEl.classList.add('hidden');
+
+    try {
+        // Generate ID
+        const cleanName = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const random = Math.floor(Math.random() * 9000) + 1000;
+        const newBid = `${cleanName}${random}`; // e.g., apexconsulting4821
+
+        // 1. Insert into Businesses Table
+        const { error: bizError } = await supabase
+            .from('businesses')
+            .insert([{ 
+                business_id: newBid,
+                name: name,
+                industry: industry,
+                employees: employees,
+                owner_email: user.email || null,
+                business_type: 'general',
+                subscription_active: true
+            }]);
+
+        if(bizError) throw bizError;
+
+        // 2. Insert into Business Members Table
+        const { error: memberError } = await supabase
+            .from('business_members')
+            .insert([{ 
+                business_id: newBid,
+                phone_number: user.phone_number || user.phone,
+                role: role
+            }]);
+
+        if(memberError) throw memberError;
+
+        // Success! Switch to new business immediately
+        switchBusiness({ business_id: newBid, name: name });
+
+    } catch(err) {
+        console.error('Create business failed', err);
+        if(errEl) {
+            errEl.textContent = 'Failed to create business. Please try again.';
+            errEl.classList.remove('hidden');
+        }
+        if(btn) {
+            btn.disabled = false;
+            btn.textContent = 'Create Business';
+        }
+    }
+}
+
+// Initialize listeners on load
+document.addEventListener('DOMContentLoaded', () => {
+    try {
+        initBusinessHeaderUI();
+        const form = document.getElementById('add-business-form');
+        if(form) form.addEventListener('submit', handleCreateBusiness);
+    } catch (e) { console.warn('initBusinessHeaderUI error', e); }
+});
+
+
 // Global package selector -> opens payment flow after selection
 window.openUpgradeFlow = function(userData) {
     try {
@@ -1019,6 +1243,43 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
     }
+
+    // --- INVITE TEAM BUTTON INTEGRATION ---
+    // Place this inside the DOMContentLoaded event listener in dashboard.js
+    const profileDropdown = document.getElementById('profile-dropdown');
+    if (profileDropdown) {
+        // Check if button already exists to prevent duplicates
+        if (!document.getElementById('profile-invite-btn')) {
+            const inviteBtnContainer = document.createElement('div');
+            inviteBtnContainer.className = 'block p-2 rounded-lg';
+            inviteBtnContainer.innerHTML = `
+                <button id="profile-invite-btn" class="w-full text-left flex items-center space-x-2 text-sm text-green-400 hover:bg-[#2b2f3a] rounded-lg transition-colors p-2">
+                    <i class="fa-solid fa-user-plus"></i>
+                    <span>Invite Team</span>
+                </button>
+            `;
+            
+            // Find the theme toggle wrapper to insert BEFORE it
+            const themeWrapper = profileDropdown.querySelector('.theme-toggle-wrapper');
+            if (themeWrapper) {
+                // Insert before the parent div of theme-toggle-wrapper
+                profileDropdown.insertBefore(inviteBtnContainer, themeWrapper.closest('.block'));
+            } else {
+                // Fallback: insert at the top
+                profileDropdown.insertBefore(inviteBtnContainer, profileDropdown.firstChild);
+            }
+
+            // Attach Click Listener
+            const btn = inviteBtnContainer.querySelector('#profile-invite-btn');
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                // Close dropdown
+                profileDropdown.classList.add('hidden');
+                // Open Modal
+                openInviteModal(); 
+            });
+        }
+    }
 });
 
 
@@ -1533,6 +1794,192 @@ export function showRenewalPopup(userData, buttonText, daysRemaining, totalAmoun
         console.warn('payment wiring failed', e);
     }
 
+    // --- INVITE MODAL FUNCTIONS ---
+
+const INVITE_LIMITS = {
+    'growth': 3,
+    'pro': 10,
+    'premium': 30,
+    'free': 1
+};
+
+async function openInviteModal() {
+    const modal = document.getElementById('invite-team-modal');
+    if (!modal) return console.warn('Invite modal not found in DOM');
+
+    const statusEl = document.getElementById('invite-status');
+    const sendBtn = document.getElementById('send-invite-btn');
+    
+    // Reset UI
+    modal.classList.remove('hidden');
+    // Ensure form is reset
+    const form = document.getElementById('invite-form');
+    if(form) form.reset();
+
+    if(statusEl) {
+        statusEl.classList.remove('hidden');
+        statusEl.innerHTML = '<span class="text-white/50 text-xs"><i class="fa-solid fa-circle-notch fa-spin mr-1"></i>Checking limits...</span>';
+    }
+    
+    if(sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+
+    // Get User Context
+    const userStr = localStorage.getItem('vvUser');
+    if (!userStr) return;
+    const user = JSON.parse(userStr);
+    const bid = user.business_id || user['business id'];
+    const pkg = (user.package || 'Free').toLowerCase();
+    const limit = INVITE_LIMITS[pkg] || 1;
+
+    try {
+        // Count existing users
+        const { count, error } = await supabase
+            .from('logins')
+            .select('*', { count: 'exact', head: true })
+            .eq('business id', bid);
+
+        if (error) throw error;
+
+        const current = count || 1;
+        const remaining = limit - current;
+
+        if (statusEl) {
+            if (remaining <= 0) {
+                statusEl.innerHTML = `
+                    <div class="text-red-400 font-bold text-xs">Limit Reached (${current}/${limit})</div>
+                    <div class="text-white/40 text-[10px]">Upgrade your ${pkg} plan to invite more users.</div>
+                `;
+                // Keep disabled
+            } else {
+                statusEl.innerHTML = `
+                    <div class="text-green-400 font-bold text-xs">${remaining} Invites Left</div>
+                    <div class="text-white/40 text-[10px]">${pkg} Plan (${current}/${limit} users)</div>
+                `;
+                if(sendBtn) {
+                    sendBtn.disabled = false;
+                    sendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            }
+        }
+    } catch (err) {
+        console.error('Limit check failed:', err);
+        if(statusEl) statusEl.innerHTML = '<span class="text-red-400 text-xs">Error checking limits</span>';
+    }
+}
+
+// Expose to global scope for event handlers and inline callers
+try { window.openInviteModal = openInviteModal; } catch (e) {}
+
+// Attach Form Submit Listener (Run this once on init)
+document.addEventListener('DOMContentLoaded', () => {
+    const inviteForm = document.getElementById('invite-form');
+    if (inviteForm) {
+        inviteForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try { e.stopImmediatePropagation(); } catch (err) {}
+            try { e.stopPropagation(); } catch (err) {}
+            console.log('[INVITE] submit handler fired');
+            const name = document.getElementById('invite-name').value.trim();
+            const phone = document.getElementById('invite-phone').value.trim();
+            
+            if(!name || !phone) return;
+
+            const user = JSON.parse(localStorage.getItem('vvUser') || '{}');
+            const bid = user.business_id || user['business id'];
+            
+            // Generate Link: build a base path that works for http(s) and file:// contexts
+            let basePath = '';
+            try {
+                if (window.location.protocol === 'file:') {
+                    basePath = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
+                } else {
+                    basePath = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+                }
+            } catch (e) {
+                basePath = window.location.origin || '';
+            }
+            const inviteUrl = `${basePath}/invite.html?bid=${encodeURIComponent(bid)}&phone=${encodeURIComponent(phone)}`;
+
+            // Format WhatsApp Number (254...); support 07xxxxxxx, 7xxxxxxx, +254xxxxxxxx
+            let waPhone = (phone || '').replace(/\D/g, '');
+            if (waPhone.startsWith('0')) {
+                waPhone = '254' + waPhone.substring(1);
+            } else if (waPhone.length === 9 && waPhone.startsWith('7')) {
+                waPhone = '254' + waPhone;
+            }
+
+            // Construct Message
+            const adminName = user.admin_name || user.firstName || '';
+            const msg = `Hello ${name}, I would like to invite you to manage our sales and marketing on VVStudios App. Click below to accept. Thank you. ${adminName} ${inviteUrl}`;
+            
+            // Open WhatsApp - prefer wa.me on mobile, fall back to web.whatsapp or api.whatsapp on desktop or popup-block
+            try {
+                const waLinkMobile = `https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`;
+                const waLinkWeb = `https://web.whatsapp.com/send?phone=${waPhone}&text=${encodeURIComponent(msg)}`;
+                const waLinkApi = `https://api.whatsapp.com/send?phone=${waPhone}&text=${encodeURIComponent(msg)}`;
+                let target = waLinkMobile;
+                try {
+                    const ua = navigator.userAgent || '';
+                    const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
+                    if (!isMobile) target = waLinkWeb;
+                } catch (err) {
+                    target = waLinkApi;
+                }
+
+                console.log('[INVITE] opening target:', target);
+                // Create anchor and try click
+                const a = document.createElement('a');
+                a.href = target;
+                a.target = '_blank';
+                a.rel = 'noopener noreferrer';
+                a.style.display = 'none';
+                document.body.appendChild(a);
+
+                let opened = false;
+                try {
+                    a.click();
+                    opened = true;
+                } catch (clickErr) {
+                    console.warn('[INVITE] anchor click failed:', clickErr);
+                }
+
+                // If anchor click didn't open a new tab, try window.open
+                if (!opened) {
+                    try {
+                        const win = window.open(target, '_blank');
+                        if (win) opened = true;
+                    } catch (winErr) {
+                        console.warn('[INVITE] window.open failed:', winErr);
+                    }
+                }
+
+                // Final fallback: navigate current window to api link
+                if (!opened) {
+                    console.warn('[INVITE] falling back to top-level navigation');
+                    window.location.href = waLinkApi;
+                }
+
+                setTimeout(() => { try { a.remove(); } catch (e) {} }, 1000);
+            } catch (err) {
+                console.error('[INVITE] unexpected error opening whatsapp link', err);
+            }
+            
+            // Close Modal
+            document.getElementById('invite-team-modal').classList.add('hidden');
+        });
+        
+        // Close button logic
+        const closeBtn = document.getElementById('close-invite-modal');
+        if(closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                document.getElementById('invite-team-modal').classList.add('hidden');
+            });
+        }
+    }
+});
     // Helper: get a stable user id for backend (do not fallback to phone)
     const userId = userData['business id'] || userData.business_id || null;
 
