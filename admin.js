@@ -84,7 +84,7 @@ const auth = {
         const loginBtn = document.querySelector('#login-form button');
 
         try {
-            if(loginBtn) loginBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Loading...';
+            if(loginBtn) loginBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>loading...';
             
             // Querying your specific table 'admin_profiles'
             const { data: profile, error } = await supabase
@@ -929,7 +929,8 @@ const router = {
         if(target === 'users') userManager.loadUsers();
         if(target === 'dashboard') dataManager.loadDashboard();
         if(target === 'support') dataManager.loadSupportTickets();
-        
+        if(target === 'meetings') { loadMeetings(); loadLeads(); }
+
         // Trigger CRM load if messaging is selected (depends on messages.js)
         if(target === 'messaging' && window.crm && typeof crm.switchTab === 'function') {
             crm.switchTab('chats');
@@ -1237,9 +1238,9 @@ document.getElementById('template-edit-form').addEventListener('submit', async (
     const reason = document.getElementById('edit-reason').value;
     const delay = document.getElementById('edit-delay').value;
     const message = document.getElementById('edit-message').value;
-    
+
     const { error } = await supabase.from('personalized_templates').update({ reason, day_delay: delay, message }).eq('id', id);
-        
+
     if(!error) {
         document.getElementById('edit-modal').classList.add('hidden-force');
         explorer.switchTab('templates');
@@ -1247,3 +1248,231 @@ document.getElementById('template-edit-form').addEventListener('submit', async (
         alert('Error saving template');
     }
 });
+
+// Functions for meetings section
+async function loadMeetings() {
+    const container = document.getElementById('meetings-list');
+    if (!container) return;
+    container.innerHTML = '<div class="p-8 text-center text-white/50"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Loading meetings...</div>';
+
+    const { data, error } = await supabase
+        .from('businessmeetings')
+        .select(`
+            *,
+            leads (
+                full_name,
+                phone_number,
+                website_interest,
+                business_name
+            )
+        `)
+        .eq('status', 'scheduled')
+        .order('meeting_date', { ascending: true })
+        .order('meeting_time', { ascending: true });
+    if (error) {
+        console.error('Error loading meetings:', error);
+        container.innerHTML = '<div class="p-8 text-center text-red-400">Error loading meetings</div>';
+        return;
+    }
+
+    if (!data || data.length === 0) {
+        container.innerHTML = '<div class="p-8 text-center text-white/50">No upcoming meetings</div>';
+        return;
+    }
+
+    const html = data.map(m => {
+        const lead = m.leads || {};
+        const name = lead.full_name || 'Unknown';
+        const phone = lead.phone_number || '';
+        const interest = lead.website_interest || 'General';
+        const business = m.leads.business_name || 'Business';
+        const date = new Date(m.meeting_date);
+        const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        return `
+            <div class="bg-[#1a1d23] p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-2">
+                            <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
+                                ${name.charAt(0)}
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-white">${name}</h4>
+                                <p class="text-sm text-white/50">${business}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4 text-sm text-white/60 mb-3">
+                            <span><i class="fa-solid fa-calendar mr-1"></i>${date.toLocaleDateString()}</span>
+                            <span><i class="fa-solid fa-clock mr-1"></i>${timeString}</span>
+                            <span class="text-purple-400"><i class="fa-solid fa-cart-shopping mr-1"></i>${interest}</span>
+                        </div>
+                        <p class="text-sm text-white/40">${m.notes || 'No notes'}</p>
+                    </div>
+                    <div class="flex flex-col gap-2 ml-4">
+                        <button onclick="viewMeetingDetails('${m.id}', '${name.replace(/'/g, '\\\'')}', '${phone.replace(/'/g, '\\\'')}', '${interest.replace(/'/g, '\\\'')}', '${business.replace(/'/g, '\\\'')}')" class="w-8 h-8 rounded-lg bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white flex items-center justify-center transition-all">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                        <button onclick="cancelMeeting('${m.id}')" class="w-8 h-8 rounded-lg bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white flex items-center justify-center transition-all">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = html;
+}
+
+async function loadLeads() {
+    const container = document.getElementById('leads-list');
+    if (!container) return;
+    container.innerHTML = '<div class="p-4 text-center text-white/50"><i class="fa-solid fa-circle-notch fa-spin"></i></div>';
+
+    const { data: leads, error } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('status', 'new')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+    if (error) {
+        console.error('Error loading leads:', error);
+        container.innerHTML = '<div class="p-4 text-center text-red-400">Error loading leads</div>';
+        return;
+    }
+
+    if (!leads || leads.length === 0) {
+        container.innerHTML = '<div class="p-4 text-center text-white/50">No recent leads</div>';
+        return;
+    }
+
+    const html = leads.map(lead => {
+        const name = lead.name || 'Unknown';
+        const phone = lead.phone || '';
+        const interest = lead.interest || 'General';
+        const created = new Date(lead.created_at).toLocaleDateString();
+
+        return `
+            <div class="bg-[#1a1d23] p-3 rounded-lg border border-white/5 hover:border-white/10 transition-colors">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-gradient-to-br from-green-500 to-teal-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                            ${name.charAt(0)}
+                        </div>
+                        <div>
+                            <h5 class="font-medium text-white text-sm">${name}</h5>
+                            <p class="text-xs text-white/50">${interest}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs text-white/40">${created}</p>
+                        <button onclick="viewLeadDetails('${lead.id}')" class="text-xs text-blue-400 hover:text-blue-300">View</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = html;
+}
+
+function refreshCRM() {
+    loadMeetings();
+    loadLeads();
+}
+
+function closeMeetingDetails() {
+    document.getElementById('meeting-details-modal').classList.add('hidden');
+}
+
+function viewMeetingDetails(id, name, phone, interest, business) {
+    const modal = document.getElementById('meeting-details-modal');
+    const drawer = document.getElementById('meeting-drawer');
+    const content = document.getElementById('meeting-details-content');
+    
+    // Populate Data
+    content.innerHTML = `
+        <div class="space-y-6">
+            <div class="bg-white/5 p-6 rounded-2xl border border-white/10 text-center">
+                <div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full mx-auto flex items-center justify-center text-3xl font-bold mb-3 shadow-lg">
+                    ${name.charAt(0)}
+                </div>
+                <h2 class="text-2xl font-bold text-white">${name}</h2>
+                <p class="text-white/50 text-sm">${business}</p>
+                
+                <div class="flex justify-center gap-3 mt-4">
+                     <a href="tel:${phone}" class="px-4 py-2 bg-[#1a1d23] border border-white/10 rounded-lg text-sm hover:border-white/30 transition-colors"><i class="fa-solid fa-phone mr-2"></i>Call</a>
+                     <a href="https://wa.me/${phone.replace(/[^0-9]/g, '')}" class="px-4 py-2 bg-[#1a1d23] border border-white/10 rounded-lg text-sm hover:border-green-500/50 hover:text-green-400 transition-colors"><i class="fa-brands fa-whatsapp mr-2"></i>Message</a>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-[#1a1d23] p-4 rounded-xl border border-white/5">
+                    <p class="text-xs text-white/40 uppercase font-bold mb-1">Interest</p>
+                    <p class="text-purple-400 font-bold"><i class="fa-solid fa-cart-shopping mr-2"></i>${interest}</p>
+                </div>
+                <div class="bg-[#1a1d23] p-4 rounded-xl border border-white/5">
+                    <p class="text-xs text-white/40 uppercase font-bold mb-1">Status</p>
+                    <p class="text-orange-400 font-bold"><i class="fa-solid fa-calendar-check mr-2"></i>Scheduled</p>
+                </div>
+            </div>
+
+            <div class="bg-[#1a1d23] p-4 rounded-xl border border-white/5">
+                <h4 class="text-sm font-bold text-white mb-3">Meeting Agenda</h4>
+                <ul class="text-sm text-white/60 space-y-2">
+                    <li class="flex items-start gap-2"><i class="fa-solid fa-check text-green-500 mt-1"></i> Website Design Requirements</li>
+                    <li class="flex items-start gap-2"><i class="fa-solid fa-check text-green-500 mt-1"></i> Feature Walkthrough (Demos)</li>
+                    <li class="flex items-start gap-2"><i class="fa-solid fa-check text-green-500 mt-1"></i> Pricing & Timeline Discussion</li>
+                </ul>
+            </div>
+            
+            <div class="bg-blue-900/10 p-4 rounded-xl border border-blue-500/20">
+                <p class="text-xs text-blue-300"><i class="fa-solid fa-circle-info mr-1"></i> <strong>Pro Tip:</strong> Prepare the ${interest} demo before the call.</p>
+            </div>
+        </div>
+    `;
+
+    // Show Modal
+    modal.classList.remove('hidden');
+    // Simple slide-in animation
+    setTimeout(() => {
+        drawer.classList.remove('translate-x-full');
+    }, 10);
+}
+
+async function cancelMeeting(id) {
+    if (!confirm('Are you sure you want to cancel this meeting?')) return;
+
+    const { error } = await supabase
+        .from('businessmeetings')
+        .update({ status: 'cancelled' })
+        .eq('id', id);
+
+    if (error) {
+        console.error('Error cancelling meeting:', error);
+        alert('Error cancelling meeting');
+        return;
+    }
+
+    // Refresh the meetings list
+    loadMeetings();
+}
+
+function viewLeadDetails(id) {
+    // Placeholder for lead details - could open a modal or navigate
+    console.log('View lead details for:', id);
+    // For now, just alert
+    alert('Lead details functionality to be implemented');
+}
+
+function closeMeetingDetails() {
+    const modal = document.getElementById('meeting-details-modal');
+    const drawer = document.getElementById('meeting-drawer');
+
+    drawer.classList.add('translate-x-full');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}

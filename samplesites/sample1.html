@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Richmond Interior Design</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Color Palette */
+            --primary-dark: #0A2540; /* Deep Navy */
+            --accent-teal: #006064; /* Brighter teal */
+            --text-dark: #1a1a1a;
+            --text-gray: #666666;
+            --bg-light: #f8f9fa;
+            --white: #ffffff;
+            --border-radius-card: 20px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background-color: var(--white);
+            color: var(--text-dark);
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* --- Navigation --- */
+        nav {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            color: var(--white);
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-links {
+            display: none;
+        }
+
+        .btn-nav {
+            background-color: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 10px 25px;
+            border-radius: 50px;
+            color: var(--white);
+            text-decoration: none;
+            font-weight: 500;
+            transition: 0.3s;
+        }
+
+        .btn-nav:hover {
+            background-color: var(--white);
+            color: var(--primary-dark);
+        }
+
+        @media(min-width: 768px) {
+            .nav-links {
+                display: flex;
+                gap: 30px;
+            }
+            .nav-links a {
+                color: var(--white);
+                text-decoration: none;
+                opacity: 0.9;
+            }
+        }
+
+        /* --- Hero Section --- */
+        .hero {
+            position: relative;
+            height: 90vh;
+            width: 100%;
+            background-image: url('../sampleimages/jason-briscoe-UV81E0oXXWQ-unsplash.jpg');
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hero-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to right, rgba(10, 37, 64, 0.7), rgba(10, 37, 64, 0.3));
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            width: 90%;
+            max-width: 1200px;
+            color: var(--white);
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 20px;
+            max-width: 600px;
+        }
+
+        .hero p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            max-width: 500px;
+            margin-bottom: 40px;
+        }
+
+        /* --- Quote Generator --- */
+        .quote-wrapper {
+            position: relative;
+            z-index: 10;
+            margin-top: -80px; /* Adjusted to fit guide text */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0 20px;
+        }
+
+        .calc-guide {
+            color: var(--white);
+            font-weight: 500;
+            margin-bottom: 15px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+        }
+
+        .quote-bar {
+            background: var(--white);
+            border-radius: 50px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            width: 100%;
+            max-width: 1000px;
+            gap: 15px;
+        }
+
+        .quote-item {
+            flex: 1;
+            padding: 0 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .quote-item:last-child {
+            border: none;
+            display: flex;
+            align-items: center;
+        }
+
+        .quote-label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-gray);
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .quote-select {
+            width: 100%;
+            border: none;
+            background: transparent;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--primary-dark);
+            outline: none;
+            cursor: pointer;
+        }
+
+        .price-display {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--primary-dark);
+        }
+
+        .btn-calc {
+            background-color: var(--primary-dark);
+            color: var(--white);
+            border: none;
+            border-radius: 50px;
+            padding: 15px 30px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.3s;
+        }
+
+        .btn-calc:hover { background-color: var(--accent-teal); }
+
+        .btn-cta {
+            background-color: var(--primary-dark);
+            color: var(--white);
+            border: none;
+            border-radius: 50px;
+            padding: 15px 30px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn-cta:hover { background-color: var(--accent-teal); }
+
+        @media(min-width: 768px) {
+            .hero h1 { font-size: 4.5rem; }
+            .quote-bar { flex-direction: row; padding: 10px; }
+            .quote-item { border-bottom: none; border-right: 1px solid #eee; margin: 10px 0; }
+            .quote-item:last-child { border-right: none; }
+            .btn-calc { width: auto; padding: 15px 40px; }
+        }
+
+        /* --- Projects --- */
+        .section-padding {
+            padding: 80px 5%;
+        }
+        
+        .section-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        .section-header h2 {
+            font-size: 2.5rem;
+            color: var(--primary-dark);
+            margin-bottom: 10px;
+        }
+
+        .projects-container {
+            display: flex;
+            gap: 25px;
+            overflow-x: auto;
+            padding-bottom: 20px;
+            scroll-snap-type: x mandatory;
+        }
+        .projects-container::-webkit-scrollbar { display: none; }
+
+        .project-card {
+            min-width: 85vw;
+            scroll-snap-align: center;
+            background: var(--white);
+            border-radius: var(--border-radius-card);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @media(min-width: 768px) {
+            .projects-container { justify-content: center; overflow-x: visible; }
+            .project-card { min-width: 300px; flex: 1; }
+        }
+
+        .card-img { width: 100%; height: 250px; object-fit: cover; }
+        .card-content { padding: 25px; flex: 1; display: flex; flex-direction: column; }
+        .card-meta { font-size: 0.9rem; color: var(--text-gray); margin-bottom: 10px; }
+        .card-title { font-size: 1.25rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 5px; }
+        .card-desc { font-size: 0.9rem; color: var(--text-gray); line-height: 1.5; margin-bottom: 20px; flex: 1;}
+        .btn-link { text-decoration: none; color: var(--primary-dark); font-weight: 600; border-bottom: 2px solid var(--accent-teal); align-self: flex-start; }
+
+        /* --- Value Props --- */
+        .value-wrapper {
+            background-color: #fafafa;
+        }
+
+        .value-section {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            align-items: stretch; /* Ensure equal height visual feel */
+            max-width: 1200px;
+            margin: 0 auto;
+            height: 500px;
+        }
+
+        .value-content { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+        .value-image { height: 300px; width: 50%; }
+        .value-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: var(--border-radius-card);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+        }
+
+        .teal-line {
+            height: 4px;
+            background-color: var(--accent-teal);
+            width: 100%;
+            margin: 60px 0;
+            opacity: 0.8;
+            border-radius: 2px;
+        }
+
+        @media(min-width: 768px) {
+            .value-section { flex-direction: row; gap: 80px; height: 400px; }
+            .value-section.reverse { flex-direction: row-reverse; }
+        }
+
+        /* --- Footer --- */
+        .main-footer {
+            background-color: var(--primary-dark);
+            color: var(--white);
+            padding: 40px 5% 20px;
+            margin-top: auto;
+        }
+
+        .footer-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 15px;
+        }
+
+        .footer-location {
+            font-size: 1rem;
+            margin-bottom: 5px;
+        }
+
+        .footer-links a {
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: 0.3s;
+        }
+        .footer-links a:hover { color: var(--white); }
+
+        .footer-bottom {
+            margin-top: 20px;
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.4);
+            text-align: center;
+        }
+
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="logo">RICHMOND</div>
+        <div class="nav-links">
+            <a href="#">Home</a>
+            <a href="#">Projects</a>
+            <a href="#">Process</a>
+            <a href="#">About</a>
+        </div>
+        <a href="#" class="btn-nav" onclick="openBookingModal()">Book Free Call</a>
+    </nav>
+
+    <header class="hero">
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <h1>Your House Could Look Like Heaven</h1>
+            <p>We don't just do your house interior, we elevate the space.</p>
+        </div>
+    </header>
+
+    <section class="quote-wrapper">
+        <p class="calc-guide">Calculate your quote estimates</p>
+        
+        <div class="quote-bar">
+            <div class="quote-item">
+                <label class="quote-label">Interior Job</label>
+                <select id="serviceSelect" class="quote-select" onchange="calculateQuote()">
+                    <option value="0">Select Service...</option>
+                    <option value="50000">Living Room Design</option>
+                    <option value="80000">Master Bedroom Reno</option>
+                    <option value="120000">Kitchen Overhaul</option>
+                    <option value="45000">Home Office Setup</option>
+                </select>
+            </div>
+            <div class="quote-item">
+                <label class="quote-label">Materials</label>
+                <select id="materialSelect" class="quote-select" onchange="calculateQuote()">
+                    <option value="1">Standard</option>
+                    <option value="1.5">Premium</option>
+                    <option value="2.2">Luxury</option>
+                </select>
+            </div>
+            <div class="quote-item">
+                <label class="quote-label">Est. Quote</label>
+                <div id="priceDisplay" class="price-display">KES 0.00</div>
+            </div>
+            <div class="quote-item">
+                <button class="btn-calc" onclick="calculateQuote()">Calculate</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="section-padding">
+        <div class="section-header">
+            <h2>Most Recent Projects</h2>
+            <p>Discover our latest transformations across the city.</p>
+        </div>
+
+        <div class="projects-container">
+            <div class="project-card">
+                <img src="https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&q=80" class="card-img" alt="Project 1">
+                <div class="card-content">
+                    <div class="card-meta">📍 Nairobi, Westlands</div>
+                    <h3 class="card-title">Ocean Breeze</h3>
+                    <p class="card-desc">Full house refurnish with modern settings.</p>
+                    <a href="#" class="btn-link">View Details</a>
+                </div>
+            </div>
+
+            <div class="project-card">
+                <img src="../sampleimages/minh-pham-OtXADkUh3-I-unsplash.jpg" class="card-img" alt="Jakson House">
+                <div class="card-content">
+                    <div class="card-meta">📍 Karen, Hardy</div>
+                    <h3 class="card-title">Jakson House</h3>
+                    <p class="card-desc">A culinary haven with smart lighting.</p>
+                    <a href="#" class="btn-link">View Details</a>
+                </div>
+            </div>
+
+            <div class="project-card">
+                <img src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800&q=80" class="card-img" alt="Project 3">
+                <div class="card-content">
+                    <div class="card-meta">📍 Kileleshwa</div>
+                    <h3 class="card-title">Lakeside Cottage</h3>
+                    <p class="card-desc">Bedroom overhaul focusing on tranquility.</p>
+                    <a href="#" class="btn-link">View Details</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section-padding value-wrapper">
+        
+        <div class="value-section">
+            <div class="value-content">
+                <h3>Make The Space Timeless</h3>
+                <p>We source from the best materials that last—from rich mahogany to engineering stones. Ensuring your investment looks good in ten years.</p>
+            </div>
+            <div class="value-image">
+                <img src="../sampleimages/jason-briscoe-UV81E0oXXWQ-unsplash.jpg" alt="Timeless Space">
+            </div>
+        </div>
+        
+        <div class="teal-line"></div>
+
+        <div class="value-section reverse">
+            <div class="value-content">
+                <h3>AI-Powered Personalization</h3>
+                <p>We generate 3D renders that adapt to your style preferences instantly. We don't guess what you like; we calculate it.</p>
+            </div>
+            <div class="value-image">
+                <img src="https://images.unsplash.com/photo-1631679706909-1844bbd07221?w=1000&q=80" alt="Design Process">
+            </div>
+        </div>
+
+        <div class="teal-line"></div>
+
+        <div class="value-section">
+            <div class="value-content">
+                <h3>Elevated Living Standards</h3>
+                <p>Design is psychology. Our layouts are optimized for flow, light, and mental clarity, turning your home into a battery.</p>
+            </div>
+            <div class="value-image">
+                <img src="https://images.unsplash.com/photo-1600607686527-6fb886090705?w=1000&q=80" alt="Bright Room">
+            </div>
+        </div>
+        
+        <div class="teal-line"></div>
+
+    </section>
+
+    <section class="section-padding cta-section">
+        <div class="section-header">
+            <h2>Ready to transform your home?</h2>
+            <button class="btn-cta" onclick="openBookingModal()">Book Free Consultation</button>
+        </div>
+    </section>
+
+    <footer class="main-footer">
+        <div class="footer-content">
+            <div class="logo" style="margin-bottom: 10px;">RICHMOND</div>
+            
+            <div class="footer-location">
+                StarMall, Nairobi CBD
+            </div>
+            
+            <div class="footer-links">
+                <a href="#">Terms and Conditions</a>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            &copy; 2026 Richmond Interior Design.<br>
+            Website by VVStudios
+        </div>
+    </footer>
+
+    <script>
+        function calculateQuote() {
+            const servicePrice = parseFloat(document.getElementById('serviceSelect').value);
+            const materialMultiplier = parseFloat(document.getElementById('materialSelect').value);
+            const display = document.getElementById('priceDisplay');
+
+            if (servicePrice > 0) {
+                const total = servicePrice * materialMultiplier;
+                const formatter = new Intl.NumberFormat('en-KE', {
+                    style: 'currency',
+                    currency: 'KES',
+                    minimumFractionDigits: 2
+                });
+                display.innerText = formatter.format(total);
+                display.style.color = "#006064"; 
+            } else {
+                display.innerText = "KES 0.00";
+            }
+        }
+
+        function openBookingModal() {
+            alert("This button will open the Booking Modal in the full app.");
+        }
+    </script>
+</body>
+</html>

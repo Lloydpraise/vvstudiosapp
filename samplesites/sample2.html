@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HighFollows | Social Media Growth Agency</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-text: #111827;
+            --secondary-text: #4b5563; /* Slightly darker for better contrast */
+            --accent-blue: #4f46e5;
+            --accent-violet: #8b5cf6;
+            --accent-orange: #f97316;
+            
+            /* CHANGE: Darkened background slightly so white cards pop */
+            --bg-color: #f1f5f9; 
+            
+            /* CHANGE: Made grid lines slightly more visible */
+            --grid-line: rgba(0, 0, 0, 0.05);
+            
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --font-main: 'Inter', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-color);
+            color: var(--primary-text);
+            overflow-x: hidden;
+            /* Vertical Grid Background */
+            background-image: linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+            background-size: 8% 100%; 
+            width: 100%;
+        }
+
+        /* --- UI Elements --- */
+        .btn {
+            padding: 14px 32px;
+            border-radius: 50px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-block;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-orange);
+            color: white;
+            box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
+            border: none;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(249, 115, 22, 0.4);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--primary-text);
+            margin-left: 10px;
+            border-bottom: 1px solid transparent;
+        }
+
+        .btn-secondary:hover {
+            color: var(--accent-blue);
+            border-bottom: 1px solid var(--accent-blue);
+        }
+
+        /* --- Navigation --- */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 2rem 5%;
+            position: relative;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            font-weight: 700;
+            font-size: 1.2rem;
+            gap: 8px;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .logo i {
+            color: var(--accent-blue);
+            font-size: 1.4rem;
+        }
+
+        .nav-links {
+            margin-left: auto;
+            display: flex;
+            gap: 30px;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--primary-text);
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--accent-blue);
+        }
+
+        .nav-left-placeholder {
+            width: 200px; 
+        }
+
+        /* --- Hero Section --- */
+        .hero {
+            text-align: center;
+            padding: 80px 20px 60px 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .pre-headline {
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 1.5px;
+            color: var(--secondary-text);
+            margin-bottom: 20px;
+            display: block;
+            font-weight: 600;
+        }
+
+        .hero h1 {
+            font-size: 5rem;
+            line-height: 1.1;
+            font-weight: 800;
+            letter-spacing: -2px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            color: #1a1a1a;
+        }
+
+        /* Animated Toggle Switch */
+        .toggle-container {
+            display: inline-flex;
+            align-items: center;
+            width: 140px;
+            height: 60px;
+            background: #cbd5e1; /* Slightly darker grey for better visibility */
+            border-radius: 50px;
+            margin: 0 5px;
+            padding: 5px;
+            cursor: pointer;
+            position: relative;
+            transition: background 0.4s ease;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+            vertical-align: middle;
+            transform: translateY(8px);
+        }
+
+        .toggle-container.active {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-violet));
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+        }
+
+        .toggle-circle {
+            width: 50px;
+            height: 50px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .toggle-container.active .toggle-circle {
+            transform: translateX(80px);
+        }
+        
+        .toggle-label {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.7rem;
+            background: #111;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            white-space: nowrap;
+            letter-spacing: 0;
+            font-weight: 400;
+        }
+
+        .toggle-container:hover .toggle-label {
+            opacity: 1;
+        }
+
+        .hero-sub {
+            font-size: 1.1rem;
+            color: var(--secondary-text);
+            max-width: 600px;
+            margin: 0 auto 40px auto;
+            line-height: 1.6;
+        }
+
+        /* --- Brand Strip --- */
+        .brands {
+            text-align: center;
+            padding: 40px 20px;
+            margin-bottom: 60px;
+        }
+
+        .brands p {
+            font-size: 0.9rem;
+            color: var(--secondary-text);
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .brand-icons {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            opacity: 0.7; /* Increased opacity slightly for contrast */
+            flex-wrap: wrap;
+        }
+
+        .brand-icons i {
+            font-size: 2rem;
+            transition: transform 0.3s, color 0.3s;
+            color: #64748b; /* Slate color for icons */
+        }
+        
+        .brand-icons i:hover {
+            transform: scale(1.1);
+            color: var(--primary-text);
+            opacity: 1;
+        }
+
+        /* --- Cards Section (Features) --- */
+        .features {
+            padding: 80px 5%;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .glass-card {
+            /* Increased white opacity for better contrast against darker background */
+            background: linear-gradient(145deg, rgba(255,255,255,0.95), rgba(255,255,255,0.7));
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.9);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.08);
+        }
+
+        .card-blob {
+            position: absolute;
+            top: -20px;
+            right: -20px;
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #e0e7ff, #f3e8ff);
+            border-radius: 50%;
+            z-index: -1;
+            filter: blur(20px);
+        }
+
+        .glass-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #111;
+        }
+
+        .glass-card p {
+            color: var(--secondary-text);
+            line-height: 1.6;
+        }
+
+        /* --- Stats Section --- */
+        .stats {
+            padding: 80px 20px;
+            text-align: center;
+            background: linear-gradient(to bottom, transparent, rgba(243, 232, 255, 0.5));
+        }
+
+        .stats-grid {
+            display: flex;
+            justify-content: center;
+            gap: 60px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item h2 {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-violet));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 5px;
+        }
+
+        .stat-item p {
+            font-weight: 600;
+            color: var(--secondary-text);
+        }
+
+        /* --- Testimonials --- */
+        .testimonials {
+            padding: 80px 5%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .testimonial-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        .t-card {
+            background: #fff;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+            border: 1px solid #e5e7eb;
+        }
+
+        .t-quote {
+            font-size: 1.1rem;
+            color: var(--primary-text);
+            margin-bottom: 20px;
+            font-style: italic;
+        }
+
+        .t-author {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+
+        .t-info h4 {
+            font-size: 0.9rem;
+            margin-bottom: 2px;
+        }
+        .t-info span {
+            font-size: 0.8rem;
+            color: var(--secondary-text);
+        }
+
+        .t-icons i {
+            color: #ccc;
+            margin-left: 5px;
+        }
+
+        /* --- CTA Section --- */
+        .final-cta {
+            padding: 100px 20px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .glow-bg {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.2) 0%, rgba(255,255,255,0) 70%);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: -1;
+        }
+
+        .final-cta h2 {
+            font-size: 3rem;
+            margin-bottom: 30px;
+            letter-spacing: -1px;
+        }
+
+        /* --- Footer --- */
+        footer {
+            background: #ffffff;
+            padding: 60px 5% 20px 5%;
+            border-top: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            max-width: 1200px;
+            margin: 0 auto 40px auto;
+        }
+
+        .footer-left h3 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-violet));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .footer-left p {
+            color: var(--secondary-text);
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 30px;
+        }
+
+        .footer-links a {
+            text-decoration: none;
+            color: var(--secondary-text);
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--accent-blue);
+        }
+
+        .copyright {
+            text-align: center;
+            font-size: 0.8rem;
+            color: #9ca3af;
+            border-top: 1px solid rgba(0,0,0,0.05);
+            padding-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .nav-links, .nav-left-placeholder {
+                display: none;
+            }
+            nav {
+                justify-content: center;
+            }
+            .hero h1 {
+                font-size: 2.8rem;
+            }
+            .toggle-container {
+                width: 100px;
+                height: 44px;
+                transform: translateY(6px);
+            }
+            .toggle-circle {
+                width: 34px;
+                height: 34px;
+            }
+            .toggle-container.active .toggle-circle {
+                transform: translateX(56px);
+            }
+            .stats-grid {
+                gap: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <nav>
+            <div class="nav-left-placeholder"></div>
+            <div class="logo">
+                <i class="fa-solid fa-rocket"></i>
+                HighFollows
+            </div>
+            <div class="nav-links">
+                <a href="#testimonials">Testimonials</a>
+                <a href="#features">Pricing</a>
+                <a href="#about">How We Do It</a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <span class="pre-headline">Unlock Social Media “Growth” without extra hustle</span>
+            <h1>
+                We help you 
+                <span>gr</span>
+                <div class="toggle-container" id="growthToggle">
+                    <div class="toggle-label">Click me!</div>
+                    <div class="toggle-circle"></div>
+                </div>
+                <span>w</span>
+                your audience
+            </h1>
+            <p class="hero-sub">
+                We turn content into customers using proven growth systems, automation and creator-level strategy.
+            </p>
+            <div class="cta-group">
+                <a href="#" class="btn btn-primary">Book Free Strategy Call Now</a>
+                <a href="#" class="btn btn-secondary">See how it works <i class="fa-solid fa-arrow-right"></i></a>
+            </div>
+        </section>
+
+        <section class="brands">
+            <p>We help you grow on</p>
+            <div class="brand-icons">
+                <i class="fa-brands fa-facebook"></i>
+                <i class="fa-brands fa-instagram"></i>
+                <i class="fa-brands fa-tiktok"></i>
+                <i class="fa-brands fa-snapchat"></i>
+                <i class="fa-brands fa-linkedin"></i>
+            </div>
+        </section>
+
+        <section class="features" id="features">
+            <div class="glass-card">
+                <div class="card-blob"></div>
+                <h3>Audience-First Strategy</h3>
+                <p>We map out exactly who your buyers are, what they want, and how to turn attention into sales using data-driven personas.</p>
+            </div>
+            <div class="glass-card">
+                <div class="card-blob" style="background: linear-gradient(135deg, #ffedd5, #ffedd5);"></div>
+                <h3>Content That Converts</h3>
+                <p>We design reels, posts and stories that are built to stop scrolling and spark engagement, not just vanity metrics.</p>
+            </div>
+            <div class="glass-card">
+                <div class="card-blob" style="background: linear-gradient(135deg, #dbeafe, #eff6ff);"></div>
+                <h3>Smart Growth Systems</h3>
+                <p>DM funnels, lead magnets and automated follow-ups that work for you 24/7, turning new followers into leads while you sleep.</p>
+            </div>
+        </section>
+
+        <div style="text-align:center; margin: 40px 0; font-weight: 600; color: var(--secondary-text);">
+            WHAT OTHER CUSTOMERS ARE SAYING
+        </div>
+
+        <section class="testimonials" id="testimonials">
+            <div class="testimonial-grid">
+                <div class="t-card">
+                    <div class="t-quote">“HighFollows tripled our engagement in under 60 days. We finally get leads from social media.”</div>
+                    <div class="t-author">
+                        <div class="t-info">
+                            <h4>Sarah Jenkins</h4>
+                            <span>Founder, Bloom Retail</span>
+                        </div>
+                        <div class="t-icons">
+                            <i class="fa-brands fa-instagram"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="t-card">
+                    <div class="t-quote">“We went from zero traction to daily sales just by fixing our content and DM flow.”</div>
+                    <div class="t-author">
+                        <div class="t-info">
+                            <h4>Mark D.</h4>
+                            <span>Coach & Speaker</span>
+                        </div>
+                        <div class="t-icons">
+                            <i class="fa-brands fa-tiktok"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="t-card">
+                    <div class="t-quote">“This feels like having a full growth team for a fraction of the cost. The ROI is undeniable.”</div>
+                    <div class="t-author">
+                        <div class="t-info">
+                            <h4>Elena R.</h4>
+                            <span>SaaS Marketing Lead</span>
+                        </div>
+                        <div class="t-icons">
+                            <i class="fa-brands fa-linkedin"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="stats">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <h2>100+</h2>
+                    <p>Businesses Served</p>
+                </div>
+                <div class="stat-item">
+                    <h2>5.2M</h2>
+                    <p>Followers Gained</p>
+                </div>
+                <div class="stat-item">
+                    <h2>3X</h2>
+                    <p>ROI in 90 Days</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="final-cta">
+            <div class="glow-bg"></div>
+            <h2>Ready to turn followers into customers?</h2>
+            <a href="#" class="btn btn-primary">Book Free Strategy Call Now</a>
+        </section>
+    </main>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-left">
+                <h3>HighFollows</h3>
+                <p>Westlands, Nairobi</p>
+            </div>
+            <div class="footer-links">
+                <a href="#">Privacy</a>
+                <a href="#">Terms</a>
+                <a href="#">Contact</a>
+            </div>
+        </div>
+        <div class="copyright">
+            © HighFollows — Website by VVStudios
+        </div>
+    </footer>
+
+    <script>
+        // Toggle Logic
+        const toggle = document.getElementById('growthToggle');
+        
+        setTimeout(() => {
+            toggle.classList.add('active');
+        }, 1000);
+
+        toggle.addEventListener('click', () => {
+            toggle.classList.toggle('active');
+        });
+
+        // Simple scroll reveal effect
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = 1;
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, { threshold: 0.1 });
+
+        const cards = document.querySelectorAll('.glass-card, .t-card');
+        cards.forEach(card => {
+            card.style.opacity = 0;
+            card.style.transform = 'translateY(30px)';
+            card.style.transition = 'all 0.6s ease-out';
+            observer.observe(card);
+        });
+    </script>
+</body>
+</html>

@@ -451,10 +451,48 @@
                 </div>
 
                 <div id="view-meetings" class="view-section hidden-force fade-in h-auto">
-                    <div class="bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] p-8">
-                        <h3 class="text-xl font-bold mb-4">All Meetings</h3>
-                        <div id="meetings-full-list" class="space-y-4"></div>
-                    </div>
+<header class="flex justify-between items-center mb-8">
+    <div>
+        <h1 class="text-2xl font-bold">Leads & Calendar</h1>
+        <p class="text-white/40 text-sm">Manage incoming leads and booked strategy calls.</p>
+    </div>
+    <div class="flex gap-2">
+        <button onclick="refreshCRM()" class="bg-white/5 hover:bg-white/10 px-4 py-2 rounded-lg text-sm border border-white/5"><i class="fa-solid fa-rotate mr-2"></i> Refresh</button>
+    </div>
+</header>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+    <div class="lg:col-span-2 space-y-6">
+        <div class="flex justify-between items-end">
+            <h2 class="text-xl font-bold text-orange-400"><i class="fa-regular fa-clock mr-2"></i>Upcoming Strategy Calls</h2>
+            <span class="text-xs text-white/30 uppercase font-bold tracking-wider">Agenda: Website Design</span>
+        </div>
+        <div id="meetings-list" class="space-y-4">
+            </div>
+    </div>
+
+    <div class="bg-[#1a1d23] rounded-2xl border border-white/5 p-6 h-fit sticky top-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold text-blue-400"><i class="fa-solid fa-user-group mr-2"></i>Recent Leads</h2>
+            <span class="text-xs text-white/30">Raw Inquiries</span>
+        </div>
+        <div id="leads-list" class="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+            </div>
+    </div>
+</div>
+
+<div id="meeting-details-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex justify-end">
+    <div class="w-full max-w-md bg-[#14161a] h-full border-l border-white/10 p-8 shadow-2xl overflow-y-auto transform transition-transform duration-300 translate-x-full" id="meeting-drawer">
+        <div class="flex justify-between items-start mb-8">
+            <h3 class="text-xl font-bold">Meeting Details</h3>
+            <button onclick="closeMeetingDetails()" class="text-white/40 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+        </div>
+
+        <div id="meeting-details-content" class="space-y-6">
+            </div>
+    </div>
+</div>
                 </div>
                 
                 <div id="view-support" class="view-section hidden-force fade-in h-auto">
