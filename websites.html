@@ -15,8 +15,8 @@
             theme: {
                 extend: {
                     colors: {
-                        ecom: { primary: '#9333ea', secondary: '#f97316' }, 
-                        serv: { primary: '#2563eb', secondary: '#10b981' }, 
+                        ecom: { primary: '#9333ea', secondary: '#f97316' },
+                        serv: { primary: '#2563eb', secondary: '#10b981' },
                     },
                     animation: {
                         'slide-up': 'slideUp 0.8s ease-out forwards',
@@ -32,6 +32,24 @@
             }
         }
     </script>
+
+    <!-- Facebook Pixel Code -->
+    <script>
+        !function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+
+        fbq('init', '1104188621230671');
+        fbq('track', 'PageView');
+    </script>
+    <noscript><img height="1" width="1" style="display:none"
+    src="https://www.facebook.com/tr?id=1104188621230671&ev=PageView&noscript=1"
+    /></noscript>
 
     <style>
         body { font-family: 'Inter', sans-serif; overflow-x: hidden; transition: background-color 0.8s ease, color 0.5s ease; background: #0f1115; }
@@ -492,17 +510,17 @@
 
         async function handleFormSubmit(e) {
             e.preventDefault();
-            
+
             const btn = document.getElementById('submit-btn');
             const originalText = btn.innerText;
             btn.innerText = "Processing...";
-            
+
             // 1. Gather Data
             const name = document.getElementById('input-name').value;
             const phone = document.getElementById('input-phone').value;
             const business = document.getElementById('input-biz').value;
             const interest = document.getElementById('interest-select').value;
-            
+
             // 2. Save to 'leads' table immediately
             const { data, error } = await websitesSupabase
                 .from('leads')
@@ -514,20 +532,24 @@
                     status: 'new'
                 }])
                 .select();
-            
+
             if (error) {
                 console.error('Lead Error:', error);
-                // We continue anyway so they can try to book, but check console for errors
             } else {
-                currentLeadId = data[0].id; // Store ID to link the meeting later
+                currentLeadId = data[0].id;
+
+                // --- FACEBOOK PIXEL: Track Lead ---
+                if(typeof fbq !== 'undefined') {
+                    fbq('track', 'Lead');
+                }
             }
-            
+
             btn.innerText = originalText;
-            
+
             // 3. Open Calendar Modal
             document.getElementById('booking-modal').classList.remove('hidden');
             document.body.style.overflow = 'hidden';
-            generateCalendar(); // Ensure calendar is fresh
+            generateCalendar();
         }
 
         function closeModal() {
@@ -640,16 +662,21 @@
                     meeting_date: dateStr,
                     meeting_time: selectedTime,
                     status: 'scheduled',
-                    lead_id: currentLeadId // Link to the lead
+                    lead_id: currentLeadId
                 }]);
 
             if (error) {
                 alert('This slot was just taken! Please choose another.');
-                generateTimeSlots(); // Refresh slots
+                generateTimeSlots();
                 document.getElementById('step-confirm').classList.add('hidden');
                 document.getElementById('step-time').classList.remove('hidden');
                 btn.innerHTML = originalText;
                 return;
+            }
+
+            // --- FACEBOOK PIXEL: Track Schedule ---
+            if(typeof fbq !== 'undefined') {
+                fbq('track', 'Schedule');
             }
 
             // Success
@@ -660,7 +687,6 @@
             setTimeout(() => {
                 closeModal();
                 btn.innerHTML = originalText;
-                // Optional: Redirect to a Thank You page
             }, 4000);
         }
 

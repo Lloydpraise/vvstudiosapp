@@ -1,5 +1,4 @@
-# TODO for Making Value Proposition Sections Uniform
-
-- [x] Set fixed height for .value-section to 500px on mobile, 400px on desktop
-- [x] Set fixed height for .value-image to 300px
-- [x] Update img styles to fit the container
+- [x] Add Facebook Pixel script to websites.html head with ID 1104188621230671
+- [x] Modify handleFormSubmit to track 'Lead' on form submission
+- [x] Modify finalizeBooking to track 'Schedule' on booking confirmation
+- [x] Add noscript fallback for pixel
