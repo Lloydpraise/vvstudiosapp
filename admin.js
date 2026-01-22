@@ -910,10 +910,11 @@ const router = {
             if(btn.dataset.target === target) btn.classList.add('active');
         });
 
-        document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden-force'));
-        
+        // Hide all view sections (use both classes to match switchMainView behaviour)
+        document.querySelectorAll('.view-section').forEach(el => { el.classList.add('hidden-force'); el.classList.add('hidden'); });
+
         const targetView = document.getElementById(`view-${target}`);
-        if(targetView) targetView.classList.remove('hidden-force');
+        if(targetView) { targetView.classList.remove('hidden-force'); targetView.classList.remove('hidden'); }
 
         const titles = {
             'dashboard': 'Dashboard',
@@ -935,6 +936,13 @@ const router = {
         if(target === 'messaging' && window.crm && typeof crm.switchTab === 'function') {
             crm.switchTab('chats');
         }
+        // Ensure social headers (Facebook / Instagram) are hidden when navigating
+        try {
+            const fbHeader = document.getElementById('facebook-header');
+            const igHeader = document.getElementById('instagram-header');
+            if (fbHeader) { fbHeader.classList.add('hidden-force'); fbHeader.classList.add('hidden'); }
+            if (igHeader) { igHeader.classList.add('hidden-force'); igHeader.classList.add('hidden'); }
+        } catch (e) { /* ignore */ }
     }
 };
 

@@ -1139,15 +1139,36 @@
                 </a>
             </li>
 
-        <!-- AI Sales Assistant (locked) -->
-    <li class="mb-4">
-        <a href="#"
-                class="flex items-center space-x-3 text-white/30 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
-                <i class="fa-solid fa-robot w-5 h-5"></i>
-                <span>AI Sales Assistant</span>
-                <span class="tooltip">Unlock our smartest AI to blow up your sales!</span>
-                <i class="fa-solid fa-lock w-3 h-3 text-white/30 ml-auto"></i>
-            </a>
+        <!-- Messaging (replaces AI Sales Assistant) -->
+    <li class="mb-4" id="messaging-item">
+        <button type="button" id="messaging-toggle" aria-expanded="false"
+            onclick="(function(btn){try{ if(btn.classList.contains('locked')) return; const sub=btn.nextElementSibling;if(!sub) return; const ch=btn.querySelector('.fa-chevron-down'); sub.classList.toggle('hidden'); ch && ch.classList.toggle('rotate-180'); btn.setAttribute('aria-expanded', String(! (btn.getAttribute('aria-expanded')==='true')));}catch(e){}})(this)"
+            class="locked w-full flex items-center space-x-3 text-white/30 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
+            <i class="fa-solid fa-comments w-5 h-5"></i>
+            <span>Messaging</span>
+            <i class="fa-solid fa-chevron-down w-4 h-4 ml-auto transition-transform"></i>
+            <i class="fa-solid fa-lock w-3 h-3 text-white/30 ml-2" id="messaging-lock"></i>
+        </button>
+        <ul id="messaging-submenu" class="mt-2 hidden space-y-2 pl-3">
+            <li>
+                <a href="#" class="flex items-center space-x-3 text-white/60 hover:text-white p-2 rounded-lg">
+                    <i class="fa-brands fa-whatsapp w-4 h-4"></i>
+                    <span>WhatsApp</span>
+                </a>
+            </li>
+            <li>
+                <a href="#" class="flex items-center space-x-3 text-white/60 hover:text-white p-2 rounded-lg">
+                    <i class="fa-brands fa-facebook w-4 h-4"></i>
+                    <span>Facebook</span>
+                </a>
+            </li>
+            <li>
+                <a href="#" class="flex items-center space-x-3 text-white/60 hover:text-white p-2 rounded-lg">
+                    <i class="fa-brands fa-instagram w-4 h-4"></i>
+                    <span>Instagram</span>
+                </a>
+            </li>
+        </ul>
         </li>
 
                 <!-- Automations (locked) -->
@@ -1191,6 +1212,19 @@
                 <i class="fa-solid fa-lock w-3 h-3 text-white/30 ml-auto"></i>
             </a>
         </li>
+    <script>
+    // unlock messaging only for Pro or Premium users
+    (function(){
+        try{
+            function isProOrPremium(){ try{ const raw=localStorage.getItem('vvUser'); if(!raw) return false; const u=JSON.parse(raw); const pkg=((u.package||u.package_name||u.packageType||'')+'').toLowerCase(); return pkg==='pro' || pkg==='premium'; }catch(e){return false} }
+            if(!isProOrPremium()) return;
+            const item = document.getElementById('messaging-item'); if(!item) return;
+            const btn = item.querySelector('#messaging-toggle'); if(!btn) return;
+            btn.classList.remove('locked'); btn.classList.remove('text-white/30'); btn.classList.add('text-white');
+            const lock = item.querySelector('#messaging-lock'); if(lock) lock.remove();
+        }catch(e){console.error(e)}
+    })();
+    </script>
         </ul>
 </nav>
                         

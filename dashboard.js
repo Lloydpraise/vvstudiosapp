@@ -13,8 +13,6 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // Global state variables
 let loggedInUser = null;
 let businessId = null;
-// Cached notification id returned by backend after prepare-payment
-// Cached notification id returned by backend after prepare-payment
 // Initialize from localStorage so the value survives short navigations
 let cachedNotificationId = localStorage.getItem('vv_cached_notification_id') || null;
 // Update this to your Supabase Functions / other serverless function base URL
@@ -1074,30 +1072,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.warn('Failed to initialize Onboarding', e);
     }
 
-    // If we're on the Ads page, dynamically load the Ads tour helper
-    try {
-        if (document.body && document.body.getAttribute('data-page') === 'ads') {
-            const existing = document.querySelector('script[src="ads-tour.js"]');
-            if (!existing) {
-                const s = document.createElement('script');
-                s.src = 'ads-tour.js';
-                s.defer = true;
-                s.onload = () => {
-                    try {
-                        if (window.AdsTour && typeof window.AdsTour.init === 'function') {
-                            window.AdsTour.init({ businessId: businessId || null, autoShowMaxViews: 5 });
-                        } else if (window.AdsTour && window.AdsTour.addFloatingButton) {
-                            window.AdsTour.addFloatingButton();
-                        }
-                        // Take Tour button placement is handled inside the Ads page profile dropdown now.
-                    } catch (e) {}
-                };
-                document.body.appendChild(s);
-            } else {
-                try { if (window.AdsTour && window.AdsTour.addFloatingButton) window.AdsTour.addFloatingButton(); } catch (e) {}
-            }
-        }
-    } catch (e) { console.warn('Failed to load ads tour', e); }
+    // Ads tour turned off
 
     const loginContainer = document.getElementById('login-container');
     const loginForm = document.getElementById('login-form');

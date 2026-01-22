@@ -99,12 +99,19 @@
 [data-theme="light"] .card-order-btn { color: #ffffff !important; border-color: transparent !important; }
 
 /* Loading overlays and output areas should be readable */
-[data-theme="light"] .modal-backdrop,
+/* Proper dimming for light theme modals */
+[data-theme="light"] .modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.5) !important;
+    backdrop-filter: blur(4px);
+    z-index: 60; /* Ensure it sits above other content */
+}
+
+/* Keep loading overlay subtle if preferred, or match the backdrop above */
 [data-theme="light"] .loading-overlay,
 [data-theme="light"] .loading-screen,
 [data-theme="light"] #loadingText,
 [data-theme="light"] .output-section {
-    background-color: rgba(15,23,32,0.04) !important;
+    background-color: rgba(255, 255, 255, 0.95) !important;
     color: #0f1720 !important;
 }
 
@@ -848,7 +855,8 @@
    (covers pages that hide dashboard until login). This is narrowly scoped to
    desktop and light theme only and uses !important to override inline styles. */
 @media (min-width: 1024px) {
-    html[data-theme="light"] #dashboard-container { display: flex !important; }
+    /* Only show dashboard if logged in. This fixes the ghost overlay on the login page. */
+html[data-theme="light"][data-logged-in="1"] #dashboard-container { display: flex !important; }
     html[data-theme="light"] #sidebar { position: relative !important; transform: none !important; left: 0 !important; display: block !important; visibility: visible !important; width: 16rem !important; }
     /* If utility classes left a -translate-x-full class, neutralize it on desktop light */
     html[data-theme="light"] #sidebar.-translate-x-full { transform: none !important; }

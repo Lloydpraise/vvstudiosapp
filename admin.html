@@ -121,8 +121,14 @@
                 <button onclick="router.navigate('meetings')" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 text-white/70 hover:text-white rounded-xl transition-colors text-left" data-target="meetings">
                     <i class="fa-solid fa-calendar w-5"></i> Meetings
                 </button>
-                <button onclick="router.navigate('messaging')" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 text-white/70 hover:text-white rounded-xl transition-colors text-left" data-target="messaging">
-                    <i class="fa-brands fa-whatsapp w-5"></i> Messaging
+                <button onclick="switchMainView('view-whatsapp')" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 text-white/70 hover:text-white rounded-xl transition-colors text-left" data-target="whatsapp">
+                    <i class="fa-brands fa-whatsapp w-5"></i> WhatsApp
+                </button>
+                <button onclick="switchMainView('view-facebook-messenger')" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 text-white/70 hover:text-white rounded-xl transition-colors text-left" data-target="facebook">
+                    <i class="fa-brands fa-facebook w-5 text-blue-500"></i> Facebook
+                </button>
+                <button onclick="switchMainView('view-instagram-direct')" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 text-white/70 hover:text-white rounded-xl transition-colors text-left" data-target="instagram">
+                    <i class="fa-brands fa-instagram w-5 text-pink-500"></i> Instagram
                 </button>
                 <button onclick="router.navigate('support')" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 text-white/70 hover:text-white rounded-xl transition-colors text-left" data-target="support">
                     <i class="fa-solid fa-headset w-5"></i> Support
@@ -286,13 +292,20 @@
                     <div id="exp-tab-content" class="min-h-[300px]"></div>
                 </div>
                 
-                <div id="view-messaging" class="view-section hidden-force fade-in flex flex-col h-full pb-4">
-                    <div class="flex gap-6 border-b border-[#2b2f3a] mb-4 overflow-x-auto pb-1 no-scrollbar flex-shrink-0">
-                        <button onclick="crm.switchTab('chats')" class="crm-tab-btn active pb-3 border-b-2 text-white font-medium whitespace-nowrap" data-tab="chats">Live Chats</button>
-                        <button onclick="crm.switchTab('lists')" class="crm-tab-btn pb-3 border-b-2 border-transparent text-white/60 hover:text-white whitespace-nowrap" data-tab="lists">Lists</button>
-                        <button onclick="crm.switchTab('campaigns')" class="crm-tab-btn pb-3 border-b-2 border-transparent text-white/60 hover:text-white whitespace-nowrap" data-tab="campaigns">Campaigns</button>
-                        <button onclick="crm.switchTab('templates')" class="crm-tab-btn pb-3 border-b-2 border-transparent text-white/60 hover:text-white whitespace-nowrap" data-tab="templates">Templates</button>
-                        <button onclick="crm.switchTab('analytics')" class="crm-tab-btn pb-3 border-b-2 border-transparent text-white/60 hover:text-white whitespace-nowrap" data-tab="analytics">Analytics</button>
+                <div id="view-whatsapp" class="view-section hidden-force fade-in flex flex-col h-full pb-4">
+                    <div class="flex justify-between items-center gap-6 border-b border-[#2b2f3a] mb-4 overflow-x-auto pb-1 no-scrollbar flex-shrink-0">
+                        <div class="flex gap-6 overflow-x-auto pb-1 no-scrollbar">
+                            <button onclick="crm.switchTab('chats')" class="crm-tab-btn active pb-3 border-b-2 text-white font-medium whitespace-nowrap" data-tab="chats">Live Chats</button>
+                            <button onclick="crm.switchTab('lists')" class="crm-tab-btn pb-3 border-b-2 border-transparent text-white/60 hover:text-white whitespace-nowrap" data-tab="lists">Lists</button>
+                            <button onclick="crm.switchTab('campaigns')" class="crm-tab-btn pb-3 border-b-2 border-transparent text-white/60 hover:text-white whitespace-nowrap" data-tab="campaigns">Campaigns</button>
+                            <button onclick="crm.switchTab('templates')" class="crm-tab-btn pb-3 border-b-2 border-transparent text-white/60 hover:text-white whitespace-nowrap" data-tab="templates">Templates</button>
+                            <button onclick="crm.switchTab('analytics')" class="crm-tab-btn pb-3 border-b-2 border-transparent text-white/60 hover:text-white whitespace-nowrap" data-tab="analytics">Analytics</button>
+                        </div>
+                        <div class="flex items-center">
+                            <button onclick="crm.switchTab('settings')" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60" title="Settings">
+                                <i class="fa-solid fa-gear"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <div id="crm-tab-content" class="flex-1 overflow-hidden relative">
@@ -316,7 +329,7 @@
                                             <span id="chat-header-avatar">?</span>
                                         </div>
                                         <div>
-                                            <div class="font-bold text-sm" id="chat-header-name">Select a contact</div>
+                                                <div class="font-bold text-sm cursor-pointer" id="chat-header-name" title="View contact">Select a contact</div>
                                             <div class="flex items-center gap-2">
                                                 <div id="chat-header-indicator" class="w-2 h-2 rounded-full bg-gray-500"></div>
                                                 <div class="text-xs text-white/50" id="chat-header-status">...</div>
@@ -330,6 +343,10 @@
                                                 <div class="w-2 h-2 bg-white rounded-full absolute top-1 left-1 transition-all"></div>
                                             </button>
                                         </div>
+                                            <button id="contact-notes-btn" onclick="crm.openContactModal()" class="px-3 py-1 bg-white/5 hover:bg-white/10 text-xs rounded-md border border-white/10 flex items-center gap-2">
+                                                <i class="fa-regular fa-note-sticky"></i>
+                                                Notes
+                                            </button>
                                     </div>
                                 </div>
 
@@ -430,6 +447,34 @@
                             </div>
                         </div>
 
+                        <div id="crm-settings" class="crm-view hidden-force absolute inset-0 flex flex-col p-4 bg-[#14161a] overflow-y-auto z-20">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="font-bold text-green-500">WhatsApp Configuration</h3>
+                                <button onclick="crm.switchTab('chats')" class="text-white/40 hover:text-white" title="Close settings"><i class="fa-solid fa-times"></i></button>
+                            </div>
+                            
+                            <div class="mb-6">
+                                <label class="text-xs font-bold text-white/40 uppercase">AI Identity</label>
+                                <textarea id="wa-system-prompt" class="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-sm mt-1 focus:border-green-500 outline-none" rows="4" placeholder="You are a helpful assistant..."></textarea>
+                            </div>
+
+                            <div class="space-y-3">
+                                <label class="text-xs font-bold text-white/40 uppercase">API Credentials</label>
+                                <div>
+                                    <input id="wa-phone-id" type="text" placeholder="Phone Number ID" class="w-full bg-black/20 border border-white/10 rounded p-2 text-sm">
+                                </div>
+                                <div>
+                                    <input id="wa-waba-id" type="text" placeholder="WABA ID" class="w-full bg-black/20 border border-white/10 rounded p-2 text-sm">
+                                </div>
+                                <div class="relative">
+                                    <input id="wa-token" type="password" placeholder="Permanent Access Token" class="w-full bg-black/20 border border-white/10 rounded p-2 text-sm pr-8">
+                                    <i onclick="togglePass('wa-token')" class="fa-solid fa-eye absolute right-3 top-3 text-white/30 cursor-pointer hover:text-white"></i>
+                                </div>
+                            </div>
+
+                            <button onclick="crm.saveSettings('whatsapp')" class="mt-6 w-full py-2 bg-green-600 hover:bg-green-500 rounded-lg font-medium text-sm">Save WhatsApp Settings</button>
+                        </div>
+
                          <div id="crm-analytics" class="crm-view hidden-force h-full overflow-y-auto">
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                                 <div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a]">
@@ -447,6 +492,316 @@
                             </div>
                         </div>
 
+                    </div>
+                </div>
+
+                <div id="facebook-header" class="hidden h-20 border-b border-white/10 flex flex-col justify-center px-6 bg-[#18191a]">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
+                                <i class="fa-brands fa-facebook-f text-white"></i>
+                            </div>
+                            <h2 class="text-lg font-semibold">Inbox</h2>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div id="fb-ai-indicator" class="hidden text-xs text-white/60 flex items-center gap-2">
+                                <i class="fa-solid fa-robot text-yellow-400"></i> AI
+                            </div>
+                            <div id="fb-timer" class="text-xs text-white/50"></div>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button onclick="switchMainView('view-facebook-messenger'); showFacebookTab('inbox')" id="fb-tab-inbox" class="facebook-tab-btn active pb-2 border-b-2 border-blue-500 text-white font-medium whitespace-nowrap">Inbox</button>
+                        <span id="fb-unread-total" class="ml-2 text-xs text-blue-400 hidden"></span>
+                        <button onclick="switchMainView('view-facebook-comments'); showFacebookTab('comments')" id="fb-tab-comments" class="facebook-tab-btn pb-2 border-b-2 border-transparent text-white/60 hover:text-white whitespace-nowrap">Comments</button>
+                    </div>
+                </div>
+
+                <div id="view-facebook-messenger" class="view-section hidden h-full flex flex-col">
+                    <div class="flex-1 flex overflow-hidden">
+                        <div class="w-80 border-r border-white/10 flex flex-col bg-[#18191a]">
+                                <div class="p-4">
+                                <input id="fb-search" type="text" placeholder="Search Messenger..." class="w-full bg-[#242526] text-white text-sm px-4 py-2 rounded-full focus:outline-none border border-transparent focus:border-blue-500">
+                            </div>
+                            <div id="fb-conversation-list" class="flex-1 overflow-y-auto">
+                                <div class="p-3 mx-2 rounded-lg hover:bg-white/5 cursor-pointer flex gap-3 items-center conv-item" data-last-customer-timestamp="2026-01-21T12:00:00Z">
+                                    <img src="https://ui-avatars.com/api/?name=John+Doe&background=0D8ABC&color=fff" class="w-10 h-10 rounded-full">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex justify-between">
+                                            <h4 class="font-semibold text-sm truncate">John Doe</h4>
+                                            <span class="text-xs text-white/40">12:30 PM</span>
+                                        </div>
+                                        <p class="text-xs text-white/60 truncate last-customer-msg">Is this still available?</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex-1 flex flex-col bg-[#0f1115] relative">
+                            <div class="h-16 border-b border-white/10 flex justify-between items-center px-4 bg-[#0f1115]">
+                                <h2 class="text-lg font-semibold">Messages</h2>
+                                <button onclick="crm.toggleSocialSettings('facebook')" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60">
+                                    <i class="fa-solid fa-gear"></i>
+                                </button>
+                            </div>
+                            <div id="fb-window-warning" class="hidden bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-2 flex items-center justify-between">
+                                <span class="text-xs text-yellow-200"><i class="fa-regular fa-clock mr-2"></i> 24h Window closes in <strong>2 hours</strong>.</span>
+                                <button class="text-xs bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-200 px-2 py-1 rounded">Use Tag</button>
+                            </div>
+                            <div id="fb-messages-area" class="flex-1 overflow-y-auto p-4 space-y-4">
+                                <div class="flex gap-2 max-w-[70%]">
+                                    <img src="https://ui-avatars.com/api/?name=John+Doe" class="w-8 h-8 rounded-full mt-1">
+                                    <div class="bg-[#242526] p-3 rounded-2xl rounded-tl-none text-sm text-white/90">
+                                        Hi, I saw your ad on Facebook.
+                                    </div>
+                                </div>
+                                <div class="flex gap-2 max-w-[70%] ml-auto flex-row-reverse">
+                                    <div class="bg-blue-600 p-3 rounded-2xl rounded-tr-none text-sm text-white">
+                                        Hello! Yes, checking availability now.
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="fb-send-bar" class="p-4 border-t border-white/10 bg-[#18191a]">
+                                <div class="flex gap-2">
+                                    <button class="p-2 text-blue-500 hover:bg-white/5 rounded-full"><i class="fa-solid fa-circle-plus text-xl"></i></button>
+                                    <input id="fb-send-input" type="text" placeholder="Type a message..." class="flex-1 bg-transparent text-white focus:outline-none px-2">
+                                    <button id="fb-send-btn" class="p-2 text-blue-500 hover:bg-white/5 rounded-full"><i class="fa-solid fa-paper-plane text-xl"></i></button>
+                                </div>
+                            </div>
+                            
+                            <div id="settings-facebook" class="hidden absolute top-16 left-0 w-80 bottom-0 bg-[#14161a] border-r border-white/10 z-30 p-4 overflow-y-auto">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h3 class="font-bold text-blue-500">Page Settings</h3>
+                                    <button onclick="crm.toggleSocialSettings('facebook')" class="text-white/40 hover:text-white"><i class="fa-solid fa-times"></i></button>
+                                </div>
+
+                                <div class="mb-6">
+                                    <label class="text-xs font-bold text-white/40 uppercase">AI Tone</label>
+                                    <textarea id="fb-ai-config" class="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-sm mt-1 focus:border-blue-500 outline-none" rows="3" placeholder="Be professional and concise..."></textarea>
+                                </div>
+
+                                <div class="space-y-3">
+                                    <label class="text-xs font-bold text-white/40 uppercase">Graph API</label>
+                                    <input id="fb-page-id" type="text" placeholder="Page ID" class="w-full bg-black/20 border border-white/10 rounded p-2 text-sm">
+                                    <div class="relative">
+                                        <input id="fb-token" type="password" placeholder="Page Access Token" class="w-full bg-black/20 border border-white/10 rounded p-2 text-sm pr-8">
+                                        <i onclick="togglePass('fb-token')" class="fa-solid fa-eye absolute right-3 top-3 text-white/30 cursor-pointer hover:text-white"></i>
+                                    </div>
+                                </div>
+                                <button onclick="crm.saveSettings('facebook')" class="mt-6 w-full py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-medium text-sm">Save Page Settings</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="view-facebook-comments" class="view-section hidden h-full flex flex-col">
+                    <div class="flex-1 flex overflow-hidden">
+                        <div class="w-1/3 border-r border-white/10 overflow-y-auto bg-[#18191a]">
+                            <div class="p-4 border-b border-white/5 hover:bg-white/5 cursor-pointer flex gap-3">
+                                <div class="w-16 h-16 bg-gray-700 rounded-md bg-cover bg-center" style="background-image: url('https://via.placeholder.com/150')"></div>
+                                <div class="flex-1">
+                                    <h4 class="text-sm font-medium text-white/90 line-clamp-2">New Summer Collection requires the best logic...</h4>
+                                    <div class="mt-2 flex items-center gap-2 text-xs text-white/50">
+                                        <span class="text-blue-400 font-bold">2 new</span>
+                                        <span>• 5 total</span>
+                                        <span>• 10m ago</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex-1 overflow-y-auto bg-[#0f1115] p-6">
+                            <div class="bg-[#242526] rounded-lg p-4 mb-6 border border-white/5">
+                                <div class="flex gap-3 mb-3">
+                                    <div class="w-10 h-10 bg-gray-600 rounded-full"></div>
+                                    <div>
+                                        <div class="font-bold text-sm">VVStudios Page</div>
+                                        <div class="text-xs text-white/40">Posted on Jan 20</div>
+                                    </div>
+                                </div>
+                                <p class="text-white/80 text-sm mb-3">Here is the detailed post content that users are commenting on.</p>
+                                <img src="https://via.placeholder.com/600x300" class="rounded-lg w-full object-cover h-48">
+                            </div>
+                            <div class="space-y-4 pl-4 border-l-2 border-white/10 ml-2">
+                                <div class="group">
+                                    <div class="flex gap-3">
+                                        <img src="https://ui-avatars.com/api/?name=User+One" class="w-8 h-8 rounded-full">
+                                        <div class="flex-1">
+                                            <div class="bg-[#242526] px-4 py-2 rounded-2xl rounded-tl-none inline-block">
+                                                <span class="font-bold text-xs block text-white/60 mb-1">User One</span>
+                                                <p class="text-sm">How much does this service cost?</p>
+                                            </div>
+                                            <div class="flex gap-3 mt-1 ml-2 text-xs text-white/40">
+                                                <button class="hover:text-blue-400">Like</button>
+                                                <button class="hover:text-blue-400">Reply Publicly</button>
+                                                <button class="hover:text-yellow-400"><i class="fa-regular fa-paper-plane"></i> DM Privately</button>
+                                                <button class="hover:text-red-400">Hide</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="hidden ml-11 mt-2 flex gap-2">
+                                        <input type="text" class="bg-white/5 border border-white/10 rounded-full px-4 py-1 text-sm w-full focus:border-blue-500 focus:outline-none" placeholder="Write a reply...">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="instagram-header" class="hidden h-20 border-b border-white/10 flex flex-col justify-center px-6 bg-[#18191a]">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 to-pink-600 flex items-center justify-center">
+                                <i class="fa-brands fa-instagram text-white"></i>
+                            </div>
+                            <h2 class="text-lg font-semibold">Direct Messages</h2>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div id="ig-ai-indicator" class="hidden text-xs text-white/60 flex items-center gap-2">
+                                <i class="fa-solid fa-robot text-yellow-400"></i> AI
+                            </div>
+                            <div id="ig-timer" class="text-xs text-white/50"></div>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button onclick="switchMainView('view-instagram-direct'); showInstagramTab('dm')" id="ig-tab-dm" class="instagram-tab-btn active pb-2 border-b-2 border-pink-500 text-white font-medium whitespace-nowrap">DM</button>
+                        <span id="ig-unread-total" class="ml-2 text-xs text-pink-400 hidden"></span>
+                        <button onclick="switchMainView('view-instagram-comments'); showInstagramTab('activity')" id="ig-tab-activity" class="instagram-tab-btn pb-2 border-b-2 border-transparent text-white/60 hover:text-white whitespace-nowrap">Activity</button>
+                    </div>
+                </div>
+
+                <div id="view-instagram-direct" class="view-section hidden h-full flex flex-col">
+                    <div class="flex-1 flex overflow-hidden">
+                        <div class="w-80 border-r border-white/10 flex flex-col bg-[#18191a]">
+                            <div class="p-4">
+                                <input id="ig-search" type="text" placeholder="Search Direct..." class="w-full bg-[#242526] text-white text-sm px-4 py-2 rounded-full focus:outline-none border border-transparent focus:border-pink-500">
+                            </div>
+                            <div id="ig-conversation-list" class="flex-1 overflow-y-auto">
+                                <div class="p-3 mx-2 rounded-lg hover:bg-white/5 cursor-pointer flex gap-3 items-center conv-item" data-last-customer-timestamp="2026-01-21T13:15:00Z">
+                                    <img src="https://ui-avatars.com/api/?name=Jane+Doe&background=E91E63&color=fff" class="w-10 h-10 rounded-full">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex justify-between">
+                                            <h4 class="font-semibold text-sm truncate">Jane Doe</h4>
+                                            <span class="text-xs text-white/40">1:15 PM</span>
+                                        </div>
+                                        <p class="text-xs text-white/60 truncate last-customer-msg">Love your posts!</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex-1 flex flex-col bg-[#0f1115] relative">
+                            <div class="h-16 border-b border-white/10 flex justify-between items-center px-4 bg-[#0f1115]">
+                                <h2 class="text-lg font-semibold">Direct Messages</h2>
+                                <button onclick="crm.toggleSocialSettings('instagram')" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60">
+                                    <i class="fa-solid fa-gear"></i>
+                                </button>
+                            </div>
+                            <div id="ig-window-warning" class="hidden bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-2 flex items-center justify-between">
+                                <span class="text-xs text-yellow-200"><i class="fa-regular fa-clock mr-2"></i> 24h Window closes in <strong>1 hour</strong>.</span>
+                                <button class="text-xs bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-200 px-2 py-1 rounded">Use Tag</button>
+                            </div>
+                            <div id="ig-messages-area" class="flex-1 overflow-y-auto p-4 space-y-4">
+                                <div class="flex gap-2 max-w-[70%]">
+                                    <img src="https://ui-avatars.com/api/?name=Jane+Doe" class="w-8 h-8 rounded-full mt-1">
+                                    <div class="bg-[#242526] p-3 rounded-2xl rounded-tl-none text-sm text-white/90">
+                                        Hi, I saw your story on Instagram.
+                                    </div>
+                                </div>
+                                <div class="flex gap-2 max-w-[70%] ml-auto flex-row-reverse">
+                                    <div class="bg-gradient-to-tr from-yellow-400 to-pink-600 p-3 rounded-2xl rounded-tr-none text-sm text-white">
+                                        Thanks! How can I help?
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="ig-send-bar" class="p-4 border-t border-white/10 bg-[#18191a]">
+                                <div class="flex gap-2">
+                                    <button class="p-2 text-pink-500 hover:bg-white/5 rounded-full"><i class="fa-solid fa-circle-plus text-xl"></i></button>
+                                    <input id="ig-send-input" type="text" placeholder="Type a message..." class="flex-1 bg-transparent text-white focus:outline-none px-2">
+                                    <button id="ig-send-btn" class="p-2 text-pink-500 hover:bg-white/5 rounded-full"><i class="fa-solid fa-paper-plane text-xl"></i></button>
+                                </div>
+                            </div>
+                            
+                            <div id="settings-instagram" class="hidden absolute top-16 left-0 w-80 bottom-0 bg-[#14161a] border-r border-white/10 z-30 p-4 overflow-y-auto">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h3 class="font-bold text-pink-500">Instagram Settings</h3>
+                                    <button onclick="crm.toggleSocialSettings('instagram')" class="text-white/40 hover:text-white"><i class="fa-solid fa-times"></i></button>
+                                </div>
+
+                                <div class="mb-6">
+                                    <label class="text-xs font-bold text-white/40 uppercase">AI Style</label>
+                                    <textarea id="ig-ai-config" class="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-sm mt-1 focus:border-pink-500 outline-none" rows="3" placeholder="Use emojis, be visual..."></textarea>
+                                </div>
+
+                                <div class="space-y-3">
+                                    <label class="text-xs font-bold text-white/40 uppercase">Graph API</label>
+                                    <input id="ig-account-id" type="text" placeholder="Instagram Account ID" class="w-full bg-black/20 border border-white/10 rounded p-2 text-sm">
+                                    <div class="relative">
+                                        <input id="ig-token" type="password" placeholder="Access Token" class="w-full bg-black/20 border border-white/10 rounded p-2 text-sm pr-8">
+                                        <i onclick="togglePass('ig-token')" class="fa-solid fa-eye absolute right-3 top-3 text-white/30 cursor-pointer hover:text-white"></i>
+                                    </div>
+                                </div>
+                                <button onclick="crm.saveSettings('instagram')" class="mt-6 w-full py-2 bg-pink-600 hover:bg-pink-500 rounded-lg font-medium text-sm">Save Instagram Settings</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="view-instagram-comments" class="view-section hidden h-full flex flex-col">
+                    <div class="h-16 border-b border-white/10 flex items-center justify-between px-6 bg-[#18191a]">
+                        <h2 class="text-lg font-semibold"><i class="fa-regular fa-heart text-pink-400 mr-2"></i> Activity Manager</h2>
+                        <div class="flex text-sm bg-white/5 rounded-lg p-1">
+                            <button class="px-3 py-1 bg-pink-600 rounded text-white shadow">Unresolved</button>
+                            <button class="px-3 py-1 hover:text-white text-white/50">All Activity</button>
+                        </div>
+                    </div>
+                    <div class="flex-1 flex overflow-hidden">
+                        <div class="w-1/3 border-r border-white/10 overflow-y-auto bg-[#18191a]">
+                            <div class="p-4 border-b border-white/5 hover:bg-white/5 cursor-pointer flex gap-3">
+                                <div class="w-16 h-16 bg-gray-700 rounded-md bg-cover bg-center" style="background-image: url('https://via.placeholder.com/150')"></div>
+                                <div class="flex-1">
+                                    <h4 class="text-sm font-medium text-white/90 line-clamp-2">New Summer Collection requires the best logic...</h4>
+                                    <div class="mt-2 flex items-center gap-2 text-xs text-white/50">
+                                        <span class="text-pink-400 font-bold">1 new</span>
+                                        <span>• 3 total</span>
+                                        <span>• 5m ago</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex-1 overflow-y-auto bg-[#0f1115] p-6">
+                            <div class="bg-[#242526] rounded-lg p-4 mb-6 border border-white/5">
+                                <div class="flex gap-3 mb-3">
+                                    <div class="w-10 h-10 bg-gray-600 rounded-full"></div>
+                                    <div>
+                                        <div class="font-bold text-sm">@vvstudios</div>
+                                        <div class="text-xs text-white/40">Posted on Jan 21</div>
+                                    </div>
+                                </div>
+                                <p class="text-white/80 text-sm mb-3">Here is the detailed post content that users are commenting on.</p>
+                                <img src="https://via.placeholder.com/600x300" class="rounded-lg w-full object-cover h-48">
+                            </div>
+                            <div class="space-y-4 pl-4 border-l-2 border-white/10 ml-2">
+                                <div class="group">
+                                    <div class="flex gap-3">
+                                        <img src="https://ui-avatars.com/api/?name=User+Two" class="w-8 h-8 rounded-full">
+                                        <div class="flex-1">
+                                            <div class="bg-[#242526] px-4 py-2 rounded-2xl rounded-tl-none inline-block">
+                                                <span class="font-bold text-xs block text-white/60 mb-1">User Two</span>
+                                                <p class="text-sm">This looks amazing!</p>
+                                            </div>
+                                            <div class="flex gap-3 mt-1 ml-2 text-xs text-white/40">
+                                                <button class="hover:text-pink-400">Like</button>
+                                                <button class="hover:text-pink-400">Reply Publicly</button>
+                                                <button class="hover:text-yellow-400"><i class="fa-regular fa-paper-plane"></i> DM Privately</button>
+                                                <button class="hover:text-red-400">Hide</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="hidden ml-11 mt-2 flex gap-2">
+                                        <input type="text" class="bg-white/5 border border-white/10 rounded-full px-4 py-1 text-sm w-full focus:border-pink-500 focus:outline-none" placeholder="Write a reply...">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -590,6 +945,33 @@
                 <div class="flex justify-end gap-3">
                     <button type="button" onclick="closeWhatsAppModal()" class="px-4 py-2 text-white/60 hover:text-white text-sm">Cancel</button>
                     <button id="wa-send" type="button" class="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-medium text-sm">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="contact-modal" class="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-sm hidden-force">
+        <div class="w-full max-w-md bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] shadow-2xl overflow-hidden">
+            <div class="p-5 border-b border-[#2b2f3a] flex justify-between items-center bg-[#232730]">
+                <h3 class="font-bold text-lg">Contact Details</h3>
+                <button onclick="document.getElementById('contact-modal').classList.add('hidden-force')" class="text-white/50 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold" id="contact-modal-avatar">?</div>
+                    <div>
+                        <div id="contact-modal-name" class="font-bold text-lg">Name</div>
+                        <div id="contact-modal-phone" class="text-xs text-white/50">Phone</div>
+                    </div>
+                </div>
+
+                <input type="hidden" id="contact-modal-id">
+                <label class="text-xs text-white/50">Notes (updates contact notes directly)</label>
+                <textarea id="contact-modal-notes" rows="6" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-lg p-3 text-white focus:border-purple-500 outline-none resize-none" placeholder="Private contact notes..."></textarea>
+
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="document.getElementById('contact-modal').classList.add('hidden-force')" class="px-4 py-2 text-white/60 hover:text-white text-sm">Close</button>
+                    <button id="contact-modal-save" type="button" class="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-medium text-sm">Save Notes</button>
                 </div>
             </div>
         </div>
@@ -753,5 +1135,189 @@
 
     <script src="admin.js"></script>
     <script src="messages.js"></script>
+    <script>
+        function switchMainView(viewId) {
+            document.querySelectorAll('.view-section').forEach(v => {
+                v.classList.add('hidden-force');
+                v.classList.add('hidden');
+            });
+
+            var target = document.getElementById(viewId);
+            // Fallback mappings for legacy/alias ids
+            if (!target) {
+                if (viewId === 'view-facebook') target = document.getElementById('view-facebook-messenger');
+                if (viewId === 'view-instagram') target = document.getElementById('view-instagram-direct');
+            }
+
+            if (target) {
+                target.classList.remove('hidden-force');
+                target.classList.remove('hidden');
+            } else {
+                console.warn('switchMainView: target not found', viewId);
+            }
+
+            // Show/hide persistent headers for FB/IG
+            var fbHeader = document.getElementById('facebook-header');
+            var igHeader = document.getElementById('instagram-header');
+            var isFb = viewId && viewId.indexOf('facebook') !== -1;
+            var isIg = viewId && viewId.indexOf('instagram') !== -1;
+            if (fbHeader) {
+                if (isFb) { fbHeader.classList.remove('hidden-force'); fbHeader.classList.remove('hidden'); }
+                else { fbHeader.classList.add('hidden-force'); fbHeader.classList.add('hidden'); }
+            }
+            if (igHeader) {
+                if (isIg) { igHeader.classList.remove('hidden-force'); igHeader.classList.remove('hidden'); }
+                else { igHeader.classList.add('hidden-force'); igHeader.classList.add('hidden'); }
+            }
+
+            // Update top page title and sidebar highlight to reflect the active view
+            try {
+                const pageTitle = document.getElementById('page-title');
+                if (pageTitle) {
+                    if (viewId.indexOf('facebook') !== -1) pageTitle.textContent = 'Facebook';
+                    else if (viewId.indexOf('instagram') !== -1) pageTitle.textContent = 'Instagram';
+                    else if (viewId.indexOf('whatsapp') !== -1) pageTitle.textContent = 'WhatsApp';
+                    else {
+                        // default: derive from view id (e.g. view-dashboard -> Dashboard)
+                        const name = String(viewId || '').replace(/^view-/, '').replace(/[-_]/g, ' ');
+                        pageTitle.textContent = name.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                    }
+                }
+
+                // Update sidebar active state
+                document.querySelectorAll('.sidebar-link').forEach(btn => {
+                    btn.classList.remove('active');
+                    try {
+                        const target = btn.dataset && btn.dataset.target ? btn.dataset.target : '';
+                        if (target && viewId.indexOf(target) !== -1) btn.classList.add('active');
+                    } catch (e) {}
+                });
+            } catch (e) { /* ignore */ }
+
+            // Close social settings drawers when switching views to avoid overlays sticking
+            try {
+                const fbSettings = document.getElementById('settings-facebook');
+                const igSettings = document.getElementById('settings-instagram');
+                if (fbSettings) { fbSettings.classList.add('hidden'); fbSettings.classList.add('hidden-force'); }
+                if (igSettings) { igSettings.classList.add('hidden'); igSettings.classList.add('hidden-force'); }
+            } catch (e) {}
+        }
+
+        function showFacebookTab(tab) {
+            document.querySelectorAll('.facebook-view').forEach(v => v.classList.add('hidden'));
+            document.getElementById('facebook-' + tab).classList.remove('hidden');
+            // update active tab
+            document.querySelectorAll('.facebook-tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+                btn.classList.add('border-transparent');
+                btn.classList.remove('border-b-2');
+            });
+            event.target.classList.add('active');
+            event.target.classList.remove('border-transparent');
+            event.target.classList.add('border-b-2');
+        }
+
+        function showInstagramTab(tab) {
+            document.querySelectorAll('.instagram-view').forEach(v => v.classList.add('hidden'));
+            document.getElementById('instagram-' + tab).classList.remove('hidden');
+            // update active tab
+            document.querySelectorAll('.instagram-tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+                btn.classList.add('border-transparent');
+                btn.classList.remove('border-b-2');
+            });
+            event.target.classList.add('active');
+            event.target.classList.remove('border-transparent');
+            event.target.classList.add('border-b-2');
+        }
+ 
+    </script>
+    <script>
+        // Generic helpers for FB/IG subtabs, AI indicator and 24h countdown per conversation
+        (function(){
+            let activeTimers = {};
+
+            function formatTime(ms) {
+                if (ms <= 0) return '00:00:00';
+                const s = Math.floor(ms/1000);
+                const hrs = String(Math.floor(s/3600)).padStart(2,'0');
+                const mins = String(Math.floor((s%3600)/60)).padStart(2,'0');
+                const secs = String(s%60).padStart(2,'0');
+                return `${hrs}:${mins}:${secs}`;
+            }
+
+            function clearTimersFor(containerId){
+                if (activeTimers[containerId]) { clearInterval(activeTimers[containerId]); delete activeTimers[containerId]; }
+            }
+
+            function startCountdownFor(timestampISO, timerEl, sendBarEl){
+                clearTimersFor(timerEl.id);
+                const deadline = new Date(timestampISO).getTime() + 24*3600*1000;
+                function tick(){
+                    const now = Date.now();
+                    const remaining = deadline - now;
+                    if (remaining <= 0) {
+                        timerEl.textContent = '00:00:00';
+                        if (sendBarEl) sendBarEl.classList.add('hidden-force');
+                        clearTimersFor(timerEl.id);
+                        return;
+                    }
+                    timerEl.textContent = formatTime(remaining);
+                    if (sendBarEl) sendBarEl.classList.remove('hidden-force');
+                }
+                tick();
+                activeTimers[timerEl.id] = setInterval(tick, 1000);
+            }
+
+            function onConversationClick(e){
+                const el = e.currentTarget;
+                const parent = el.closest('#fb-conversation-list') ? 'fb' : 'ig';
+                const ts = el.getAttribute('data-last-customer-timestamp');
+                const timerEl = document.getElementById(parent + '-timer');
+                const sendBarEl = document.getElementById(parent + '-send-bar');
+                // show AI indicator if ai active flag set on body (demo)
+                const aiIndicator = document.getElementById(parent + '-ai-indicator');
+                // mock: check if last-customer message contains 'AI' keyword to turn on AI indicator for demo
+                const lastMsg = el.querySelector('.last-customer-msg') ? el.querySelector('.last-customer-msg').textContent || '' : '';
+                if (lastMsg.toLowerCase().includes('ai') || lastMsg.toLowerCase().includes('autopilot')) {
+                    aiIndicator.classList.remove('hidden');
+                } else {
+                    aiIndicator.classList.add('hidden');
+                }
+
+                if (ts) {
+                    startCountdownFor(ts, timerEl, sendBarEl);
+                } else {
+                    // no timestamp -> show send bar
+                    if (sendBarEl) sendBarEl.classList.remove('hidden-force');
+                    if (timerEl) timerEl.textContent = '';
+                }
+            }
+
+            // attach handlers
+            document.querySelectorAll('#fb-conversation-list .conv-item').forEach(n => n.addEventListener('click', onConversationClick));
+            document.querySelectorAll('#ig-conversation-list .conv-item').forEach(n => n.addEventListener('click', onConversationClick));
+
+            // Expose simple tab helpers for external calls
+            window.showFacebookTab = function(tab){
+                document.getElementById('fb-tab-inbox').classList.remove('text-white/60');
+                document.getElementById('fb-tab-comments').classList.remove('text-white/60');
+                document.getElementById('fb-tab-inbox').classList.remove('active');
+                document.getElementById('fb-tab-comments').classList.remove('active');
+                if (tab === 'inbox') { document.getElementById('fb-tab-inbox').classList.add('active'); }
+                if (tab === 'comments') { document.getElementById('fb-tab-comments').classList.add('active'); }
+            }
+
+            window.showInstagramTab = function(tab){
+                document.getElementById('ig-tab-dm').classList.remove('text-white/60');
+                document.getElementById('ig-tab-activity').classList.remove('text-white/60');
+                document.getElementById('ig-tab-dm').classList.remove('active');
+                document.getElementById('ig-tab-activity').classList.remove('active');
+                if (tab === 'dm') { document.getElementById('ig-tab-dm').classList.add('active'); }
+                if (tab === 'activity') { document.getElementById('ig-tab-activity').classList.add('active'); }
+            }
+
+        })();
+    </script>
 </body>
 </html>
