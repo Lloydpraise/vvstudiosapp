@@ -415,16 +415,11 @@ function listenForNotifications(businessId) {
 document.addEventListener('DOMContentLoaded', async () => {
     const businessId = window.authUtils.getBusinessId();
 
-    // Event listeners for mobile sidebar toggle
-    const mobileMenuBtn = document.getElementById('mobile-menu-button'); 
+    // Event listeners for mobile sidebar toggle (handled by sidebar.js)
     const sidebar = document.getElementById('sidebar');
     const mobileMenuBackdrop = document.getElementById('mobile-menu-backdrop');
-    
-    if (mobileMenuBtn && sidebar && mobileMenuBackdrop) {
-      mobileMenuBtn.addEventListener('click', () => {
-        sidebar.classList.remove('-translate-x-full');
-        mobileMenuBackdrop.classList.remove('hidden');
-      });
+
+    if (sidebar && mobileMenuBackdrop) {
       mobileMenuBackdrop.addEventListener('click', () => {
         sidebar.classList.add('-translate-x-full');
         mobileMenuBackdrop.classList.add('hidden');

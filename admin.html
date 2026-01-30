@@ -133,6 +133,15 @@
                 <button onclick="router.navigate('support')" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 text-white/70 hover:text-white rounded-xl transition-colors text-left" data-target="support">
                     <i class="fa-solid fa-headset w-5"></i> Support
                 </button>
+                <button onclick="router.navigate('ai-importer')" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 text-white/70 hover:text-white rounded-xl transition-colors text-left" data-target="ai-importer">
+    <i class="fa-solid fa-robot w-5"></i> AI Product Importer
+</button>
+                <button onclick="router.navigate('ai-training')" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 text-white/70 hover:text-white rounded-xl transition-colors text-left" data-target="ai-training">
+    <i class="fa-solid fa-brain w-5"></i> AI Training
+</button>
+<button onclick="router.navigate('tech-logs')" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 text-white/70 hover:text-white rounded-xl transition-colors text-left" data-target="tech-logs">
+    <i class="fa-solid fa-terminal w-5"></i> Tech Logs
+</button>
             </nav>
 
             <div class="p-4 border-t border-[#2b2f3a]">
@@ -220,6 +229,7 @@
                     </div>
                 </div>
 
+               
                 <div id="view-users" class="view-section hidden-force fade-in h-auto">
                     <div class="mb-6 flex gap-4">
                         <div class="relative flex-1">
@@ -511,9 +521,9 @@
                         </div>
                     </div>
 
-                    <div class="flex gap-3">
+                    <div class="flex gap-3 items-center">
                         <button onclick="switchMainView('view-facebook-messenger'); showFacebookTab('inbox')" id="fb-tab-inbox" class="facebook-tab-btn active pb-2 border-b-2 border-blue-500 text-white font-medium whitespace-nowrap">Inbox</button>
-                        <span id="fb-unread-total" class="ml-2 text-xs text-blue-400 hidden"></span>
+                        <span id="fb-unread-total" class="ml-2 text-xs text-blue-400 hidden bg-blue-500/20 px-2 py-1 rounded-full font-semibold"></span>
                         <button onclick="switchMainView('view-facebook-comments'); showFacebookTab('comments')" id="fb-tab-comments" class="facebook-tab-btn pb-2 border-b-2 border-transparent text-white/60 hover:text-white whitespace-nowrap">Comments</button>
                     </div>
                 </div>
@@ -528,9 +538,12 @@
                                 <div class="p-3 mx-2 rounded-lg hover:bg-white/5 cursor-pointer flex gap-3 items-center conv-item" data-last-customer-timestamp="2026-01-21T12:00:00Z">
                                     <img src="https://ui-avatars.com/api/?name=John+Doe&background=0D8ABC&color=fff" class="w-10 h-10 rounded-full">
                                     <div class="flex-1 min-w-0">
-                                        <div class="flex justify-between">
+                                        <div class="flex justify-between items-center">
                                             <h4 class="font-semibold text-sm truncate">John Doe</h4>
-                                            <span class="text-xs text-white/40">12:30 PM</span>
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-xs text-white/40">12:30 PM</span>
+                                                <span class="text-xs bg-blue-500 text-white px-1.5 py-0.5 rounded-full font-semibold">2</span>
+                                            </div>
                                         </div>
                                         <p class="text-xs text-white/60 truncate last-customer-msg">Is this still available?</p>
                                     </div>
@@ -662,9 +675,9 @@
                         </div>
                     </div>
 
-                    <div class="flex gap-3">
+                    <div class="flex gap-3 items-center">
                         <button onclick="switchMainView('view-instagram-direct'); showInstagramTab('dm')" id="ig-tab-dm" class="instagram-tab-btn active pb-2 border-b-2 border-pink-500 text-white font-medium whitespace-nowrap">DM</button>
-                        <span id="ig-unread-total" class="ml-2 text-xs text-pink-400 hidden"></span>
+                        <span id="ig-unread-total" class="ml-2 text-xs text-pink-400 hidden bg-pink-500/20 px-2 py-1 rounded-full font-semibold"></span>
                         <button onclick="switchMainView('view-instagram-comments'); showInstagramTab('activity')" id="ig-tab-activity" class="instagram-tab-btn pb-2 border-b-2 border-transparent text-white/60 hover:text-white whitespace-nowrap">Activity</button>
                     </div>
                 </div>
@@ -679,9 +692,12 @@
                                 <div class="p-3 mx-2 rounded-lg hover:bg-white/5 cursor-pointer flex gap-3 items-center conv-item" data-last-customer-timestamp="2026-01-21T13:15:00Z">
                                     <img src="https://ui-avatars.com/api/?name=Jane+Doe&background=E91E63&color=fff" class="w-10 h-10 rounded-full">
                                     <div class="flex-1 min-w-0">
-                                        <div class="flex justify-between">
+                                        <div class="flex justify-between items-center">
                                             <h4 class="font-semibold text-sm truncate">Jane Doe</h4>
-                                            <span class="text-xs text-white/40">1:15 PM</span>
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-xs text-white/40">1:15 PM</span>
+                                                <span class="text-xs bg-pink-500 text-white px-1.5 py-0.5 rounded-full font-semibold">1</span>
+                                            </div>
                                         </div>
                                         <p class="text-xs text-white/60 truncate last-customer-msg">Love your posts!</p>
                                     </div>
@@ -805,6 +821,187 @@
                     </div>
                 </div>
 
+               <div id="view-ai-training" class="view-section hidden-force fade-in h-full flex flex-row overflow-hidden">
+    
+    <div class="flex-1 flex flex-col h-full min-w-0 pr-6 border-r border-[#2b2f3a]">
+        
+        <div class="mb-6 flex-shrink-0 pt-1">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-3">
+                <i class="fa-solid fa-brain text-purple-500"></i> AI Configuration Center
+            </h2>
+            <div class="flex gap-1 bg-[#1a1d23] p-1 rounded-xl border border-[#2b2f3a] w-fit">
+                 <button onclick="aiManager.switchTab('global')" id="tab-ai-global" class="px-6 py-2 rounded-lg text-sm font-medium transition-all bg-[#2b2f3a] text-white shadow-md">Global Rules</button>
+                 <button onclick="aiManager.switchTab('platform')" id="tab-ai-platform" class="px-6 py-2 rounded-lg text-sm font-medium transition-all text-white/60 hover:text-white hover:bg-white/5">Platform Rules</button>
+                 <button onclick="aiManager.switchTab('business')" id="tab-ai-business" class="px-6 py-2 rounded-lg text-sm font-medium transition-all text-white/60 hover:text-white hover:bg-white/5">Business Context</button>
+            </div>
+        </div>
+
+        <div id="ai-panel-global" class="ai-tab-content h-full flex flex-col pb-2">
+            <div class="bg-[#1a1d23] flex-1 rounded-2xl border border-[#2b2f3a] flex flex-col overflow-hidden">
+                <div class="p-4 border-b border-[#2b2f3a] flex justify-between items-center bg-[#232730]">
+                    <div>
+                        <h3 class="font-bold text-blue-400 text-sm uppercase tracking-wider">Layer 1: Master Instructions</h3>
+                        <p class="text-xs text-white/40 mt-1">Applies to ALL bots. Define tool usage here.</p>
+                    </div>
+                    <button onclick="aiManager.saveGlobal()" class="btn-save px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs font-bold transition-colors flex items-center gap-2"><i class="fa-solid fa-save"></i> Save Global</button>
+                </div>
+                <textarea id="global-system-prompt" class="flex-1 bg-[#0f1115] p-5 text-white font-mono text-sm leading-relaxed focus:outline-none resize-none m-0" placeholder="Loading..."></textarea>
+            </div>
+        </div>
+
+        <div id="ai-panel-platform" class="ai-tab-content hidden-force h-full flex flex-col pb-2">
+            <div class="flex h-full gap-4">
+                <div class="w-16 flex-shrink-0 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] p-2 flex flex-col gap-2 items-center">
+                    <div class="text-[10px] font-bold text-white/30 uppercase text-center mb-1">Chan</div>
+                    
+                    <button onclick="aiManager.loadPlatform('whatsapp')" id="btn-plat-whatsapp" title="WhatsApp" class="w-10 h-10 rounded-xl bg-[#2b2f3a] text-green-400 border border-green-500/30 flex items-center justify-center transition-all hover:bg-[#32363f] hover:scale-105">
+                        <i class="fa-brands fa-whatsapp text-xl"></i>
+                    </button>
+                    
+                    <button onclick="aiManager.loadPlatform('instagram')" id="btn-plat-instagram" title="Instagram" class="w-10 h-10 rounded-xl text-white/40 hover:text-pink-400 hover:bg-white/5 flex items-center justify-center transition-all">
+                        <i class="fa-brands fa-instagram text-xl"></i>
+                    </button>
+                    
+                    <button onclick="aiManager.loadPlatform('facebook')" id="btn-plat-facebook" title="Facebook" class="w-10 h-10 rounded-xl text-white/40 hover:text-blue-400 hover:bg-white/5 flex items-center justify-center transition-all">
+                        <i class="fa-brands fa-facebook text-xl"></i>
+                    </button>
+                    
+                    <button onclick="aiManager.loadPlatform('tiktok')" id="btn-plat-tiktok" title="TikTok" class="w-10 h-10 rounded-xl text-white/40 hover:text-white hover:bg-white/5 flex items-center justify-center transition-all">
+                        <i class="fa-brands fa-tiktok text-xl"></i>
+                    </button>
+                </div>
+
+                <div class="flex-1 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] flex flex-col overflow-hidden">
+                    <div class="p-4 border-b border-[#2b2f3a] flex justify-between items-center bg-[#232730]">
+                        <div>
+                            <h3 class="font-bold text-green-400 text-sm uppercase tracking-wider" id="lbl-plat-title">WhatsApp Rules</h3>
+                            <p class="text-xs text-white/40 mt-1">Layer 2: Formatting & Tone for this channel.</p>
+                        </div>
+                        <button onclick="aiManager.savePlatform()" class="btn-save px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg text-xs font-bold transition-colors flex items-center gap-2"><i class="fa-solid fa-save"></i> Save Rules</button>
+                    </div>
+                    <textarea id="platform-system-prompt" class="flex-1 bg-[#0f1115] p-5 text-white font-mono text-sm leading-relaxed focus:outline-none resize-none m-0" placeholder="Select a platform..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div id="ai-panel-business" class="ai-tab-content hidden-force h-full flex flex-col pb-2">
+            <div class="bg-[#1a1d23] p-4 rounded-2xl border border-[#2b2f3a] mb-4 flex items-center justify-between">
+                <div class="flex items-center gap-4 flex-1">
+                    <div class="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400"><i class="fa-solid fa-store"></i></div>
+                    <div class="flex-1">
+                        <label class="text-xs text-white/40 font-bold uppercase tracking-wider block mb-1">Select Client Business</label>
+                        <select id="ai-business-selector" onchange="aiManager.loadBusinessContext()" class="w-full max-w-md bg-[#0f1115] border border-[#2b2f3a] text-white text-sm rounded-lg px-3 py-2 focus:border-purple-500 focus:outline-none cursor-pointer">
+                            <option value="">Loading businesses...</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="biz-status-badge" class="hidden px-3 py-1 bg-green-500/10 text-green-400 text-xs rounded-full border border-green-500/20">Active</div>
+            </div>
+            <div id="ai-business-editor" class="flex-1 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] flex flex-col overflow-hidden opacity-50 pointer-events-none transition-opacity">
+                 <div class="p-4 border-b border-[#2b2f3a] flex justify-between items-center bg-[#232730]">
+                    <div>
+                        <h3 class="font-bold text-purple-400 text-sm uppercase tracking-wider">Layer 3: Business Context</h3>
+                        <p class="text-xs text-white/40 mt-1">Unique knowledge: Products, Services, & Brand Voice.</p>
+                    </div>
+                    <button onclick="aiManager.saveBusiness()" class="btn-save px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-bold transition-colors flex items-center gap-2"><i class="fa-solid fa-save"></i> Save Context</button>
+                </div>
+                <textarea id="business-system-prompt" class="flex-1 bg-[#0f1115] p-5 text-white font-mono text-sm leading-relaxed focus:outline-none resize-none m-0" placeholder="Please select a business above to edit instructions..."></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div class="w-[420px] flex-shrink-0 flex flex-col h-full bg-[#15181e]">
+        
+        <div class="mb-4 pb-4 border-b border-[#2b2f3a] flex justify-between items-end pt-1">
+            <div>
+                <h3 class="font-bold text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-vial text-green-400"></i> Simulator
+                </h3>
+                <p class="text-xs text-white/40">Test responses safely.</p>
+            </div>
+            <div class="flex bg-[#1a1d23] rounded-lg p-1 border border-[#2b2f3a]">
+                <button onclick="aiPlayground.switchView('lab')" id="btn-pg-lab" title="Your Testing Lab" class="px-3 py-1 text-xs rounded font-medium bg-[#2b2f3a] text-white shadow">
+                    Lab
+                </button>
+                <button onclick="aiPlayground.switchView('suggestions')" id="btn-pg-suggestions" title="Client Suggestions" class="px-3 py-1 text-xs rounded font-medium text-white/50 hover:text-white">
+                    Inbox <span id="suggestion-count" class="hidden ml-1 text-[9px] bg-red-500 px-1 rounded-full text-white">0</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="pg-view-lab" class="flex-1 flex flex-col min-h-0 bg-[#1a1d23] rounded-xl border border-[#2b2f3a] overflow-hidden shadow-xl">
+            <div class="px-4 py-3 bg-[#232730] border-b border-[#2b2f3a] flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span class="text-xs font-bold text-green-400">SAFE MODE</span>
+                </div>
+                <button onclick="aiPlayground.clearChat()" class="text-xs text-white/30 hover:text-white"><i class="fa-solid fa-trash"></i> Clear</button>
+            </div>
+
+            <div id="playground-chat-feed" class="flex-1 overflow-y-auto p-4 space-y-3 bg-[#0f1115] relative">
+                <div class="text-center mt-10 opacity-30">
+                    <i class="fa-solid fa-flask text-4xl mb-3"></i>
+                    <p class="text-xs">Type to test the AI.<br>No real messages are sent.</p>
+                </div>
+            </div>
+
+            <div class="p-3 bg-[#232730] border-t border-[#2b2f3a]">
+                
+                <div class="flex items-center gap-2 mb-2 px-1">
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="pg-use-unsaved" class="sr-only peer">
+                        <div class="w-7 h-4 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-600"></div>
+                        <span class="ml-2 text-[10px] font-medium text-white/60">Test unsaved changes (from left)</span>
+                    </label>
+                </div>
+
+                <div class="flex gap-2">
+                    <textarea id="pg-input" rows="1" class="flex-1 bg-[#1a1d23] border border-[#2b2f3a] rounded-lg px-3 py-2 text-sm text-white focus:border-green-500 focus:outline-none resize-none" placeholder="Say 'Hello'..." onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); aiPlayground.send(); }"></textarea>
+                    <button onclick="aiPlayground.send()" id="pg-send-btn" class="w-10 h-10 rounded-lg bg-green-600 hover:bg-green-500 text-white flex items-center justify-center transition-colors shadow-lg">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="pg-view-suggestions" class="flex-1 hidden-force flex-col min-h-0 bg-[#1a1d23] rounded-xl border border-[#2b2f3a] overflow-hidden">
+            <div class="p-3 bg-[#232730] border-b border-[#2b2f3a] flex justify-between items-center">
+                <span class="text-xs font-bold text-white/50">CLIENT REQUESTS</span>
+                <button onclick="aiPlayground.fetchSuggestions()" class="text-xs text-blue-400 hover:text-white"><i class="fa-solid fa-sync"></i></button>
+            </div>
+            <div id="suggestions-list" class="flex-1 overflow-y-auto p-0">
+                <div class="p-8 text-center text-white/20 text-xs">No pending suggestions.</div>
+            </div>
+        </div>
+
+    </div>
+</div>
+<div id="view-tech-logs" class="view-section hidden-force fade-in h-full flex flex-col pb-6">
+    <div class="flex justify-between items-center mb-6 flex-shrink-0">
+        <div>
+            <h2 class="text-2xl font-bold flex items-center gap-3">
+                <i class="fa-solid fa-heart-pulse text-red-500"></i> Tech Logs
+            </h2>
+            <p class="text-white/50 text-sm mt-1">Real-time inspection of AI decisions, Tool Calls, and Errors.</p>
+        </div>
+        <button onclick="logViewer.refresh()" class="px-4 py-2 bg-[#2b2f3a] hover:bg-[#374151] rounded-xl border border-white/10 text-sm transition-colors">
+            <i class="fa-solid fa-rotate mr-2"></i> Refresh Feed
+        </button>
+    </div>
+
+    <div class="bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] flex-1 overflow-hidden flex flex-col shadow-2xl">
+        <div class="grid grid-cols-12 bg-[#232730] text-white/60 text-xs uppercase font-semibold p-4 border-b border-[#2b2f3a] flex-shrink-0">
+            <div class="col-span-2">Time</div>
+            <div class="col-span-2">Source</div>
+            <div class="col-span-2">Business</div>
+            <div class="col-span-6">Event Details</div>
+        </div>
+        <div id="logs-feed-container" class="overflow-y-auto flex-1 p-2 space-y-1 font-mono text-sm bg-[#0f1115]">
+            <div class="text-center text-white/30 py-12">Click Refresh to load logs...</div>
+        </div>
+    </div>
+</div>
+
                 <div id="view-meetings" class="view-section hidden-force fade-in h-auto">
 <header class="flex justify-between items-center mb-8">
     <div>
@@ -872,6 +1069,74 @@
                     <div class="bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] p-8">
                         <h3 class="text-xl font-bold mb-4">AI Insights & Alerts</h3>
                         <div class="space-y-4" id="alerts-full-list"></div>
+                    </div>
+                </div>
+
+                <div id="view-ai-importer" class="view-section hidden-force h-full flex flex-col p-6 gap-6 max-w-7xl mx-auto overflow-y-auto">
+                    
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h1 class="text-2xl font-bold text-white flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center shadow-lg">
+                                    <i class="fa-solid fa-robot text-white"></i>
+                                </div>
+                                AI Product Importer
+                            </h1>
+                            <p class="text-white/40 text-sm mt-1 ml-14">Bulk upload images • Auto-generate metadata • Review & Publish</p>
+                        </div>
+                        
+                        <div class="flex gap-2 items-center">
+                            <label class="text-xs text-white/50 mr-2">Select Business:</label>
+                            <select id="importerBusinessId" class="input-dark px-3 py-2 rounded-lg text-sm w-48 bg-[#0f1115] text-white border border-[#2b2f3a] focus:border-green-500 outline-none">
+                                <option value="" disabled selected>Loading...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1 min-h-0">
+
+                        <div class="glass-panel rounded-2xl flex flex-col overflow-hidden bg-[#1a1d23] border border-[#2b2f3a]">
+                            <div class="p-4 border-b border-[#2b2f3a] bg-[#232730]">
+                                <h2 class="font-semibold text-sm text-white/80">Upload Queue</h2>
+                            </div>
+
+                            <div class="p-4 flex flex-col gap-4 flex-1 overflow-hidden">
+                                <div class="border-2 border-dashed border-[#2b2f3a] hover:border-green-500/50 bg-[#15171c] rounded-xl p-6 flex flex-col items-center justify-center text-center transition-colors cursor-pointer group" onclick="document.getElementById('aiFileInput').click()">
+                                    <input type="file" id="aiFileInput" multiple accept="image/*" class="hidden" onchange="handleAiFileSelect(this)">
+                                    <div class="w-10 h-10 rounded-full bg-[#2b2f3a] group-hover:bg-[#374151] flex items-center justify-center mb-2 transition-colors">
+                                        <i class="fa-solid fa-cloud-arrow-up text-green-400 text-lg"></i>
+                                    </div>
+                                    <p class="text-white font-medium text-xs">Click to select product images</p>
+                                    <p class="text-white/30 text-xs mt-1">Supports JPG, PNG, WEBP</p>
+                                </div>
+
+                                <button onclick="startAiProcessing()" id="aiProcessBtn" class="w-full py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-lg font-bold shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+                                    <i class="fa-solid fa-play mr-2"></i> Start Processing
+                                </button>
+
+                                <div id="aiQueueList" class="flex-1 overflow-y-auto space-y-2 pr-1">
+                                    <div class="text-center text-white/20 text-xs py-10 italic" id="aiEmptyQueueMsg">
+                                        No images selected yet
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="lg:col-span-3 glass-panel rounded-2xl flex flex-col overflow-hidden bg-[#1a1d23] border border-[#2b2f3a]">
+                            <div class="p-4 border-b border-[#2b2f3a] bg-[#232730] flex justify-between items-center">
+                                <h2 class="font-semibold text-sm text-white/80">Product Review <span id="aiReviewCount" class="bg-[#2b2f3a] text-white/60 px-2 py-0.5 rounded text-xs ml-2">0</span></h2>
+                                <div class="text-xs text-white/40">
+                                    <i class="fa-solid fa-circle-info mr-1"></i> Edit lists as one item per line
+                                </div>
+                            </div>
+
+                            <div id="aiReviewContainer" class="flex-1 overflow-y-auto p-4 grid grid-cols-1 xl:grid-cols-2 gap-4 content-start">
+                                <div class="col-span-full h-full flex flex-col items-center justify-center text-white/30">
+                                    <i class="fa-solid fa-boxes-stacked text-5xl mb-4 opacity-50"></i>
+                                    <p>Processed products will appear here for review.</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -1319,5 +1584,484 @@
 
         })();
     </script>
+    <script>
+    // --- AI TRAINING LOGIC CONTROLLER ---
+const aiManager = {
+    currentBizId: null,
+    currentPlatform: 'whatsapp', // Default view
+
+    // 1. TABS: Handles switching between Global, Platform, and Business views
+    switchTab: function(tabName) {
+        // Hide all panels
+        ['global', 'platform', 'business'].forEach(t => {
+            document.getElementById(`ai-panel-${t}`).classList.add('hidden-force');
+            // Reset button style
+            const btn = document.getElementById(`tab-ai-${t}`);
+            btn.className = "px-6 py-2 rounded-lg text-sm font-medium transition-all text-white/60 hover:text-white hover:bg-white/5 border border-transparent";
+        });
+
+        // Show active panel
+        document.getElementById(`ai-panel-${tabName}`).classList.remove('hidden-force');
+        const activeBtn = document.getElementById(`tab-ai-${tabName}`);
+        activeBtn.className = "px-6 py-2 rounded-lg text-sm font-medium transition-all bg-[#2b2f3a] text-white shadow-md border border-white/5";
+
+        // Trigger Data Load
+        if(tabName === 'global') this.loadGlobal();
+        if(tabName === 'platform') this.loadPlatform(this.currentPlatform);
+        if(tabName === 'business') this.initBusinessSelector();
+    },
+
+    // 2. GLOBAL: 'global_config' table
+    loadGlobal: async function() {
+        const field = document.getElementById('global-system-prompt');
+        field.parentElement.classList.add('opacity-50');
+        const { data } = await supabase.from('global_config').select('master_system_prompt').eq('id', 1).maybeSingle();
+        field.value = data?.master_system_prompt || "";
+        field.parentElement.classList.remove('opacity-50');
+    },
+    saveGlobal: async function() {
+        const val = document.getElementById('global-system-prompt').value;
+        await aiManager.performSave('global_config', { id: 1, master_system_prompt: val }, 'global');
+    },
+
+    // 3. PLATFORM: 'platform_rules' table
+    loadPlatform: async function(plat) {
+        this.currentPlatform = plat;
+
+        // Update Sidebar Styles
+        ['whatsapp', 'instagram', 'facebook', 'tiktok'].forEach(p => {
+            const btn = document.getElementById(`btn-plat-${p}`);
+            if(p === plat) {
+                // Active State
+                btn.className = "w-full text-left px-4 py-3 rounded-xl bg-[#2b2f3a] text-white border border-white/10 flex items-center gap-3 shadow-lg transform scale-[1.02] transition-all";
+                if(p === 'whatsapp') btn.classList.add('border-green-500/30');
+                if(p === 'instagram') btn.classList.add('border-pink-500/30');
+                if(p === 'facebook') btn.classList.add('border-blue-500/30');
+            } else {
+                // Inactive State
+                btn.className = "w-full text-left px-4 py-3 rounded-xl text-white/60 hover:bg-white/5 flex items-center gap-3 transition-all border border-transparent";
+            }
+        });
+
+        // Update Header
+        const titles = { whatsapp: 'WhatsApp Rules', instagram: 'Instagram Rules', facebook: 'Facebook Rules', tiktok: 'TikTok Rules' };
+        document.getElementById('lbl-plat-title').innerText = titles[plat] || 'Platform Rules';
+
+        // Load Data
+        const field = document.getElementById('platform-system-prompt');
+        field.value = "Loading...";
+        const { data } = await supabase.from('platform_rules').select('instruction').eq('platform', plat).maybeSingle();
+        field.value = data?.instruction || "";
+    },
+    savePlatform: async function() {
+        const val = document.getElementById('platform-system-prompt').value;
+        // Upsert based on Platform Name (PK)
+        await aiManager.performSave('platform_rules', { platform: this.currentPlatform, instruction: val }, 'platform');
+    },
+
+    // 4. BUSINESS: 'businesses' table
+    initBusinessSelector: async function() {
+        const selector = document.getElementById('ai-business-selector');
+        if(selector.options.length > 1) return; // Don't reload if already loaded
+
+        const { data } = await supabase.from('businesses').select('business_id, name').eq('subscription_active', true);
+        if(data) {
+            selector.innerHTML = '<option value="">-- Select a Client Business --</option>';
+            data.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.business_id; // Using text ID as per your schema
+                opt.innerText = b.name;
+                selector.appendChild(opt);
+            });
+        }
+    },
+    loadBusinessContext: async function() {
+        const bizId = document.getElementById('ai-business-selector').value;
+        const editor = document.getElementById('ai-business-editor');
+        const field = document.getElementById('business-system-prompt');
+
+        if(!bizId) {
+            this.currentBizId = null;
+            editor.classList.add('opacity-50', 'pointer-events-none');
+            field.value = "";
+            field.placeholder = "Please select a business above to edit instructions...";
+            return;
+        }
+
+        this.currentBizId = bizId;
+        editor.classList.remove('opacity-50', 'pointer-events-none');
+        field.value = "Loading business instructions...";
+
+        const { data } = await supabase.from('businesses').select('system_prompt').eq('business_id', bizId).maybeSingle();
+        const businessName = document.querySelector(`#ai-business-selector option[value="${bizId}"]`).textContent;
+        const promptValue = data?.system_prompt || "";
+        field.value = promptValue;
+        field.placeholder = promptValue ? "" : `Add instructions for ${businessName} AI Chatbots.`;
+    },
+    saveBusiness: async function() {
+        if(!this.currentBizId) return;
+        const val = document.getElementById('business-system-prompt').value;
+        // Update businesses table
+        await aiManager.performSave('businesses', { system_prompt: val }, 'business', 'business_id', this.currentBizId);
+    },
+
+    // 5. GENERIC SAVE HELPER
+    performSave: async function(table, payload, section, matchCol = null, matchVal = null) {
+        const sectionDiv = document.getElementById(`ai-panel-${section}`);
+        const btn = sectionDiv.querySelector('.btn-save');
+        const originalContent = btn.innerHTML;
+
+        // Loading State
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Saving...';
+        btn.disabled = true;
+
+        let query = supabase.from(table);
+        let error;
+
+        // Execute Update or Upsert
+        if (matchCol) {
+            const { error: err } = await query.update(payload).eq(matchCol, matchVal);
+            error = err;
+        } else {
+            const { error: err } = await query.upsert(payload);
+            error = err;
+        }
+
+        if (error) {
+            console.error(error);
+            alert('Save failed: ' + error.message);
+            btn.innerHTML = originalContent;
+        } else {
+            // Success State
+            setTimeout(() => {
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> Saved!';
+                btn.classList.remove('bg-blue-600', 'bg-green-600', 'bg-purple-600');
+                btn.classList.add('bg-emerald-500');
+
+                setTimeout(() => {
+                    btn.innerHTML = originalContent;
+                    btn.disabled = false;
+                    // Restore original colors
+                    btn.classList.remove('bg-emerald-500');
+                    if(section === 'global') btn.classList.add('bg-blue-600');
+                    if(section === 'platform') btn.classList.add('bg-green-600');
+                    if(section === 'business') btn.classList.add('bg-purple-600');
+                }, 1500);
+            }, 500);
+        }
+    }
+};
+
+// --- LOG VIEWER (REALTIME UPGRADE) --
+// --- LOG VIEWER (FIXED) ---
+const logViewer = {
+    // Helper: Generate HTML for a row
+    createRowHtml: function(log) {
+        const time = new Date(log.created_at).toLocaleTimeString();
+        
+        let sourceBadge = 'bg-blue-500/20 text-blue-400';
+        if (log.source.includes('tool')) sourceBadge = 'bg-purple-500/20 text-purple-400';
+        if (log.source.includes('openai')) sourceBadge = 'bg-green-500/20 text-green-400';
+        if (log.level === 'error') sourceBadge = 'bg-red-500/20 text-red-400';
+        
+        const metaString = log.metadata ? JSON.stringify(log.metadata, null, 2) : '';
+        const rowId = 'log-meta-' + log.id;
+        
+        return `
+            <div id="row-${log.id}" class="hover:bg-white/5 border-b border-[#2b2f3a] last:border-0 transition-all duration-500">
+                <div class="grid grid-cols-12 p-3 items-start gap-4 cursor-pointer" onclick="document.getElementById('${rowId}').classList.toggle('hidden-force')">
+                    <div class="col-span-2 text-white/40 text-xs mt-1 font-mono">${time}</div>
+                    <div class="col-span-2">
+                        <span class="${sourceBadge} px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider">${log.source}</span>
+                    </div>
+                    <div class="col-span-2 text-white/60 text-xs truncate" title="${log.business_id}">${log.business_id || '-'}</div>
+                    <div class="col-span-6 text-white/90 text-sm flex items-center gap-2">
+                        ${log.message || 'Event occurred'}
+                        ${log.metadata ? '<i class="fa-solid fa-chevron-down text-white/20 text-xs group-hover:text-white/60"></i>' : ''}
+                    </div>
+                </div>
+                ${log.metadata ? `
+                <div id="${rowId}" class="hidden-force bg-[#0b0d10] p-4 text-xs text-green-400 font-mono overflow-x-auto border-t border-[#2b2f3a] mx-4 mb-2 rounded-lg shadow-inner">
+                    <pre>${metaString}</pre>
+                </div>` : ''}
+            </div>
+        `;
+    },
+
+    // 1. Initial Load
+    refresh: async function() {
+        const container = document.getElementById('logs-feed-container');
+        if(!container) return;
+        
+        container.innerHTML = '<div class="text-center text-white/30 py-8"><i class="fa-solid fa-spinner fa-spin"></i> Loading history...</div>';
+        
+        const { data: logs, error } = await supabase
+            .from('tech_logs')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(50);
+        
+        if(error) {
+            container.innerHTML = `<div class="text-red-400 p-4">Error: ${error.message}</div>`;
+            return;
+        }
+        
+        container.innerHTML = ''; 
+        if(!logs || logs.length === 0) {
+             container.innerHTML = '<div class="text-white/30 text-center py-12">No recent activity. Waiting for live events...</div>';
+             return;
+        }
+        
+        logs.forEach(log => {
+            container.insertAdjacentHTML('beforeend', this.createRowHtml(log));
+        });
+    },
+
+    // 2. Realtime Listener
+    initRealtime: function() {
+        console.log("🟢 Initializing Tech Log Stream...");
+        const container = document.getElementById('logs-feed-container');
+        if(!container) return;
+
+        supabase.channel('tech-logs-live')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'tech_logs' },
+          (payload) => {
+            const newLog = payload.new;
+            
+            if(container.innerText.includes('No recent activity')) container.innerHTML = '';
+            
+            const html = this.createRowHtml(newLog);
+            container.insertAdjacentHTML('afterbegin', html);
+            
+            const row = document.getElementById(`row-${newLog.id}`);
+            if(row) {
+                row.style.backgroundColor = "rgba(59, 130, 246, 0.2)";
+                setTimeout(() => { row.style.backgroundColor = ""; }, 1000);
+            }
+          }
+        )
+        .subscribe((status) => {
+            if (status === 'SUBSCRIBED') console.log("✅ Listening for AI events...");
+        });
+    }
+};
+
+// Start listener
+if(document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => logViewer.initRealtime());
+} else {
+    logViewer.initRealtime();
+}
+
+// --- AI IMPORTER LOGIC ---
+
+let aiQueue = [];
+let isAiProcessing = false;
+
+// 1. Initialize & Load Businesses
+async function initAiImporter() {
+    const select = document.getElementById('importerBusinessId');
+    select.innerHTML = '<option>Loading...</option>';
+    
+    // Assuming you have a 'businesses' table. Adjust column names if needed.
+    const { data, error } = await supabase.from('businesses').select('business_id, name').eq('subscription_active', true);
+
+    if (error || !data) {
+        select.innerHTML = '<option value="">Error loading businesses</option>';
+        return;
+    }
+
+    select.innerHTML = '<option value="" disabled selected>Select Business</option>';
+    data.forEach(biz => {
+        const opt = document.createElement('option');
+        opt.value = biz.business_id;
+        opt.innerText = biz.name || biz.business_id;
+        select.appendChild(opt);
+    });
+}
+
+// Call this when the admin loads
+document.addEventListener('DOMContentLoaded', initAiImporter);
+
+// 2. File Handling
+window.handleAiFileSelect = (input) => {
+    const files = Array.from(input.files);
+    if (files.length === 0) return;
+
+    document.getElementById('aiEmptyQueueMsg').classList.add('hidden');
+    const queueList = document.getElementById('aiQueueList');
+
+    files.forEach(file => {
+        const id = Math.random().toString(36).substr(2, 9);
+        aiQueue.push({ id, file, status: 'waiting' });
+
+        const el = document.createElement('div');
+        el.id = `q-${id}`;
+        el.className = "flex items-center gap-3 p-3 rounded-lg bg-[#0f1115] border border-[#2b2f3a] fade-in";
+        el.innerHTML = `
+            <div class="w-10 h-10 rounded bg-[#1a1d23] overflow-hidden flex-shrink-0">
+                <img src="${URL.createObjectURL(file)}" class="w-full h-full object-cover opacity-70">
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium truncate text-white/90">${file.name}</div>
+                <div class="text-xs text-white/40" id="status-${id}">Waiting...</div>
+            </div>
+            <div id="icon-${id}" class="text-white/30 pr-2">
+                <i class="fa-regular fa-clock"></i>
+            </div>
+        `;
+        queueList.appendChild(el);
+    });
+    input.value = ''; 
+};
+
+// Helper: Convert file to Base64
+function toBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+}
+
+// 3. Process Logic (Calls Edge Function)
+window.startAiProcessing = async () => {
+    if (isAiProcessing) return;
+    
+    const businessId = document.getElementById('importerBusinessId').value;
+    if (!businessId) return alert("Please select a business first.");
+    
+    isAiProcessing = true;
+    const btn = document.getElementById('aiProcessBtn');
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Processing...`;
+
+    try {
+        for (let item of aiQueue) {
+            if (item.status !== 'waiting') continue;
+
+            updateAiStatus(item.id, 'processing');
+            
+            try {
+                // Convert to Base64
+                const base64 = await toBase64(item.file);
+                
+                // CALL EDGE FUNCTION
+                const { data, error } = await supabase.functions.invoke('process-product-image', {
+                    body: { 
+                        imageBase64: base64,
+                        fileName: item.file.name,
+                        businessId: businessId 
+                    }
+                });
+
+                if (error) throw new Error(error.message);
+                if (!data.success) throw new Error(data.error || "Unknown Error");
+
+                // Success
+                updateAiStatus(item.id, 'done');
+                addAiReviewCard(data.newId, data.data, data.publicUrl);
+                
+                // Update counter
+                const countEl = document.getElementById('aiReviewCount');
+                countEl.innerText = parseInt(countEl.innerText) + 1;
+                
+                // Pause to prevent rate limits
+                await new Promise(r => setTimeout(r, 1000));
+
+            } catch (err) {
+                console.error(err);
+                updateAiStatus(item.id, 'error', err.message);
+            }
+        }
+    } catch (mainErr) {
+        alert("Critical Error: " + mainErr.message);
+    }
+
+    isAiProcessing = false;
+    btn.disabled = false;
+    btn.innerHTML = `<i class="fa-solid fa-play mr-2"></i> Start Processing`;
+};
+
+// 4. Helpers
+function updateAiStatus(id, status, msg = '') {
+    const item = aiQueue.find(i => i.id === id);
+    if(item) item.status = status;
+
+    const stEl = document.getElementById(`status-${id}`);
+    const icEl = document.getElementById(`icon-${id}`);
+    const row = document.getElementById(`q-${id}`);
+
+    if (status === 'processing') {
+        stEl.innerText = "Analyzing & Uploading...";
+        stEl.className = "text-xs text-green-400";
+        icEl.innerHTML = `<div class="loader"></div>`;
+        row.style.borderColor = "#10b981"; 
+    } else if (status === 'done') {
+        stEl.innerText = "Complete";
+        stEl.className = "text-xs text-green-500";
+        icEl.innerHTML = `<i class="fa-solid fa-check text-green-500"></i>`;
+        row.style.borderColor = "#22c55e";
+    } else if (status === 'error') {
+        stEl.innerText = msg || "Failed";
+        stEl.className = "text-xs text-red-500";
+        icEl.innerHTML = `<i class="fa-solid fa-circle-exclamation text-red-500"></i>`;
+        row.style.borderColor = "#ef4444";
+    }
+}
+
+function addAiReviewCard(dbId, data, imgUrl) {
+    const container = document.getElementById('aiReviewContainer');
+    // Clear placeholder if it exists
+    if (container.children[0]?.tagName === 'DIV' && container.children[0].className.includes('col-span-full')) {
+        container.innerHTML = '';
+    }
+
+    const card = document.createElement('div');
+    card.className = "bg-[#0f1115] border border-[#2b2f3a] rounded-xl overflow-hidden flex flex-col md:flex-row gap-4 p-4 fade-in relative group";
+    // (Note: I kept your review card HTML exactly as requested, just updated IDs to be unique)
+    card.innerHTML = `
+        <div class="w-full md:w-32 h-32 bg-[#1a1d23] rounded-lg overflow-hidden flex-shrink-0 border border-[#2b2f3a]">
+            <img src="${imgUrl}" class="w-full h-full object-cover">
+        </div>
+        <div class="flex-1 space-y-3 min-w-0">
+            <div>
+                <label class="text-[10px] uppercase text-white/40 font-bold tracking-wider">Product Title</label>
+                <input type="text" id="title-${dbId}" value="${(data.title || '').replace(/"/g, '&quot;')}" class="w-full bg-transparent border-b border-[#2b2f3a] focus:border-green-500 text-white font-medium pb-1 outline-none transition-colors">
+            </div>
+            <div class="flex gap-4">
+                 <div class="w-1/2">
+                    <label class="text-[10px] uppercase text-white/40 font-bold tracking-wider">Price</label>
+                    <input type="number" id="price-${dbId}" value="${data.price}" class="w-full bg-transparent border-b border-[#2b2f3a] focus:border-green-500 text-white pb-1 outline-none transition-colors">
+                </div>
+                <div class="w-1/2 flex items-end justify-end">
+                    <button onclick="updateProduct('${dbId}')" id="btn-${dbId}" class="px-4 py-1.5 bg-[#2b2f3a] hover:bg-green-600 text-white text-xs rounded-md transition-colors shadow flex items-center gap-2">
+                        <i class="fa-solid fa-save"></i> Save
+                    </button>
+                </div>
+            </div>
+            <div>
+                <label class="text-[10px] uppercase text-white/40 font-bold tracking-wider">Short Description</label>
+                <textarea id="desc-short-${dbId}" rows="2" class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded p-2 text-xs text-white/80 focus:border-green-500 outline-none resize-none">${data.description_short || ''}</textarea>
+            </div>
+            <div>
+                <label class="text-[10px] uppercase text-white/40 font-bold tracking-wider">Key Features (One per line)</label>
+                <textarea id="features-${dbId}" rows="4" class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded p-2 text-xs text-white/80 focus:border-green-500 outline-none resize-none">${(data.key_features || []).join('\n')}</textarea>
+            </div>
+            <div>
+                <label class="text-[10px] uppercase text-white/40 font-bold tracking-wider">Long Description (Markdown)</label>
+                <textarea id="desc-long-${dbId}" rows="6" class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded p-2 text-xs text-white/80 focus:border-green-500 outline-none resize-none">${data.description_long || ''}</textarea>
+            </div>
+        </div>
+    `;
+    container.prepend(card);
+}
+
+// Keep your existing toBase64 and updateProduct functions, they are fine.
+</script>
+
 </body>
 </html>

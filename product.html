@@ -129,6 +129,9 @@
         [data-theme="light"] .mobile-sticky-btn button {
             color: white !important;
         }
+        .inblock-whatsapp, .mobile-sticky-btn button {
+            color: white !important;
+        }
     </style>
     <script>(function(){try{var t=null;try{t=localStorage.getItem('vvTheme')}catch(e){} if(!t) t='light'; if(t==='light') document.documentElement.setAttribute('data-theme','light'); else document.documentElement.removeAttribute('data-theme');}catch(e){} })();</script>
     <link rel="stylesheet" href="theme.css">
@@ -180,7 +183,7 @@
             
             <div class="space-y-4">
                 <div class="aspect-square w-full rounded-2xl overflow-hidden bg-gray-100 relative group theme-card shadow-sm">
-                    <img id="main-image" src="" alt="Product Image" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
+                    <img id="main-image" src="" alt="Product Image" class="w-full h-full object-cover">
                     
                     <div id="offer-badge" class="hidden absolute top-4 left-4 flash-badge text-xs font-bold px-3 py-1 rounded-full shadow-lg z-10">
                         SALE
@@ -242,15 +245,10 @@
                 </div>
 
                 <div class="mt-8 theme-card rounded-2xl overflow-hidden shadow-sm">
-                    <button id="desc-toggle" class="w-full px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
-                        <div>
-                            <span class="font-semibold text-main">Full Details</span>
-                            <p id="desc-preview" class="text-sm text-muted mt-1"></p>
-                        </div>
-                        <i class="fa-solid fa-chevron-down transition-transform text-muted mt-3 sm:mt-0" id="desc-chevron"></i>
-                    </button>
-                    <div id="desc-content" class="hidden border-t border-border">
-                        <div class="p-6 text-muted text-sm leading-relaxed" id="product-desc-long"></div>
+                    <div class="px-6 py-4">
+                        <div class="font-semibold text-main mb-3">Full Details</div>
+                        <div id="product-desc-long" class="text-muted text-sm leading-relaxed"></div>
+                        <button id="show-more-btn" class="hidden mt-2 text-primary font-medium text-sm hover:underline">Show More</button>
                     </div>
                 </div>
             </div>

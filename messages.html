@@ -1,553 +1,734 @@
-	<script>
-		// Ensure a Supabase client exists when opening this page standalone.
-		(function(){
-			try {
-				const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
-				const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Messages - VV Studios</title>
 
-				// If the bundled supabase library is available as `supabase` namespace,
-				// create a reusable client instance and expose it as `window.supabase`.
-				if (window.supabase && typeof window.supabase.createClient === 'function') {
-					try {
-						const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-						client.supabaseKey = SUPABASE_KEY;
-						window.supabase = client;
-						if (!window.supabaseClient) window.supabaseClient = client;
-						console.log('Supabase client initialized for messages.html');
-					} catch (e) { console.warn('Could not create Supabase client', e); }
-				} else if (window.supabase && typeof window.supabase.from === 'function') {
-					// Already a client instance; ensure supabaseKey exists for code that references it
-					try { if (!window.supabase.supabaseKey) window.supabase.supabaseKey = SUPABASE_KEY; } catch(e){}
-				} else {
-					// Library missing (network blocked or older browser). Messaging features will be limited.
-					console.warn('Supabase library not found; messaging may be limited.');
-				}
-			} catch (err) { console.warn('Supabase init error', err); }
-		})();
-	</script>
-	<script src="messages.js"></script>
-	<script>
-		// Ensure the UI shows the chats tab when this page opens standalone.
-		document.addEventListener('DOMContentLoaded', () => {
-			try {
-				setTimeout(() => { if (window.crm && typeof window.crm.switchTab === 'function') window.crm.switchTab('chats'); }, 300);
-			} catch (e) { console.warn('Post-load UI init failed', e); }
-		});
-	</script>
-	<script>
-		// Minimal switchMainView and tab helpers so fragments like #view-whatsapp work
-		function switchMainView(viewId) {
-			document.querySelectorAll('.view-section').forEach(v => { v.classList.add('hidden-force'); v.classList.add('hidden'); });
-			var target = document.getElementById(viewId);
-			if (!target) {
-				if (viewId === 'view-facebook') target = document.getElementById('view-facebook-messenger');
-				if (viewId === 'view-instagram') target = document.getElementById('view-instagram-direct');
-			}
-			if (target) { target.classList.remove('hidden-force'); target.classList.remove('hidden'); }
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-			// Show/hide persistent headers for FB/IG
-			var fbHeader = document.getElementById('facebook-header');
-			var igHeader = document.getElementById('instagram-header');
-			var isFb = viewId && viewId.indexOf('facebook') !== -1;
-			var isIg = viewId && viewId.indexOf('instagram') !== -1;
-			if (fbHeader) { if (isFb) { fbHeader.classList.remove('hidden-force'); fbHeader.classList.remove('hidden'); } else { fbHeader.classList.add('hidden-force'); fbHeader.classList.add('hidden'); } }
-			if (igHeader) { if (isIg) { igHeader.classList.remove('hidden-force'); igHeader.classList.remove('hidden'); } else { igHeader.classList.add('hidden-force'); igHeader.classList.add('hidden'); } }
-		}
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f1115; color: white; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background-color: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: #374151; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: #4b5563; }
 
-		function showFacebookTab(tab) {
-			try {
-				document.querySelectorAll('.facebook-view').forEach(v => v.classList.add('hidden'));
-				var el = document.getElementById('facebook-' + tab);
-				if (el) el.classList.remove('hidden');
-			} catch (e) { }
-		}
+        /* Navigation Animations */
+        .nav-item { position: relative; transition: color 0.3s; }
+        .nav-item::after {
+            content: ''; position: absolute; bottom: -18px; left: 0; width: 100%; height: 3px;
+            background-color: transparent; transition: background-color 0.3s; border-radius: 3px 3px 0 0;
+        }
+        .nav-item.active::after { background-color: currentColor; }
 
-		function showInstagramTab(tab) {
-			try {
-				document.querySelectorAll('.instagram-view').forEach(v => v.classList.add('hidden'));
-				var el = document.getElementById('instagram-' + tab);
-				if (el) el.classList.remove('hidden');
-			} catch (e) { }
-		}
+        .sub-nav-item { position: relative; padding-bottom: 8px; color: #9ca3af; transition: all 0.2s; }
+        .sub-nav-item:hover { color: white; }
+        .sub-nav-item.active { color: white; font-weight: 600; }
+        .sub-nav-item.active::after {
+            content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 2px;
+            background-color: #a855f7; /* Default Purple */
+        }
 
-		// Handle fragment navigation when arriving from sidebar links
-		document.addEventListener('DOMContentLoaded', () => {
-			try {
-				const hash = (location.hash || '').replace(/^#/, '');
-				if (hash) {
-					// Accept both plain names and view- prefixed ids
-					const viewId = hash.indexOf('view-') === 0 ? hash : `view-${hash}`;
-					setTimeout(() => switchMainView(viewId), 200);
-				}
-			} catch (e) { console.warn('Fragment navigation failed', e); }
-		});
-	</script>
+        /* Platform Specific Accent Colors for Sub-Nav underline */
+        .platform-whatsapp .sub-nav-item.active::after { background-color: #22c55e; }
+        .platform-facebook .sub-nav-item.active::after { background-color: #3b82f6; }
+        .platform-instagram .sub-nav-item.active::after { background: linear-gradient(90deg, #f09433, #bc1888); }
+        .platform-tiktok .sub-nav-item.active::after { background-color: #2dd4bf; }
 
-				<div id="crm-tab-content" class="flex-1 overflow-hidden relative">
-                    
-					<div id="crm-chats" class="crm-view h-full flex gap-4 relative">
-						<div id="crm-chat-list-panel" class="w-full md:w-1/3 lg:w-1/4 bg-[#1a1d23] border border-[#2b2f3a] rounded-xl flex flex-col h-full">
-							<div class="p-4 border-b border-[#2b2f3a]">
-								<div class="relative">
-									<i class="fa-solid fa-search absolute left-3 top-3 text-white/30 text-xs"></i>
-									<input type="text" placeholder="Search..." class="w-full bg-[#0f1115] rounded-lg pl-8 pr-3 py-2 text-sm text-white focus:outline-none border border-transparent">
-								</div>
-							</div>
-							<div id="crm-contact-list" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
-						</div>
+        /* Utility */
+        .hidden-force { display: none !important; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-						<div id="crm-chat-window" class="hidden md:flex flex-1 bg-[#1a1d23] border border-[#2b2f3a] rounded-xl flex-col h-full relative overflow-hidden">
-							<div class="p-3 border-b border-[#2b2f3a] flex justify-between items-center bg-[#202c33] z-10">
-								<div class="flex items-center gap-3">
-									<button onclick="crm.closeMobileChat()" class="md:hidden text-white/70 mr-2"><i class="fa-solid fa-arrow-left"></i></button>
-									<div class="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold relative">
-										<span id="chat-header-avatar">?</span>
-									</div>
-									<div>
-											<div class="font-bold text-sm cursor-pointer" id="chat-header-name" title="View contact">Select a contact</div>
-										<div class="flex items-center gap-2">
-											<div id="chat-header-indicator" class="w-2 h-2 rounded-full bg-gray-500"></div>
-											<div class="text-xs text-white/50" id="chat-header-status">...</div>
-										</div>
-									</div>
-								</div>
-								<div class="flex items-center gap-3">
-									<div class="flex items-center gap-2 mr-2 bg-white/5 px-3 py-1 rounded-full border border-white/10">
-										<span class="text-xs text-white/60"><i class="fa-solid fa-robot mr-1"></i> Auto-Pilot</span>
-										<button id="ai-toggle-btn" onclick="crm.toggleAI()" class="w-8 h-4 rounded-full bg-gray-600 relative transition-colors">
-											<div class="w-2 h-2 bg-white rounded-full absolute top-1 left-1 transition-all"></div>
-										</button>
-									</div>
-										<button id="contact-notes-btn" onclick="crm.openContactModal()" class="px-3 py-1 bg-white/5 hover:bg-white/10 text-xs rounded-md border border-white/10 flex items-center gap-2">
-											<i class="fa-regular fa-note-sticky"></i>
-											Notes
-										</button>
-								</div>
-							</div>
+        /* Mobile Chat Window Overlay */
+        @media (max-width: 768px) {
+            .mobile-chat-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 50;
+                background-color: #1a1d23;
+                border: none;
+                border-radius: 0;
+                width: 100%;
+                height: 100%;
+                max-height: none;
+            }
 
-							<div id="crm-messages-area" class="flex-1 overflow-y-auto p-4 space-y-3 bg-[#0b141a] chat-bg relative">
-								<div class="flex h-full items-center justify-center text-white/30 text-sm flex-col">
-									<i class="fa-brands fa-whatsapp text-4xl mb-3 opacity-50"></i>
-									<p>Select a conversation</p>
-								</div>
-							</div>
+            .mobile-chat-overlay.hidden {
+                display: none !important;
+            }
 
-							<div id="chat-input-container" class="p-3 bg-[#202c33] flex gap-2 items-center hidden">
-								<input type="file" id="chat-file-upload" class="hidden" onchange="alert('File uploaded (Mock)')">
-								<button onclick="document.getElementById('chat-file-upload').click()" class="text-white/50 hover:text-white p-2"><i class="fa-solid fa-paperclip"></i></button>
-								<input type="text" id="chat-input" placeholder="Type a message..." class="flex-1 bg-[#2a3942] rounded-lg px-4 py-3 text-sm text-white focus:outline-none" onkeypress="if(event.key === 'Enter') crm.sendMessage()">
-								<button onclick="crm.sendMessage()" class="p-3 bg-[#005c4b] hover:bg-[#005c4b]/80 rounded-full text-white w-10 h-10 flex items-center justify-center shadow-lg"><i class="fa-solid fa-paper-plane text-sm"></i></button>
-							</div>
-                            
-							<div id="chat-input-disabled" class="p-4 bg-[#202c33] text-center text-xs text-white/40 border-t border-[#2b2f3a] hidden">
-								<i class="fa-solid fa-robot mr-2"></i> AI Auto-Pilot is active. Turn off to type manually.
-							</div>
-						</div>
-					</div>
+            .mobile-chat-list-hidden {
+                display: none !important;
+            }
 
-					<div id="crm-lists" class="crm-view hidden-force h-full overflow-y-auto">
-						<div id="lists-grid-view">
-							<div class="bg-[#1a1d23] rounded-xl border border-[#2b2f3a] p-6">
-								<div class="flex justify-between items-center mb-6">
-									<h3 class="font-bold text-xl">Contact Lists</h3>
-									<button onclick="crm.createNewList()" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-sm text-white font-medium">
-										<i class="fa-solid fa-plus mr-2"></i> Create List
-									</button>
-								</div>
-								<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="crm-lists-container"></div>
-							</div>
-						</div>
+            .mobile-close-btn {
+                display: flex !important;
+            }
 
-						<div id="lists-detail-view" class="hidden-force flex flex-col h-full bg-[#1a1d23] rounded-xl border border-[#2b2f3a] overflow-hidden">
-							<div class="p-4 border-b border-[#2b2f3a] flex items-center justify-between bg-[#232730]">
-								<div class="flex items-center gap-4">
-									<button onclick="crm.closeListDetails()" class="text-white/60 hover:text-white"><i class="fa-solid fa-arrow-left"></i> Back</button>
-									<div>
-										<h3 class="font-bold text-lg" id="detail-list-name">List Name</h3>
-										<div class="text-xs text-white/50 flex gap-3">
-											<span id="detail-list-date">Created: ...</span>
-											<span class="text-purple-400" id="detail-list-campaigns">Active: None</span>
-										</div>
-									</div>
-								</div>
-							</div>
-							<div class="flex-1 overflow-auto">
-								<table class="w-full text-left">
-									<thead class="bg-[#14161a] text-xs uppercase text-white/50 sticky top-0">
-										<tr>
-											<th class="p-4">Name</th>
-											<th class="p-4">Phone</th>
-											<th class="p-4">Last Interaction</th>
-											<th class="p-4">Status</th>
-										</tr>
-									</thead>
-									<tbody id="detail-list-tbody" class="text-sm divide-y divide-[#2b2f3a]"></tbody>
-								</table>
-							</div>
-						</div>
-					</div>
+            /* On mobile, hide chat list when a chat is open */
+            #crm-chats .mobile-chat-list-hidden {
+                display: none !important;
+            }
 
-					<div id="crm-campaigns" class="crm-view hidden-force h-full overflow-y-auto">
-						 <div class="bg-[#1a1d23] rounded-xl border border-[#2b2f3a] p-6 mb-6">
-							<div class="flex justify-between items-center mb-6">
-								<h3 class="font-bold text-xl">Campaigns</h3>
-								<button onclick="document.getElementById('campaign-modal').classList.remove('hidden-force')" class="px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg text-sm text-white font-medium">
-									<i class="fa-solid fa-bullhorn mr-2"></i> New Campaign
-								</button>
-							</div>
-							<table class="w-full text-left">
-								<thead class="bg-[#232730] text-xs uppercase text-white/50">
-									<tr>
-										<th class="p-4 rounded-tl-lg">Name</th>
-										<th class="p-4">List</th>
-										<th class="p-4">Scheduled</th>
-										<th class="p-4">Status</th>
-										<th class="p-4 rounded-tr-lg">AI Assist</th>
-									</tr>
-								</thead>
-								<tbody id="crm-campaigns-table" class="text-sm divide-y divide-[#2b2f3a]"></tbody>
-							</table>
-						</div>
-					</div>
+            #view-facebook .mobile-chat-list-hidden {
+                display: none !important;
+            }
 
-					<div id="crm-templates" class="crm-view hidden-force h-full overflow-y-auto">
-						<div class="bg-[#1a1d23] rounded-xl border border-[#2b2f3a] p-6">
-							<div class="flex justify-between items-center mb-6">
-								<h3 class="font-bold text-xl">Message Templates</h3>
-								<button onclick="crm.openTemplateModal()" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-sm text-white font-medium">
-									<i class="fa-solid fa-plus mr-2"></i> New Template
-								</button>
-							</div>
-							<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="crm-templates-container"></div>
-						</div>
-					</div>
+            #view-instagram .mobile-chat-list-hidden {
+                display: none !important;
+            }
 
-					<div id="crm-settings" class="crm-view hidden-force absolute inset-0 flex flex-col p-4 bg-[#14161a] overflow-y-auto z-20">
-						<div class="flex justify-between items-center mb-4">
-							<h3 class="font-bold text-green-500">WhatsApp Configuration</h3>
-							<button onclick="crm.switchTab('chats')" class="text-white/40 hover:text-white" title="Close settings"><i class="fa-solid fa-times"></i></button>
-						</div>
-                        
-						<div class="mb-6">
-							<label class="text-xs font-bold text-white/40 uppercase">AI Identity</label>
-							<textarea id="wa-system-prompt" class="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-sm mt-1 focus:border-green-500 outline-none" rows="4" placeholder="You are a helpful assistant..."></textarea>
-						</div>
+            #view-tiktok .mobile-chat-list-hidden {
+                display: none !important;
+            }
+        }
 
-						<div class="space-y-3">
-							<label class="text-xs font-bold text-white/40 uppercase">API Credentials</label>
-							<div>
-								<input id="wa-phone-id" type="text" placeholder="Phone Number ID" class="w-full bg-black/20 border border-white/10 rounded p-2 text-sm">
-							</div>
-							<div>
-								<input id="wa-waba-id" type="text" placeholder="WABA ID" class="w-full bg-black/20 border border-white/10 rounded p-2 text-sm">
-							</div>
-							<div class="relative">
-								<input id="wa-token" type="password" placeholder="Permanent Access Token" class="w-full bg-black/20 border border-white/10 rounded p-2 text-sm pr-8">
-								<i onclick="togglePass('wa-token')" class="fa-solid fa-eye absolute right-3 top-3 text-white/30 cursor-pointer hover:text-white"></i>
-							</div>
-						</div>
+        @media (min-width: 769px) {
+            .mobile-close-btn {
+                display: none !important;
+            }
 
-						<button onclick="crm.saveSettings('whatsapp')" class="mt-6 w-full py-2 bg-green-600 hover:bg-green-500 rounded-lg font-medium text-sm">Save WhatsApp Settings</button>
-					</div>
+            .mobile-chat-overlay {
+                position: relative !important;
+                top: auto !important;
+                left: auto !important;
+                right: auto !important;
+                bottom: auto !important;
+                z-index: auto !important;
+                width: 100% !important;
+                height: 100% !important;
+                max-height: none !important;
+            }
 
-					 <div id="crm-analytics" class="crm-view hidden-force h-full overflow-y-auto">
-						<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-							<div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a]">
-								<div class="text-white/50 text-sm mb-1 uppercase tracking-wider">Messages Sent</div>
-								<div class="text-3xl font-bold text-white" id="stat-sent">0</div>
-							</div>
-							<div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a]">
-								<div class="text-white/50 text-sm mb-1 uppercase tracking-wider">Read Rate</div>
-								<div class="text-3xl font-bold text-blue-400" id="stat-read">0%</div>
-							</div>
-							<div class="bg-[#1a1d23] p-6 rounded-2xl border border-[#2b2f3a]">
-								<div class="text-white/50 text-sm mb-1 uppercase tracking-wider">AI Replied</div>
-								<div class="text-3xl font-bold text-purple-400" id="stat-ai">0</div>
-							</div>
-						</div>
-					</div>
+            .mobile-chat-list-hidden {
+                display: block !important;
+            }
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden bg-[#0f1115]">
 
-				</div>
-			</div>
+    <script>
+        (function(){
+            try {
+                const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
+                const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
 
-			<div id="facebook-header" class="hidden h-20 border-b border-white/10 flex flex-col justify-center px-6 bg-[#18191a]">
-				<div class="flex items-center justify-between mb-2">
-					<div class="flex items-center gap-3">
-						<div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
-							<i class="fa-brands fa-facebook-f text-white"></i>
-						</div>
-						<h2 class="text-lg font-semibold">Inbox</h2>
-					</div>
-					<div class="flex items-center gap-3">
-						<div id="fb-ai-indicator" class="hidden text-xs text-white/60 flex items-center gap-2">
-							<i class="fa-solid fa-robot text-yellow-400"></i> AI
-						</div>
-						<div id="fb-timer" class="text-xs text-white/50"></div>
-					</div>
-				</div>
+                if (window.supabase && typeof window.supabase.createClient === 'function') {
+                    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                    client.supabaseKey = SUPABASE_KEY;
+                    window.supabase = client;
+                    if (!window.supabaseClient) window.supabaseClient = client;
+                    console.log('Supabase client initialized.');
+                } else {
+                     // Fallback if library isn't loaded yet, try to load it or set config
+                    window.supabaseUrl = SUPABASE_URL;
+                    window.supabaseKey = SUPABASE_KEY;
+                }
+            } catch (err) { console.warn('Supabase init error', err); }
+        })();
+    </script>
 
-				<div class="flex gap-3">
-					<button onclick="switchMainView('view-facebook-messenger'); showFacebookTab('inbox')" id="fb-tab-inbox" class="facebook-tab-btn active pb-2 border-b-2 border-blue-500 text-white font-medium whitespace-nowrap">Inbox</button>
-					<span id="fb-unread-total" class="ml-2 text-xs text-blue-400 hidden"></span>
-					<button onclick="switchMainView('view-facebook-comments'); showFacebookTab('comments')" id="fb-tab-comments" class="facebook-tab-btn pb-2 border-b-2 border-transparent text-white/60 hover:text-white whitespace-nowrap">Comments</button>
-				</div>
-			</div>
+    <!-- Temporary business ID for testing -->
+    <script>
+        window.businessId = 'kisasacraft66';
+    </script>
 
-			<div id="view-facebook-messenger" class="view-section hidden h-full flex flex-col">
-				<div class="flex-1 flex overflow-hidden">
-					<div class="w-80 border-r border-white/10 flex flex-col bg-[#18191a]">
-							<div class="p-4">
-							<input id="fb-search" type="text" placeholder="Search Messenger..." class="w-full bg-[#242526] text-white text-sm px-4 py-2 rounded-full focus:outline-none border border-transparent focus:border-blue-500">
-						</div>
-						<div id="fb-conversation-list" class="flex-1 overflow-y-auto">
-							<div class="p-3 mx-2 rounded-lg hover:bg-white/5 cursor-pointer flex gap-3 items-center conv-item" data-last-customer-timestamp="2026-01-21T12:00:00Z">
-								<img src="https://ui-avatars.com/api/?name=John+Doe&background=0D8ABC&color=fff" class="w-10 h-10 rounded-full">
-								<div class="flex-1 min-w-0">
-									<div class="flex justify-between">
-										<h4 class="font-semibold text-sm truncate">John Doe</h4>
-										<span class="text-xs text-white/40">12:30 PM</span>
-									</div>
-									<p class="text-xs text-white/60 truncate last-customer-msg">Is this still available?</p>
-								</div>
-							</div>
-						</div>
-					</div>
-					<div class="flex-1 flex flex-col bg-[#0f1115] relative">
-						<div class="h-16 border-b border-white/10 flex justify-between items-center px-4 bg-[#0f1115]">
-							<h2 class="text-lg font-semibold">Messages</h2>
-							<button onclick="crm.toggleSocialSettings('facebook')" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60">
-								<i class="fa-solid fa-gear"></i>
-							</button>
-						</div>
-						<div id="fb-window-warning" class="hidden bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-2 flex items-center justify-between">
-							<span class="text-xs text-yellow-200"><i class="fa-regular fa-clock mr-2"></i> 24h Window closes in <strong>2 hours</strong>.</span>
-							<button class="text-xs bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-200 px-2 py-1 rounded">Use Tag</button>
-						</div>
-						<div id="fb-messages-area" class="flex-1 overflow-y-auto p-4 space-y-4">
-							<div class="flex gap-2 max-w-[70%]">
-								<img src="https://ui-avatars.com/api/?name=John+Doe" class="w-8 h-8 rounded-full mt-1">
-								<div class="bg-[#242526] p-3 rounded-2xl rounded-tl-none text-sm text-white/90">
-									Hi, I saw your ad on Facebook.
-								</div>
-							</div>
-							<div class="flex gap-2 max-w-[70%] ml-auto flex-row-reverse">
-								<div class="bg-blue-600 p-3 rounded-2xl rounded-tr-none text-sm text-white">
-									Hello! Yes, checking availability now.
-								</div>
-							</div>
-						</div>
-						<div id="fb-send-bar" class="p-4 border-t border-white/10 bg-[#18191a]">
-							<div class="flex gap-2">
-								<button class="p-2 text-blue-500 hover:bg-white/5 rounded-full"><i class="fa-solid fa-circle-plus text-xl"></i></button>
-								<input id="fb-send-input" type="text" placeholder="Type a message..." class="flex-1 bg-transparent text-white focus:outline-none px-2">
-								<button id="fb-send-btn" class="p-2 text-blue-500 hover:bg-white/5 rounded-full"><i class="fa-solid fa-paper-plane text-xl"></i></button>
-							</div>
-						</div>
-                        
-						<div id="settings-facebook" class="hidden absolute top-16 left-0 w-80 bottom-0 bg-[#14161a] border-r border-white/10 z-30 p-4 overflow-y-auto">
-							<div class="flex justify-between items-center mb-4">
-								<h3 class="font-bold text-blue-500">Page Settings</h3>
-								<button onclick="crm.toggleSocialSettings('facebook')" class="text-white/40 hover:text-white"><i class="fa-solid fa-times"></i></button>
-							</div>
+    <script src="messages.js"></script>
 
-							<div class="mb-6">
-								<label class="text-xs font-bold text-white/40 uppercase">AI Tone</label>
-								<textarea id="fb-ai-config" class="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-sm mt-1 focus:border-blue-500 outline-none" rows="3" placeholder="Be professional and concise..."></textarea>
-							</div>
+    <script>
+        // State Management
+        let currentPlatform = 'whatsapp';
+        let currentTab = 'livechat';
 
-							<div class="space-y-3">
-								<label class="text-xs font-bold text-white/40 uppercase">Graph API</label>
-								<input id="fb-page-id" type="text" placeholder="Page ID" class="w-full bg-black/20 border border-white/10 rounded p-2 text-sm">
-								<div class="relative">
-									<input id="fb-token" type="password" placeholder="Page Access Token" class="w-full bg-black/20 border border-white/10 rounded p-2 text-sm pr-8">
-									<i onclick="togglePass('fb-token')" class="fa-solid fa-eye absolute right-3 top-3 text-white/30 cursor-pointer hover:text-white"></i>
-								</div>
-							</div>
-							<button onclick="crm.saveSettings('facebook')" class="mt-6 w-full py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-medium text-sm">Save Page Settings</button>
-						</div>
-					</div>
-				</div>
-			</div>
-			<div id="view-facebook-comments" class="view-section hidden h-full flex flex-col">
-				<div class="flex-1 flex overflow-hidden">
-					<div class="w-1/3 border-r border-white/10 overflow-y-auto bg-[#18191a]">
-						<div class="p-4 border-b border-white/5 hover:bg-white/5 cursor-pointer flex gap-3">
-							<div class="w-16 h-16 bg-gray-700 rounded-md bg-cover bg-center" style="background-image: url('https://via.placeholder.com/150')"></div>
-							<div class="flex-1">
-								<h4 class="text-sm font-medium text-white/90 line-clamp-2">New Summer Collection requires the best logic...</h4>
-								<div class="mt-2 flex items-center gap-2 text-xs text-white/50">
-									<span class="text-blue-400 font-bold">2 new</span>
-									<span>• 5 total</span>
-									<span>• 10m ago</span>
-								</div>
-							</div>
-						</div>
-					</div>
-					<div class="flex-1 overflow-y-auto bg-[#0f1115] p-6">
-						<div class="bg-[#242526] rounded-lg p-4 mb-6 border border-white/5">
-							<div class="flex gap-3 mb-3">
-								<div class="w-10 h-10 bg-gray-600 rounded-full"></div>
-								<div>
-									<div class="font-bold text-sm">VVStudios Page</div>
-									<div class="text-xs text-white/40">Posted on Jan 20</div>
-								</div>
-							</div>
-							<p class="text-white/80 text-sm mb-3">Here is the detailed post content that users are commenting on.</p>
-							<img src="https://via.placeholder.com/600x300" class="rounded-lg w-full object-cover h-48">
-						</div>
-						<div class="space-y-4 pl-4 border-l-2 border-white/10 ml-2">
-							<div class="group">
-								<div class="flex gap-3">
-									<img src="https://ui-avatars.com/api/?name=User+One" class="w-8 h-8 rounded-full">
-									<div class="flex-1">
-										<div class="bg-[#242526] px-4 py-2 rounded-2xl rounded-tl-none inline-block">
-											<span class="font-bold text-xs block text-white/60 mb-1">User One</span>
-											<p class="text-sm">How much does this service cost?</p>
-										</div>
-										<div class="flex gap-3 mt-1 ml-2 text-xs text-white/40">
-											<button class="hover:text-blue-400">Like</button>
-											<button class="hover:text-blue-400">Reply Publicly</button>
-											<button class="hover:text-yellow-400"><i class="fa-regular fa-paper-plane"></i> DM Privately</button>
-											<button class="hover:text-red-400">Hide</button>
-										</div>
-									</div>
-								</div>
-                                
-								<div class="hidden ml-11 mt-2 flex gap-2">
-									<input type="text" class="bg-white/5 border border-white/10 rounded-full px-4 py-1 text-sm w-full focus:border-blue-500 focus:outline-none" placeholder="Write a reply...">
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-			<div id="instagram-header" class="hidden h-20 border-b border-white/10 flex flex-col justify-center px-6 bg-[#18191a]">
-				<div class="flex items-center justify-between mb-2">
-					<div class="flex items-center gap-3">
-						<div class="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 to-pink-600 flex items-center justify-center">
-							<i class="fa-brands fa-instagram text-white"></i>
-						</div>
-						<h2 class="text-lg font-semibold">Direct Messages</h2>
-					</div>
-					<div class="flex items-center gap-3">
-						<div id="ig-ai-indicator" class="hidden text-xs text-white/60 flex items-center gap-2">
-							<i class="fa-solid fa-robot text-yellow-400"></i> AI
-						</div>
-						<div id="ig-timer" class="text-xs text-white/50"></div>
-					</div>
-				</div>
+        function switchPlatform(platform) {
+            currentPlatform = platform;
+            
+            // 1. Update Top Nav Styles
+            document.querySelectorAll('.top-nav-btn').forEach(btn => {
+                btn.classList.remove('bg-[#2b2f3a]', 'text-white', 'shadow-md');
+                btn.classList.add('text-white/50', 'hover:bg-[#1a1d23]');
+            });
+            const activeBtn = document.getElementById(`btn-${platform}`);
+            if(activeBtn) {
+                activeBtn.classList.remove('text-white/50', 'hover:bg-[#1a1d23]');
+                activeBtn.classList.add('bg-[#2b2f3a]', 'text-white', 'shadow-md');
+            }
 
-				<div class="flex gap-3">
-					<button onclick="switchMainView('view-instagram-direct'); showInstagramTab('dm')" id="ig-tab-dm" class="instagram-tab-btn active pb-2 border-b-2 border-pink-500 text-white font-medium whitespace-nowrap">DM</button>
-					<span id="ig-unread-total" class="ml-2 text-xs text-pink-400 hidden"></span>
-					<button onclick="switchMainView('view-instagram-comments'); showInstagramTab('activity')" id="ig-tab-activity" class="instagram-tab-btn pb-2 border-b-2 border-transparent text-white/60 hover:text-white whitespace-nowrap">Activity</button>
-				</div>
-			</div>
+            // 2. Show Correct Sub-Nav Bar
+            document.querySelectorAll('.sub-nav-container').forEach(el => el.classList.add('hidden'));
+            const activeSubNav = document.getElementById(`subnav-${platform}`);
+            if(activeSubNav) activeSubNav.classList.remove('hidden');
 
-			<div id="view-instagram-direct" class="view-section hidden h-full flex flex-col">
-				<div class="flex-1 flex overflow-hidden">
-					<div class="w-80 border-r border-white/10 flex flex-col bg-[#18191a]">
-						<div class="p-4">
-							<input id="ig-search" type="text" placeholder="Search Direct..." class="w-full bg-[#242526] text-white text-sm px-4 py-2 rounded-full focus:outline-none border border-transparent focus:border-pink-500">
-						</div>
-						<div id="ig-conversation-list" class="flex-1 overflow-y-auto">
-							<div class="p-3 mx-2 rounded-lg hover:bg-white/5 cursor-pointer flex gap-3 items-center conv-item" data-last-customer-timestamp="2026-01-21T13:15:00Z">
-								<img src="https://ui-avatars.com/api/?name=Jane+Doe&background=E91E63&color=fff" class="w-10 h-10 rounded-full">
-								<div class="flex-1 min-w-0">
-									<div class="flex justify-between">
-										<h4 class="font-semibold text-sm truncate">Jane Doe</h4>
-										<span class="text-xs text-white/40">1:15 PM</span>
-									</div>
-									<p class="text-xs text-white/60 truncate last-customer-msg">Love your posts!</p>
-								</div>
-							</div>
-						</div>
-					</div>
-					<div class="flex-1 flex flex-col bg-[#0f1115] relative">
-						<div class="h-16 border-b border-white/10 flex justify-between items-center px-4 bg-[#0f1115]">
-							<h2 class="text-lg font-semibold">Direct Messages</h2>
-							<button onclick="crm.toggleSocialSettings('instagram')" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60">
-								<i class="fa-solid fa-gear"></i>
-							</button>
-						</div>
-						<div id="ig-window-warning" class="hidden bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-2 flex items-center justify-between">
-							<span class="text-xs text-yellow-200"><i class="fa-regular fa-clock mr-2"></i> 24h Window closes in <strong>1 hour</strong>.</span>
-							<button class="text-xs bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-200 px-2 py-1 rounded">Use Tag</button>
-						</div>
-						<div id="ig-messages-area" class="flex-1 overflow-y-auto p-4 space-y-4">
-							<div class="flex gap-2 max-w-[70%]">
-								<img src="https://ui-avatars.com/api/?name=Jane+Doe" class="w-8 h-8 rounded-full mt-1">
-								<div class="bg-[#242526] p-3 rounded-2xl rounded-tl-none text-sm text-white/90">
-									Hi, I saw your story on Instagram.
-								</div>
-							</div>
-							<div class="flex gap-2 max-w-[70%] ml-auto flex-row-reverse">
-								<div class="bg-gradient-to-tr from-yellow-400 to-pink-600 p-3 rounded-2xl rounded-tr-none text-sm text-white">
-									Thanks! How can I help?
-								</div>
-							</div>
-						</div>
-						<div id="ig-send-bar" class="p-4 border-t border-white/10 bg-[#18191a]">
-							<div class="flex gap-2">
-								<button class="p-2 text-pink-500 hover:bg-white/5 rounded-full"><i class="fa-solid fa-circle-plus text-xl"></i></button>
-								<input id="ig-send-input" type="text" placeholder="Type a message..." class="flex-1 bg-transparent text-white focus:outline-none px-2">
-								<button id="ig-send-btn" class="p-2 text-pink-500 hover:bg-white/5 rounded-full"><i class="fa-solid fa-paper-plane text-xl"></i></button>
-							</div>
-						</div>
-                        
-						<div id="settings-instagram" class="hidden absolute top-16 left-0 w-80 bottom-0 bg-[#14161a] border-r border-white/10 z-30 p-4 overflow-y-auto">
-							<div class="flex justify-between items-center mb-4">
-								<h3 class="font-bold text-pink-500">Instagram Settings</h3>
-								<button onclick="crm.toggleSocialSettings('instagram')" class="text-white/40 hover:text-white"><i class="fa-solid fa-times"></i></button>
-							</div>
+            // 3. Update Body Class for Colors
+            document.body.className = `h-screen flex flex-col overflow-hidden bg-[#0f1115] platform-${platform}`;
 
-							<div class="mb-6">
-								<label class="text-xs font-bold text-white/40 uppercase">AI Style</label>
-								<textarea id="ig-ai-config" class="w-full bg-black/20 border border-white/10 rounded-lg p-2 text-sm mt-1 focus:border-pink-500 outline-none" rows="3" placeholder="Use emojis, be visual..."></textarea>
-							</div>
+            // 4. Default to first tab of that platform (usually Livechat/DMs)
+            const defaultTab = platform === 'whatsapp' ? 'livechat' : 'dms';
+            switchTab(defaultTab);
+        }
 
-							<div class="space-y-3">
-								<label class="text-xs font-bold text-white/40 uppercase">Graph API</label>
-								<input id="ig-account-id" type="text" placeholder="Instagram Account ID" class="w-full bg-black/20 border border-white/10 rounded p-2 text-sm">
-								<div class="relative">
-									<input id="ig-token" type="password" placeholder="Access Token" class="w-full bg-black/20 border border-white/10 rounded p-2 text-sm pr-8">
-									<i onclick="togglePass('ig-token')" class="fa-solid fa-eye absolute right-3 top-3 text-white/30 cursor-pointer hover:text-white"></i>
-								</div>
-							</div>
-							<button onclick="crm.saveSettings('instagram')" class="mt-6 w-full py-2 bg-pink-600 hover:bg-pink-500 rounded-lg font-medium text-sm">Save Instagram Settings</button>
-						</div>
-					</div>
+        function switchTab(tab) {
+            currentTab = tab;
 
-	</main>
+            // Special handling for AI Playground
+            if(tab === 'ai-playground') {
+                // Deselect all platform buttons
+                document.querySelectorAll('.top-nav-btn').forEach(btn => {
+                    btn.classList.remove('bg-[#2b2f3a]', 'text-white', 'shadow-md');
+                    btn.classList.add('text-white/50', 'hover:bg-[#1a1d23]');
+                });
+                // Highlight AI Lab button
+                const aiLabBtn = document.getElementById('nav-ai-playground');
+                if(aiLabBtn) {
+                    aiLabBtn.classList.add('bg-[#2b2f3a]', 'text-white', 'shadow-md');
+                    aiLabBtn.classList.remove('text-white/50', 'hover:bg-[#1a1d23]');
+                }
+                // Hide subnav for AI playground
+                document.querySelectorAll('.sub-nav-container').forEach(el => el.classList.add('hidden'));
+                // Hide all views
+                document.querySelectorAll('.view-section').forEach(el => {
+                    el.classList.add('hidden');
+                    el.classList.add('hidden-force');
+                });
+                // Show AI playground
+                const aiView = document.getElementById('view-ai-playground');
+                if(aiView) {
+                    aiView.classList.remove('hidden');
+                    aiView.classList.remove('hidden-force');
+                }
+                // Load AI data
+                if(window.aiManager) window.aiManager.loadMyBusinessPrompt();
+                return;
+            }
 
-	<script>
-		// Ensure a Supabase client exists when opening this page standalone.
-		(function(){
-			try {
-				const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
-				const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
+            // Show subnav for platform tabs
+            document.querySelectorAll('.sub-nav-container').forEach(el => el.classList.add('hidden'));
+            const activeSubNav = document.getElementById(`subnav-${currentPlatform}`);
+            if(activeSubNav) activeSubNav.classList.remove('hidden');
 
-				// If the global is the library (has createClient), create a client and assign it.
-				if (window.supabase && typeof window.supabase.createClient === 'function') {
-					try {
-						const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-						// attach key so existing code that reads supabaseKey works
-						client.supabaseKey = SUPABASE_KEY;
-						// expose as the global supabase client for messages.js compatibility
-						window.supabase = client;
-						if (!window.supabaseClient) window.supabaseClient = client;
-						console.log('Supabase client initialized for messages.html');
-					} catch (e) { console.warn('Could not create Supabase client', e); }
-				} else if (window.supabase && typeof window.supabase.from === 'function') {
-					// Already a client instance (rare); ensure supabaseKey exists
-					try { if (!window.supabase.supabaseKey) window.supabase.supabaseKey = SUPABASE_KEY; } catch(e){}
-				} else {
-					console.warn('Supabase library not found; messaging may be limited.');
-				}
-			} catch (err) { console.warn('Supabase init error', err); }
-		})();
-	</script>
-	<script src="messages.js"></script>
+            // 1. Update Sub-Nav Styles
+            document.querySelectorAll('.sub-nav-item').forEach(el => el.classList.remove('active'));
+            // Select buttons that link to this tab within the current visible subnav
+            const activeBtns = document.querySelectorAll(`button[onclick="switchTab('${tab}')"]`);
+            activeBtns.forEach(btn => {
+                // Only highlight if it's inside the visible container
+                if(!btn.closest('.hidden')) btn.classList.add('active');
+            });
+
+            // 2. Show Content
+            document.querySelectorAll('.view-section').forEach(el => {
+                el.classList.add('hidden');
+                el.classList.add('hidden-force');
+            });
+
+            // Logic for mapping tabs to views
+            if(tab === 'livechat' || tab === 'dms') {
+                if(currentPlatform === 'whatsapp') {
+                    document.getElementById('crm-chats').classList.remove('hidden');
+                    document.getElementById('crm-chats').classList.remove('hidden-force');
+                    if(window.crm) window.crm.renderContacts();
+                } else if(currentPlatform === 'facebook') {
+                    document.getElementById('view-facebook').classList.remove('hidden');
+                    document.getElementById('view-facebook').classList.remove('hidden-force');
+                    if(window.crm) window.crm.renderSocialMessenger('facebook');
+                } else if(currentPlatform === 'instagram') {
+                    document.getElementById('view-instagram').classList.remove('hidden');
+                    document.getElementById('view-instagram').classList.remove('hidden-force');
+                    if(window.crm) window.crm.renderSocialMessenger('instagram');
+                } else if(currentPlatform === 'tiktok') {
+                    document.getElementById('view-tiktok').classList.remove('hidden');
+                    document.getElementById('view-tiktok').classList.remove('hidden-force');
+                    if(window.crm) window.crm.renderSocialMessenger('tiktok');
+                }
+            } else if(tab === 'comments') {
+                if(currentPlatform === 'facebook') {
+                    document.getElementById('view-facebook-comments').classList.remove('hidden');
+                    document.getElementById('view-facebook-comments').classList.remove('hidden-force');
+                    if(window.crm) window.crm.renderCommentFeed('facebook');
+                } else if(currentPlatform === 'instagram') {
+                    document.getElementById('view-instagram-comments').classList.remove('hidden');
+                    document.getElementById('view-instagram-comments').classList.remove('hidden-force');
+                    if(window.crm) window.crm.renderCommentFeed('instagram');
+                } else if(currentPlatform === 'tiktok') {
+                    document.getElementById('view-tiktok-comments').classList.remove('hidden');
+                    document.getElementById('view-tiktok-comments').classList.remove('hidden-force');
+                    if(window.crm) window.crm.renderCommentFeed('tiktok');
+                }
+            } else {
+                // Show placeholder for other sections
+                const specificView = document.getElementById(`view-${tab}`);
+                if(specificView) {
+                    specificView.classList.remove('hidden');
+                    specificView.classList.remove('hidden-force');
+                } else {
+                    document.getElementById('view-placeholder').classList.remove('hidden');
+                    document.getElementById('view-placeholder').classList.remove('hidden-force');
+                }
+            }
+
+            // Optional: Notify messages.js if it exists
+            if(window.crm && window.crm.setPlatform) {
+                window.crm.setPlatform(currentPlatform);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            switchPlatform('whatsapp'); // Init
+        });
+    </script>
+
+    <div class="bg-[#1a1d23] border-b border-[#2b2f3a] px-4 pt-3 pb-3 flex items-center justify-between z-50">
+        <div class="flex items-center gap-2">
+            <div class="flex bg-[#0f1115] p-1 rounded-lg border border-[#2b2f3a]">
+                <button id="btn-whatsapp" onclick="switchPlatform('whatsapp')" class="top-nav-btn px-4 py-2 rounded-md flex items-center gap-2 transition-all text-sm font-medium relative">
+                    <i class="fa-brands fa-whatsapp text-green-500 text-lg"></i> <span class="hidden md:inline">WhatsApp</span>
+                    <span id="whatsapp-unread-badge" class="absolute -top-2 -right-2 bg-green-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold hidden z-10">0</span>
+                </button>
+                <button id="btn-facebook" onclick="switchPlatform('facebook')" class="top-nav-btn px-4 py-2 rounded-md flex items-center gap-2 transition-all text-sm font-medium text-white/50 relative">
+                    <i class="fa-brands fa-facebook text-blue-600 text-lg"></i> <span class="hidden md:inline">Facebook</span>
+                    <span id="facebook-unread-badge" class="absolute -top-2 -right-2 bg-blue-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold hidden z-10">0</span>
+                </button>
+                <button id="btn-instagram" onclick="switchPlatform('instagram')" class="top-nav-btn px-4 py-2 rounded-md flex items-center gap-2 transition-all text-sm font-medium text-white/50 relative">
+                    <i class="fa-brands fa-instagram text-pink-500 text-lg"></i> <span class="hidden md:inline">Instagram</span>
+                    <span id="instagram-unread-badge" class="absolute -top-2 -right-2 bg-pink-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold hidden z-10">0</span>
+                </button>
+                <button id="btn-tiktok" onclick="switchPlatform('tiktok')" class="top-nav-btn px-4 py-2 rounded-md flex items-center gap-2 transition-all text-sm font-medium text-white/50 relative">
+                    <i class="fa-brands fa-tiktok text-white text-lg"></i> <span class="hidden md:inline">TikTok</span>
+                    <span id="tiktok-unread-badge" class="absolute -top-2 -right-2 bg-cyan-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold hidden z-10">0</span>
+                </button>
+                <button onclick="switchTab('ai-playground')" id="nav-ai-playground" class="nav-item w-full flex items-center gap-3 px-3 py-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors group">
+    <div class="w-5 h-5 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform">
+        <i class="fa-solid fa-flask"></i>
+    </div>
+    <span class="text-sm font-medium">AI Lab</span>
+</button>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-3">
+             <button class="w-9 h-9 rounded-full bg-[#2b2f3a] text-white/70 hover:text-white hover:bg-[#374151] flex items-center justify-center transition">
+                <i class="fa-solid fa-bell"></i>
+             </button>
+             <button class="w-9 h-9 rounded-full bg-[#2b2f3a] text-white/70 hover:text-white hover:bg-[#374151] flex items-center justify-center transition">
+                <i class="fa-solid fa-gear"></i>
+             </button>
+        </div>
+    </div>
+
+    <div class="bg-[#1a1d23] border-b border-[#2b2f3a] px-6">
+        
+        <div id="subnav-whatsapp" class="sub-nav-container flex gap-6 text-sm font-medium overflow-x-auto scrollbar-hide">
+            <button onclick="switchTab('livechat')" class="sub-nav-item active py-3">Livechat</button>
+            <button onclick="switchTab('lists')" class="sub-nav-item py-3">Lists</button>
+            <button onclick="switchTab('campaigns')" class="sub-nav-item py-3">Campaigns</button>
+            <button onclick="switchTab('templates')" class="sub-nav-item py-3">Templates</button>
+            <button onclick="switchTab('preferences')" class="sub-nav-item py-3">Preferences</button>
+        </div>
+
+        <div id="subnav-facebook" class="sub-nav-container flex gap-6 text-sm font-medium hidden overflow-x-auto scrollbar-hide">
+            <button onclick="switchTab('dms')" class="sub-nav-item active py-3">DMs</button>
+            <button onclick="switchTab('comments')" class="sub-nav-item py-3">Comments</button>
+            <button onclick="switchTab('preferences')" class="sub-nav-item py-3">Preferences</button>
+        </div>
+
+        <div id="subnav-instagram" class="sub-nav-container flex gap-6 text-sm font-medium hidden overflow-x-auto scrollbar-hide">
+            <button onclick="switchTab('dms')" class="sub-nav-item active py-3">DMs</button>
+            <button onclick="switchTab('comments')" class="sub-nav-item py-3">Comments</button>
+            <button onclick="switchTab('preferences')" class="sub-nav-item py-3">Preferences</button>
+        </div>
+
+        <div id="subnav-tiktok" class="sub-nav-container flex gap-6 text-sm font-medium hidden overflow-x-auto scrollbar-hide">
+            <button onclick="switchTab('dms')" class="sub-nav-item active py-3">DMs</button>
+            <button onclick="switchTab('comments')" class="sub-nav-item py-3">Comments</button>
+            <button onclick="switchTab('preferences')" class="sub-nav-item py-3">Preferences</button>
+        </div>
+
+    </div>
+
+    <div id="crm-tab-content" class="flex-1 overflow-hidden relative flex flex-col h-full p-4 md:p-6">
+        
+        <!-- WhatsApp Livechat Section -->
+        <div id="crm-chats" class="view-section h-full flex gap-4 lg:gap-6 relative fade-in">
+            
+            <div id="crm-chat-list-panel" class="w-full md:w-80 lg:w-96 bg-[#1a1d23] border border-[#2b2f3a] rounded-2xl flex flex-col h-full shadow-xl overflow-hidden">
+                <div class="p-4 border-b border-[#2b2f3a] bg-[#1a1d23]">
+                    <div class="relative group">
+                        <i class="fa-solid fa-search absolute left-4 top-3.5 text-white/30 group-focus-within:text-purple-500 transition-colors"></i>
+                        <input type="text" placeholder="Search..." class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500 transition-all placeholder-white/20">
+                    </div>
+                </div>
+                <div id="crm-contact-list" class="flex-1 overflow-y-auto p-2 space-y-1">
+                    <!-- Conversations will be dynamically rendered here by messages.js with unread badges -->
+                </div>
+                <div id="crm-empty-state" class="hidden flex-1 flex flex-col items-center justify-center p-4 text-center">
+                    <i class="fa-brands fa-whatsapp text-6xl text-green-500 mb-4 opacity-40"></i>
+                    <p class="text-white/50 text-sm">Your conversations appear here</p>
+                </div>
+            </div>
+
+            <div id="crm-chat-window" class="mobile-chat-overlay hidden md:flex flex-1 bg-[#1a1d23] border border-[#2b2f3a] rounded-2xl flex-col h-full relative overflow-hidden shadow-xl md:rounded-2xl md:border">
+                <div class="p-3 border-b border-[#2b2f3a] flex justify-between items-center bg-[#202c33] z-10">
+                    <div class="flex items-center gap-3 flex-1">
+                        <button onclick="crm.closeMobileChat()" class="mobile-close-btn text-white/70 mr-2"><i class="fa-solid fa-arrow-left"></i></button>
+                        <div class="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold relative">
+                            <span id="chat-header-avatar">?</span>
+                        </div>
+                        <div>
+                            <div class="font-bold text-sm cursor-pointer" id="chat-header-name" title="View contact">Select a contact</div>
+                            <div class="flex items-center gap-2">
+                                <div id="chat-header-indicator" class="w-2 h-2 rounded-full bg-gray-500"></div>
+                                <div class="text-xs text-white/50" id="chat-header-status">...</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2 mr-2 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                            <span class="text-xs text-white/60"><i class="fa-solid fa-robot mr-1"></i> Auto-Pilot</span>
+                            <button id="ai-toggle-btn" onclick="crm.toggleAI()" class="w-8 h-4 rounded-full bg-gray-600 relative transition-colors">
+                                <div class="w-2 h-2 bg-white rounded-full absolute top-1 left-1 transition-all"></div>
+                            </button>
+                        </div>
+                        <button id="contact-notes-btn" onclick="crm.openContactModal()" class="px-3 py-1 bg-white/5 hover:bg-white/10 text-xs rounded-md border border-white/10 flex items-center gap-2">
+                            <i class="fa-regular fa-note-sticky"></i>
+                            Notes
+                        </button>
+                    </div>
+                </div>
+
+                <div id="crm-messages-area" class="flex-1 overflow-y-auto p-4 space-y-3 bg-[#0b141a] chat-bg relative">
+                    <div class="flex h-full items-center justify-center text-white/30 text-sm flex-col">
+                        <i class="fa-brands fa-whatsapp text-4xl mb-3 opacity-50"></i>
+                        <p>Select a conversation</p>
+                    </div>
+                </div>
+
+                <div id="chat-input-container" class="p-3 bg-[#202c33] flex gap-2 items-center hidden">
+                    <input type="file" id="chat-file-upload" class="hidden" onchange="alert('File uploaded (Mock)')">
+                    <button onclick="document.getElementById('chat-file-upload').click()" class="text-white/50 hover:text-white p-2"><i class="fa-solid fa-paperclip"></i></button>
+                    <input type="text" id="chat-input" placeholder="Type a message..." class="flex-1 bg-[#2a3942] rounded-lg px-4 py-3 text-sm text-white focus:outline-none" onkeypress="if(event.key === 'Enter') crm.sendMessage()">
+                    <button onclick="crm.sendMessage()" class="p-3 bg-[#005c4b] hover:bg-[#005c4b]/80 rounded-full text-white w-10 h-10 flex items-center justify-center shadow-lg"><i class="fa-solid fa-paper-plane text-sm"></i></button>
+                </div>
+                
+                <div id="chat-input-disabled" class="p-4 bg-[#202c33] text-center text-xs text-white/40 border-t border-[#2b2f3a] hidden">
+                    <i class="fa-solid fa-robot mr-2"></i> AI Auto-Pilot is active. Turn off to type manually.
+                </div>
+            </div>
+        </div>
+
+        <!-- Facebook Section -->
+        <div id="view-facebook" class="view-section hidden h-full flex gap-4 lg:gap-6 relative fade-in">
+            <div class="w-full md:w-80 lg:w-96 bg-[#1a1d23] border border-[#2b2f3a] rounded-2xl flex flex-col h-full shadow-xl overflow-hidden relative">
+                <div id="fb-conversation-list" class="flex-1 overflow-y-auto"></div>
+                <div id="fb-empty-state" class="hidden absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-[#1a1d23] rounded-2xl">
+                    <i class="fa-brands fa-facebook text-6xl text-blue-600 mb-4 opacity-40"></i>
+                    <p class="text-white/50 text-sm">Your conversations appear here</p>
+                </div>
+            </div>
+
+            <div id="facebook-chat-window" class="mobile-chat-overlay hidden md:flex flex-1 bg-[#1a1d23] border border-[#2b2f3a] rounded-2xl flex-col h-full relative overflow-hidden shadow-xl md:rounded-2xl md:border">
+                <div class="p-3 border-b border-[#2b2f3a] flex justify-between items-center bg-[#202c33] z-10">
+                    <div class="flex items-center gap-3 flex-1">
+                        <button onclick="crm.closeMobileChat()" class="mobile-close-btn text-white/70 mr-2"><i class="fa-solid fa-arrow-left"></i></button>
+                        <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold relative">
+                            <span id="facebook-chat-header-avatar">?</span>
+                        </div>
+                        <div>
+                            <div class="font-bold text-sm cursor-pointer" id="facebook-chat-header-name" title="View contact">Select a conversation</div>
+                            <div class="flex items-center gap-2">
+                                <div id="facebook-chat-header-indicator" class="w-2 h-2 rounded-full bg-gray-500"></div>
+                                <div class="text-xs text-white/50" id="facebook-chat-header-status">...</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div id="fb-ai-indicator" class="hidden mr-2 text-xs text-white/60"><i class="fa-solid fa-robot mr-1"></i> AI</div>
+                        <button id="facebook-contact-notes-btn" onclick="crm.openContactModal()" class="px-3 py-1 bg-white/5 hover:bg-white/10 text-xs rounded-md border border-white/10 flex items-center gap-2">
+                            <i class="fa-regular fa-note-sticky"></i>
+                            Notes
+                        </button>
+                    </div>
+                </div>
+
+                <div id="fb-messages-area" class="flex-1 overflow-y-auto p-4 space-y-3 bg-[#0b141a] chat-bg relative">
+                    <div class="flex h-full items-center justify-center text-white/30 text-sm flex-col">
+                        <i class="fa-brands fa-facebook text-4xl mb-3 opacity-50"></i>
+                        <p>Select a conversation</p>
+                    </div>
+                </div>
+
+                <div id="facebook-chat-input-container" class="p-3 bg-[#202c33] flex gap-2 items-center hidden">
+                    <input type="file" id="facebook-chat-file-upload" class="hidden" onchange="alert('File uploaded (Mock)')">
+                    <button onclick="document.getElementById('facebook-chat-file-upload').click()" class="text-white/50 hover:text-white p-2"><i class="fa-solid fa-paperclip"></i></button>
+                    <input type="text" id="facebook-chat-input" placeholder="Type a message..." class="flex-1 bg-[#2a3942] rounded-lg px-4 py-3 text-sm text-white focus:outline-none" onkeypress="if(event.key === 'Enter') crm.sendMessage()">
+                    <button onclick="crm.sendMessage()" class="p-3 bg-[#005c4b] hover:bg-[#005c4b]/80 rounded-full text-white w-10 h-10 flex items-center justify-center shadow-lg"><i class="fa-solid fa-paper-plane text-sm"></i></button>
+                </div>
+                
+                <div id="facebook-chat-input-disabled" class="p-4 bg-[#202c33] text-center text-xs text-white/40 border-t border-[#2b2f3a] hidden">
+                    <i class="fa-solid fa-robot mr-2"></i> AI Auto-Pilot is active. Turn off to type manually.
+                </div>
+            </div>
+        </div>
+
+        <!-- Instagram Section -->
+        <div id="view-instagram" class="view-section hidden h-full flex gap-4 lg:gap-6 relative fade-in">
+            <div class="w-full md:w-80 lg:w-96 bg-[#1a1d23] border border-[#2b2f3a] rounded-2xl flex flex-col h-full shadow-xl overflow-hidden relative">
+                <div id="ig-conversation-list" class="flex-1 overflow-y-auto"></div>
+                <div id="ig-empty-state" class="hidden absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-[#1a1d23] rounded-2xl">
+                    <i class="fa-brands fa-instagram text-6xl text-pink-500 mb-4 opacity-40"></i>
+                    <p class="text-white/50 text-sm">Your conversations appear here</p>
+                </div>
+            </div>
+
+            <div id="instagram-chat-window" class="mobile-chat-overlay hidden md:flex flex-1 bg-[#1a1d23] border border-[#2b2f3a] rounded-2xl flex-col h-full relative overflow-hidden shadow-xl md:rounded-2xl md:border">
+                <div class="p-3 border-b border-[#2b2f3a] flex justify-between items-center bg-[#202c33] z-10">
+                    <div class="flex items-center gap-3 flex-1">
+                        <button onclick="crm.closeMobileChat()" class="mobile-close-btn text-white/70 mr-2"><i class="fa-solid fa-arrow-left"></i></button>
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center text-white font-bold relative">
+                            <span id="instagram-chat-header-avatar">?</span>
+                        </div>
+                        <div>
+                            <div class="font-bold text-sm cursor-pointer" id="instagram-chat-header-name" title="View contact">Select a conversation</div>
+                            <div class="flex items-center gap-2">
+                                <div id="instagram-chat-header-indicator" class="w-2 h-2 rounded-full bg-gray-500"></div>
+                                <div class="text-xs text-white/50" id="instagram-chat-header-status">...</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div id="ig-ai-indicator" class="hidden mr-2 text-xs text-white/60"><i class="fa-solid fa-robot mr-1"></i> AI</div>
+                        <button id="instagram-contact-notes-btn" onclick="crm.openContactModal()" class="px-3 py-1 bg-white/5 hover:bg-white/10 text-xs rounded-md border border-white/10 flex items-center gap-2">
+                            <i class="fa-regular fa-note-sticky"></i>
+                            Notes
+                        </button>
+                    </div>
+                </div>
+
+                <div id="ig-messages-area" class="flex-1 overflow-y-auto p-4 space-y-3 bg-[#0b141a] chat-bg relative">
+                    <div class="flex h-full items-center justify-center text-white/30 text-sm flex-col">
+                        <i class="fa-brands fa-instagram text-4xl mb-3 opacity-50"></i>
+                        <p>Select a conversation</p>
+                    </div>
+                </div>
+
+                <div id="instagram-chat-input-container" class="p-3 bg-[#202c33] flex gap-2 items-center hidden">
+                    <input type="file" id="instagram-chat-file-upload" class="hidden" onchange="alert('File uploaded (Mock)')">
+                    <button onclick="document.getElementById('instagram-chat-file-upload').click()" class="text-white/50 hover:text-white p-2"><i class="fa-solid fa-paperclip"></i></button>
+                    <input type="text" id="instagram-chat-input" placeholder="Type a message..." class="flex-1 bg-[#2a3942] rounded-lg px-4 py-3 text-sm text-white focus:outline-none" onkeypress="if(event.key === 'Enter') crm.sendMessage()">
+                    <button onclick="crm.sendMessage()" class="p-3 bg-[#005c4b] hover:bg-[#005c4b]/80 rounded-full text-white w-10 h-10 flex items-center justify-center shadow-lg"><i class="fa-solid fa-paper-plane text-sm"></i></button>
+                </div>
+                
+                <div id="instagram-chat-input-disabled" class="p-4 bg-[#202c33] text-center text-xs text-white/40 border-t border-[#2b2f3a] hidden">
+                    <i class="fa-solid fa-robot mr-2"></i> AI Auto-Pilot is active. Turn off to type manually.
+                </div>
+            </div>
+        </div>
+
+        <!-- TikTok Section -->
+        <div id="view-tiktok" class="view-section hidden h-full flex gap-4 lg:gap-6 relative fade-in">
+            <div class="w-full md:w-80 lg:w-96 bg-[#1a1d23] border border-[#2b2f3a] rounded-2xl flex flex-col h-full shadow-xl overflow-hidden relative">
+                <div id="tt-conversation-list" class="flex-1 overflow-y-auto"></div>
+                <div id="tt-empty-state" class="hidden absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-[#1a1d23] rounded-2xl">
+                    <i class="fa-brands fa-tiktok text-6xl text-white mb-4 opacity-40"></i>
+                    <p class="text-white/50 text-sm">Your conversations appear here</p>
+                </div>
+            </div>
+
+            <div id="tiktok-chat-window" class="mobile-chat-overlay hidden md:flex flex-1 bg-[#1a1d23] border border-[#2b2f3a] rounded-2xl flex-col h-full relative overflow-hidden shadow-xl md:rounded-2xl md:border">
+                <div class="p-3 border-b border-[#2b2f3a] flex justify-between items-center bg-[#202c33] z-10">
+                    <div class="flex items-center gap-3 flex-1">
+                        <button onclick="crm.closeMobileChat()" class="mobile-close-btn text-white/70 mr-2"><i class="fa-solid fa-arrow-left"></i></button>
+                        <div class="w-10 h-10 rounded-full bg-cyan-600 flex items-center justify-center text-white font-bold relative">
+                            <span id="tiktok-chat-header-avatar">?</span>
+                        </div>
+                        <div>
+                            <div class="font-bold text-sm cursor-pointer" id="tiktok-chat-header-name" title="View contact">Select a conversation</div>
+                            <div class="flex items-center gap-2">
+                                <div id="tiktok-chat-header-indicator" class="w-2 h-2 rounded-full bg-gray-500"></div>
+                                <div class="text-xs text-white/50" id="tiktok-chat-header-status">...</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div id="tt-ai-indicator" class="hidden mr-2 text-xs text-white/60"><i class="fa-solid fa-robot mr-1"></i> AI</div>
+                        <button id="tiktok-contact-notes-btn" onclick="crm.openContactModal()" class="px-3 py-1 bg-white/5 hover:bg-white/10 text-xs rounded-md border border-white/10 flex items-center gap-2">
+                            <i class="fa-regular fa-note-sticky"></i>
+                            Notes
+                        </button>
+                    </div>
+                </div>
+
+                <div id="tt-messages-area" class="flex-1 overflow-y-auto p-4 space-y-3 bg-[#0b141a] chat-bg relative">
+                    <div class="flex h-full items-center justify-center text-white/30 text-sm flex-col">
+                        <i class="fa-brands fa-tiktok text-4xl mb-3 opacity-50"></i>
+                        <p>Select a conversation</p>
+                    </div>
+                </div>
+
+                <div id="tiktok-chat-input-container" class="p-3 bg-[#202c33] flex gap-2 items-center hidden">
+                    <input type="file" id="tiktok-chat-file-upload" class="hidden" onchange="alert('File uploaded (Mock)')">
+                    <button onclick="document.getElementById('tiktok-chat-file-upload').click()" class="text-white/50 hover:text-white p-2"><i class="fa-solid fa-paperclip"></i></button>
+                    <input type="text" id="tiktok-chat-input" placeholder="Type a message..." class="flex-1 bg-[#2a3942] rounded-lg px-4 py-3 text-sm text-white focus:outline-none" onkeypress="if(event.key === 'Enter') crm.sendMessage()">
+                    <button onclick="crm.sendMessage()" class="p-3 bg-[#005c4b] hover:bg-[#005c4b]/80 rounded-full text-white w-10 h-10 flex items-center justify-center shadow-lg"><i class="fa-solid fa-paper-plane text-sm"></i></button>
+                </div>
+                
+                <div id="tiktok-chat-input-disabled" class="p-4 bg-[#202c33] text-center text-xs text-white/40 border-t border-[#2b2f3a] hidden">
+                    <i class="fa-solid fa-robot mr-2"></i> AI Auto-Pilot is active. Turn off to type manually.
+                </div>
+            </div>
+        </div>
+
+        <div id="view-ai-playground" class="view-section hidden-force h-full flex flex-col md:flex-row gap-6 p-4 md:p-6 overflow-hidden animate-fade-in">
+    
+    <div class="flex-1 flex flex-col min-h-0 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] overflow-hidden shadow-2xl">
+        
+        <div class="p-5 border-b border-[#2b2f3a] bg-[#232730] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles text-purple-400"></i> My AI Instructions
+                </h2>
+                <p class="text-xs text-white/40 mt-1">Edit instructions here to test. Submit changes to admin for approval.</p>
+            </div>
+            
+            <div class="flex gap-2">
+                <button onclick="aiManager.loadMyBusinessPrompt()" class="px-3 py-2 bg-[#2b2f3a] hover:bg-[#32363f] border border-[#3f4552] rounded-lg text-xs font-bold text-white/70 transition-all flex items-center gap-2" title="Reset to Live Version">
+                    <i class="fa-solid fa-rotate-left"></i> Reset
+                </button>
+                <button onclick="aiPlayground.submitSuggestion()" class="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 rounded-lg text-xs font-bold text-white shadow-lg transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-paper-plane"></i> Submit to Admin
+                </button>
+            </div>
+        </div>
+
+        <div class="px-5 py-3 border-b border-[#2b2f3a] bg-[#1a1d23] flex flex-wrap gap-3 items-center">
+            <span class="text-[10px] font-bold uppercase text-white/30 tracking-wider">Platform:</span>
+            
+            <div class="flex gap-3">
+                <button id="btn-sim-whatsapp" onclick="aiPlayground.selectPlatform('whatsapp')" class="sim-platform-btn text-green-500 text-xl transition-all hover:scale-110 bg-[#2b2f3a] rounded-lg p-2" title="WhatsApp">
+                    <i class="fa-brands fa-whatsapp"></i>
+                </button>
+                <button id="btn-sim-instagram" onclick="aiPlayground.selectPlatform('instagram')" class="sim-platform-btn text-white/40 text-xl transition-all hover:scale-110" title="Instagram">
+                    <i class="fa-brands fa-instagram"></i>
+                </button>
+                <button id="btn-sim-facebook" onclick="aiPlayground.selectPlatform('facebook')" class="sim-platform-btn text-white/40 text-xl transition-all hover:scale-110" title="Facebook">
+                    <i class="fa-brands fa-facebook"></i>
+                </button>
+                <button id="btn-sim-tiktok" onclick="aiPlayground.selectPlatform('tiktok')" class="sim-platform-btn text-white/40 text-xl transition-all hover:scale-110" title="TikTok">
+                    <i class="fa-brands fa-tiktok"></i>
+                </button>
+            </div>
+        </div>
+
+        <textarea id="business-system-prompt" class="flex-1 bg-[#0f1115] p-5 text-white/90 font-mono text-sm leading-relaxed focus:outline-none resize-none m-0 border-none placeholder-white/20" placeholder="Describe your business, products, prices, and tone here..."></textarea>
+    </div>
+
+    <div class="w-full md:w-[400px] flex flex-col min-h-0 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] overflow-hidden shadow-2xl relative">
+        
+        <div class="p-4 bg-[#232730] border-b border-[#2b2f3a] flex justify-between items-center z-10 shadow-sm">
+            <div>
+                <div class="font-bold text-sm text-green-400 flex items-center gap-2">
+                    <span class="relative flex h-2 w-2">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    </span>
+                    <span id="sim-platform-label">WhatsApp</span>
+                </div>
+            </div>
+            <button onclick="aiPlayground.clearChat()" class="text-xs text-white/30 hover:text-white transition-colors"><i class="fa-solid fa-trash"></i> Clear</button>
+        </div>
+
+        <div id="playground-chat-feed" class="flex-1 overflow-y-auto p-4 space-y-3 bg-[#0f1115] relative bg-opacity-5 bg-repeat" data-platform="whatsapp" style="background-image: linear-gradient(rgba(15, 17, 21, 0.9), rgba(15, 17, 21, 0.9)), url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');">
+            <div class="text-center mt-12 opacity-40">
+                <div class="w-16 h-16 bg-[#1a1d23] rounded-full flex items-center justify-center mx-auto mb-3 border border-[#2b2f3a]">
+                    <i class="fa-solid fa-robot text-2xl text-purple-500"></i>
+                </div>
+                <p class="text-xs font-medium">Test your instructions here.<br>No messages will be sent to customers.</p>
+            </div>
+        </div>
+
+        <div class="p-3 bg-[#232730] border-t border-[#2b2f3a]">
+            
+            <div class="flex items-center justify-between mb-2 px-1">
+                <label class="flex items-center cursor-pointer gap-2 group" title="If checked, uses the text from the editor on the left. If unchecked, uses the currently saved live version.">
+                    <div class="relative inline-flex items-center">
+                        <input type="checkbox" id="pg-use-unsaved" class="sr-only peer" checked> <div class="w-8 h-4 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-600 transition-colors"></div>
+                    </div>
+                    <span class="text-[10px] font-bold text-white/50 group-hover:text-white/80 transition-colors uppercase tracking-wide">Test Draft Edits</span>
+                </label>
+            </div>
+
+            <div class="flex gap-2 relative">
+                <textarea id="pg-input" rows="1" class="flex-1 bg-[#1a1d23] border border-[#2b2f3a] rounded-xl px-4 py-3 text-sm text-white focus:border-purple-500 focus:outline-none resize-none shadow-inner placeholder-white/30" placeholder="Type a message..." onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); aiPlayground.send(); }"></textarea>
+                <button id="pg-send-btn" onclick="aiPlayground.send()" class="w-12 h-11 rounded-xl bg-gradient-to-br from-green-600 to-green-600 hover:from-green-500 hover:to-green-500 text-white flex items-center justify-center transition-all shadow-lg active:scale-95">
+                    <i class="fa-solid fa-paper-plane text-sm"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+        <!-- Facebook Comments Section -->
+        <div id="view-facebook-comments" class="view-section hidden h-full fade-in">
+            <p class="text-white/30">Facebook Comments section</p>
+        </div>
+
+        <!-- Instagram Comments Section -->
+        <div id="view-instagram-comments" class="view-section hidden h-full fade-in">
+            <p class="text-white/30">Instagram Comments section</p>
+        </div>
+
+        <!-- TikTok Comments Section -->
+        <div id="view-tiktok-comments" class="view-section hidden h-full fade-in">
+            <p class="text-white/30">TikTok Comments section</p>
+        </div>
+
+        <div id="view-placeholder" class="view-section hidden h-full flex flex-col items-center justify-center text-white/30 fade-in">
+            <i class="fa-solid fa-layer-group text-6xl mb-4"></i>
+            <h3 class="text-xl font-semibold mb-2">Section Under Construction</h3>
+            <p>This module is not yet connected to the backend.</p>
+        </div>
+
+        <div id="view-lists" class="view-section hidden h-full fade-in">
+            </div>
+
+    </div>
+
+    <!-- Contact Modal (shared with admin) -->
+    <div id="contact-modal" class="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-sm hidden-force">
+        <div class="w-full max-w-md bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] shadow-2xl overflow-hidden">
+            <div class="p-5 border-b border-[#2b2f3a] flex justify-between items-center bg-[#232730]">
+                <h3 class="font-bold text-lg">Contact Details</h3>
+                <button onclick="document.getElementById('contact-modal').classList.add('hidden-force')" class="text-white/50 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold" id="contact-modal-avatar">?</div>
+                    <div class="flex-1">
+                        <input id="contact-modal-name-input" type="text" placeholder="Name (e.g. ManyChats User)" class="w-full bg-transparent border-b border-white/10 pb-1 text-white focus:outline-none" />
+                        <input id="contact-modal-phone-input" type="text" placeholder="Phone (optional)" class="w-full bg-transparent text-xs text-white/60 mt-1 focus:outline-none" />
+                    </div>
+                </div>
+
+                <input type="hidden" id="contact-modal-id">
+                <label class="text-xs text-white/50">Notes (updates contact notes directly)</label>
+                <textarea id="contact-modal-notes" rows="6" class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-lg p-3 text-white focus:border-purple-500 outline-none resize-none" placeholder="Private contact notes..."></textarea>
+
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="document.getElementById('contact-modal').classList.add('hidden-force')" class="px-4 py-2 text-white/60 hover:text-white text-sm">Close</button>
+                    <button id="contact-modal-save" type="button" class="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-medium text-sm">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
-

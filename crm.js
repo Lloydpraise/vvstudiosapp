@@ -6387,13 +6387,11 @@ function attachEventListeners() {
 document.getElementById('ai-assist-btn')?.addEventListener('click', async () => {
   await handleAIWhatsAppAssist();
 });
-  // If an AI-authored message exists for this follow-up, use it; otherwise request an AI draft
+  // If an AI-authored message exists for this follow-up, use it; otherwise leave message body empty
   try {
     const aiMsg = window.currentWhatsAppContext && window.currentWhatsAppContext.ai_message;
     if (aiMsg) {
       if (waMsg) waMsg.value = aiMsg;
-    } else {
-      try { await handleAIWhatsAppAssist(); } catch (e) { console.warn('AI Assist initial generation failed', e); }
     }
   } catch (e) { console.warn('WhatsApp prefill: failed to apply AI message', e); }
 

@@ -55,6 +55,40 @@ function updateThemeIcon(isDark) {
     }
 }
 
+// --- UTILITY FUNCTIONS ---
+function parseBoldText(text) {
+    return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+}
+
+function setTruncatedDescription(fullText) {
+    const container = document.getElementById('product-desc-long');
+    const showMoreBtn = document.getElementById('show-more-btn');
+    if (!container || !showMoreBtn) return;
+
+    // Replace newlines with <br> and split into lines
+    const htmlText = fullText.replace(/\n/g, '<br>');
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlText;
+    const lines = tempDiv.innerHTML.split('<br>');
+
+    // Get first 2 lines
+    const truncatedLines = lines.slice(0, 2);
+    const truncatedText = truncatedLines.join('<br>');
+
+    // Check if there are more lines
+    if (lines.length > 2) {
+        container.innerHTML = truncatedText;
+        showMoreBtn.classList.remove('hidden');
+        showMoreBtn.onclick = () => {
+            container.innerHTML = htmlText;
+            showMoreBtn.classList.add('hidden');
+        };
+    } else {
+        container.innerHTML = htmlText;
+        showMoreBtn.classList.add('hidden');
+    }
+}
+
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', async () => {
     initTheme();
@@ -73,18 +107,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         showError();
     }
 
-    // Attach Collapsible Listeners
-    const descToggle = document.getElementById('desc-toggle');
-    if (descToggle) {
-        descToggle.addEventListener('click', () => {
-            const c = document.getElementById('desc-content');
-            const chevron = document.getElementById('desc-chevron');
-            if (c) c.classList.toggle('hidden');
-            if (chevron) chevron.style.transform = c.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
-        });
-    }
+    // Attach Collapsible Listeners - removed as we now use show more for description
 
-    // Update preview area for first line of long description once product is loaded
+    // Update preview area for first line of long description once product is loaded - now handled in setTruncatedDescription
     const previewEl = document.getElementById('desc-preview');
     if (previewEl) previewEl.innerText = '';
 });
@@ -144,11 +169,8 @@ function renderPage(product, biz, offers) {
     document.getElementById('product-title').innerText = product.title;
     document.getElementById('product-desc-short').innerText = product.description_short || '';
     const longDesc = product.description_long || '';
-    document.getElementById('product-desc-long').innerHTML = longDesc.replace(/\n/g, '<br>');
-    // Show the first non-empty line as preview under Full Details
-    const firstLine = (longDesc.split(/\r?\n/).find(l => l.trim().length > 0) || '').trim();
-    const previewEl2 = document.getElementById('desc-preview');
-    if (previewEl2) previewEl2.innerText = firstLine;
+    const parsedDesc = parseBoldText(longDesc);
+    setTruncatedDescription(parsedDesc);
 
     // Images
     const images = product.images || [];
@@ -565,18 +587,13 @@ async function initMetaPixel(businessId, p) {
 
 function renderKeyFeatures(features) {
     const container = document.getElementById('key-features-inline');
-    const longContainer = document.getElementById('product-desc-long');
-    if (!container && !longContainer) return;
+    if (!container) return;
 
     // build HTML with header 'Key Features' then checkmarked bullets
     if (features && features.length) {
         const bullets = features.map(f => `<div class="flex items-start gap-3 mb-2"><div class="text-green-500 mt-0.5"><i class="fa-solid fa-check-circle"></i></div><div class="text-sm text-muted">${f}</div></div>`).join('');
-        if (container) container.innerHTML = `<div class="font-semibold text-main mb-2">Key Features</div>${bullets}`;
-        if (longContainer) {
-            // append to full details at the top
-            longContainer.innerHTML = `<div class="font-semibold text-main mb-3">Full Details; Key Features</div><div class=\"mb-4\">${longContainer.innerHTML}</div><div>${bullets}</div>`;
-        }
+        container.innerHTML = `<div class="font-semibold text-main mb-2">Key Features</div>${bullets}`;
     } else {
-        if (container) container.innerHTML = '';
+        container.innerHTML = '';
     }
 }

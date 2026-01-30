@@ -53,6 +53,7 @@
 }
 
 /* CRM: contact details button should be white text on grey background in light theme */
+[data-theme="light"] .contact-details-btn,
 [data-theme="light"] .contact-row .details-btn,
 [data-theme="light"] .btn-details,
 [data-theme="light"] #contact-details-modal .details-btn {
@@ -186,27 +187,53 @@
 [data-theme="light"] .chart-placeholder { background: linear-gradient(135deg, #f7f8fa 0%, #f3f4f6 100%) !important; border-color: #e6e9ee !important; }
 
 /* Sidebar and navigation adjustments (keep sidebar container white; only links are transparent) */
-[data-theme="light"] .sidebar-link {
+[data-theme="light"] .unified-sidebar .sidebar-link {
     background-color: transparent !important;
     color: #6b7280 !important; /* inactive items: neutral gray */
 }
 
-[data-theme="light"] .sidebar-link .tooltip {
+[data-theme="light"] .unified-sidebar .sidebar-link .tooltip {
     background-color: #f9fafb !important;
     color: #0f1720 !important;
     border: 1px solid #e6e9ee !important;
 }
 
-[data-theme="light"] .sidebar-link.active {
+[data-theme="light"] .unified-sidebar .sidebar-link.active {
     color: #0b5fff !important; /* keep active visible — blue-ish accent */
     background-color: rgba(11,95,255,0.12) !important;
     box-shadow: inset 4px 0 0 0 #0b5fff !important;
 }
 
 /* Ensure the hide/show transform is respected even when other rules set position/z-index */
-[data-theme="light"] #sidebar.-translate-x-full { transform: translateX(-100%); }
+[data-theme="light"] .unified-sidebar.-translate-x-full { transform: translateX(-100%); }
 /* Allow the page to control visible state via the `.open` class; prefer the page's rule unless overridden intentionally. */
-[data-theme="light"] #sidebar.open { transform: translateX(0) !important; }
+[data-theme="light"] .unified-sidebar.open { transform: translateX(0) !important; }
+
+/* Ecommerce sidebar light theme styles */
+[data-theme="light"] .sidebar {
+    background-color: #f3f4f6 !important;
+    color: #0f1720 !important;
+    border-color: #e6e9ee !important;
+}
+
+[data-theme="light"] .sidebar .nav-item {
+    color: #6b7280 !important;
+    background-color: transparent !important;
+}
+
+[data-theme="light"] .sidebar .nav-item:hover {
+    background-color: rgba(11,95,255,0.06) !important;
+}
+
+[data-theme="light"] .sidebar .nav-item.active {
+    color: #0b5fff !important;
+    background-color: rgba(11,95,255,0.12) !important;
+}
+
+/* Ecommerce mobile header light theme */
+[data-theme="light"] .sidebar h2 {
+    color: #0f1720 !important;
+}
 
 /* Header controls and small buttons that use explicit dark BG */
 [data-theme="light"] #header-controls > *,
@@ -392,9 +419,9 @@
 }
 
 /* Sidebar locked items: use the same faint gray used for past calendar days */
-[data-theme="light"] .sidebar-link.text-white\/30,
-[data-theme="light"] .sidebar-link .fa-lock,
-[data-theme="light"] .sidebar-link .text-white\/30 {
+[data-theme="light"] .unified-sidebar .sidebar-link.text-white\/30,
+[data-theme="light"] .unified-sidebar .sidebar-link .fa-lock,
+[data-theme="light"] .unified-sidebar .sidebar-link .text-white\/30 {
     color: #4b5563 !important; /* matches .past-meeting-day calendar badge color */
 }
 
@@ -468,24 +495,24 @@
 
 /* Sidebar: only color/border adjustments in light theme. Avoid structural/layout changes
    so desktop and grid layouts remain controlled by the original utility classes. */
-[data-theme="light"] #sidebar {
+[data-theme="light"] .unified-sidebar {
     background-color: #ffffff !important;
     color: #0f1720 !important;
     border-right: 1px solid #e6e9ee !important;
 }
 
-/* Make sure links, icons and tooltip contrast inside sidebar */
-[data-theme="light"] #sidebar, [data-theme="light"] #sidebar * {
+/* Make sure links, icons and tooltip contrast inside unified sidebar */
+[data-theme="light"] .unified-sidebar, [data-theme="light"] .unified-sidebar * {
     color: #0f1720 !important;
 }
-[data-theme="light"] #sidebar .sidebar-link { background: transparent !important; }
-[data-theme="light"] #sidebar .sidebar-link .tooltip { background-color: #ffffff !important; color: #0f1720 !important; border:1px solid #e6e9ee !important; }
+[data-theme="light"] .unified-sidebar .sidebar-link { background: transparent !important; }
+[data-theme="light"] .unified-sidebar .sidebar-link .tooltip { background-color: #ffffff !important; color: #0f1720 !important; border:1px solid #e6e9ee !important; }
 
 /* On mobile when sidebar slides in, ensure it overlays page content cleanly */
 @media (max-width: 1024px) {
     /* Keep sidebar transform managed by JS; avoid forcing position which caused mobile/desktop issues.
        Only ensure stacking order and backdrop visibility for light theme. */
-    [data-theme="light"] #sidebar {
+    [data-theme="light"] .unified-sidebar {
         z-index: 90 !important;
     }
     /* Backdrop: keep mobile menu veil but avoid overlay on the ecommerce sidebar backdrop */
@@ -611,7 +638,7 @@
    This ensures the sidebar is visible on desktop and doesn't get translated away
    when switching themes. Kept narrowly scoped to min-width:1024px. */
 @media (min-width: 1024px) {
-    [data-theme="light"] #sidebar {
+    [data-theme="light"] .unified-sidebar {
         position: relative !important;
         transform: translateX(0) !important;
         left: 0 !important;
@@ -623,7 +650,7 @@
         transition: none !important; /* prevent flicker when toggling */
     }
     /* If JS mistakenly applies the .open class on desktop, avoid floating shadow */
-    [data-theme="light"] #sidebar.open { box-shadow: none !important; }
+    [data-theme="light"] .unified-sidebar.open { box-shadow: none !important; }
 }
 
 /* ─────────────────────────────────────────────────────────────────── */
@@ -857,9 +884,9 @@
 @media (min-width: 1024px) {
     /* Only show dashboard if logged in. This fixes the ghost overlay on the login page. */
 html[data-theme="light"][data-logged-in="1"] #dashboard-container { display: flex !important; }
-    html[data-theme="light"] #sidebar { position: relative !important; transform: none !important; left: 0 !important; display: block !important; visibility: visible !important; width: 16rem !important; }
-    /* If utility classes left a -translate-x-full class, neutralize it on desktop light */
-    html[data-theme="light"] #sidebar.-translate-x-full { transform: none !important; }
+    html[data-theme="light"] .unified-sidebar { position: relative !important; transform: none !important; left: 0 !important; display: block !important; visibility: visible !important; width: 16rem !important; }
+        /* If utility classes left a -translate-x-full class, neutralize it on desktop light */
+        html[data-theme="light"] .unified-sidebar.-translate-x-full { transform: none !important; }
 }
 
 

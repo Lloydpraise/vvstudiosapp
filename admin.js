@@ -1,3 +1,7 @@
+// --- 0. ADMIN BUSINESS ID ---
+// Set the admin business ID globally so messages.js can detect and use it
+window.BUSINESS_ID = 'vvstudios10';
+
 // --- 1. SUPABASE CONFIGURATION ---
 const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
@@ -923,6 +927,7 @@ const router = {
             'meetings': 'My Meetings',
             'support': 'Support Inbox',
             'alerts': 'Insights & Alerts',
+            'ai-importer': 'AI Product Importer',
             'messaging': 'Messaging (CRM)' // Added Messaging Title
         };
         document.getElementById('page-title').textContent = titles[target] || 'Portal';
@@ -931,6 +936,12 @@ const router = {
         if(target === 'dashboard') dataManager.loadDashboard();
         if(target === 'support') dataManager.loadSupportTickets();
         if(target === 'meetings') { loadMeetings(); loadLeads(); }
+        if(target === 'ai-training' && window.aiManager && typeof aiManager.init === 'function') {
+            aiManager.init();
+        }
+        if(target === 'ai-importer' && window.aiManager && typeof aiManager.init === 'function') {
+            aiManager.init();
+        }
 
         // Trigger CRM load if messaging is selected (depends on messages.js)
         if(target === 'messaging' && window.crm && typeof crm.switchTab === 'function') {

@@ -68,7 +68,15 @@ window.authUtils = {
 // Helpers to toggle services locally (useful for admin to enable features)
 function _saveLoggedInUser(userObj) {
     try {
-        localStorage.setItem('vvUser', JSON.stringify(userObj));
+        try {
+            const copy = Object.assign({}, userObj);
+            if (copy.active_services) delete copy.active_services;
+            if (copy.pending_services) delete copy.pending_services;
+            localStorage.setItem('vvUser', JSON.stringify(copy));
+        } catch (e) {
+            // fallback: attempt naive save but still strip arrays
+            try { const f = Object.assign({}, userObj); if (f.active_services) delete f.active_services; if (f.pending_services) delete f.pending_services; localStorage.setItem('vvUser', JSON.stringify(f)); } catch (ee) { try { localStorage.setItem('vvUser', JSON.stringify(userObj)); } catch (_) {} }
+        }
     } catch (e) {
         console.warn('failed saving vvUser', e);
     }
@@ -165,12 +173,17 @@ function applyDefaultPackageSettings(loginRecord) {
     if (!loginRecord || typeof loginRecord !== 'object') return loginRecord;
     const out = { ...loginRecord };
     out.package = normalizePackageName(out.package || out.package_name || out.package_type);
-    // If package_expiry_date not set, compute from joined_date
-    if (!out.package_expiry_date) {
-        const joined = out.joined_date || out.created_at || new Date().toISOString();
-        const computed = computePackageExpiryDate(joined, out.package);
-        if (computed) out.package_expiry_date = computed;
-    }
+    // Always compute package_expiry_date from renew date if present (30 days), else joined_date (package duration)
+    const renewDate = out['renewed date'] || out.renewed_date;
+    const joinedDate = out.joined_date || out.created_at || new Date().toISOString();
+    const baseDate = renewDate || joinedDate;
+    const pkgDetails = getPackageDetails(out.package);
+    const durationDays = renewDate ? 30 : (pkgDetails.durationDays || 30);
+    // Compute expiry
+    const base = new Date(baseDate);
+    const expiry = new Date(base.getTime());
+    expiry.setUTCDate(expiry.getUTCDate() + durationDays);
+    out.package_expiry_date = expiry.toISOString();
     // Attach amount and services for UI convenience
     const det = getPackageDetails(out.package);
     if (det.amount != null) out.package_amount = det.amount;
@@ -395,6 +408,20 @@ window.authUtils.applyDefaultPackageSettings = applyDefaultPackageSettings;
                     title = (link.textContent || '').trim();
                 }
                 const norm = String(title).toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
+
+                // Special-case: keep Messaging unlocked for Pro/Premium users
+                try {
+                    if (norm === 'messaging') {
+                        const pkg = String(user.package || '').toLowerCase();
+                        if (pkg === 'pro' || pkg === 'premium') {
+                            link.classList.remove('text-white/30');
+                            link.classList.add('text-white');
+                            const existingLock = link.querySelector('.fa-lock'); if (existingLock) existingLock.remove();
+                            try { if (!link.getAttribute('href') || link.getAttribute('href') === '#') link.setAttribute('href', 'messages.html'); } catch(e){}
+                            return;
+                        }
+                    }
+                } catch (e) { /* ignore */ }
 
                 // Always allow My Business, Content Creation and Ecommerce
                 if (norm === 'mybusiness' || norm === 'contentcreation' || norm === 'ecommerce') {

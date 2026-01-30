@@ -175,7 +175,12 @@ function switchBusiness(biz) {
     user['business id'] = biz.business_id; // Support both keys
     user.business_name = biz.name;
     // Keep other user fields (phone, name, etc) the same
-    localStorage.setItem('vvUser', JSON.stringify(user));
+    try{
+        const toSave = Object.assign({}, user);
+        if (toSave.active_services) delete toSave.active_services;
+        if (toSave.pending_services) delete toSave.pending_services;
+        localStorage.setItem('vvUser', JSON.stringify(toSave));
+    }catch(e){ try{ const f = Object.assign({}, user); if (f.active_services) delete f.active_services; if (f.pending_services) delete f.pending_services; localStorage.setItem('vvUser', JSON.stringify(f)); }catch(_){} }
 
     // 2. Show loading feedback
     const dd = document.getElementById('business-dropdown');
@@ -387,8 +392,19 @@ function proceedToDashboard(userData, rawPhone) {
     });
     // Backwards-compatible field expected by some UI pieces
     fullUserData.firstName = fullUserData.admin_first_name || adminFirstName || '';
-    localStorage.setItem('vvUser', JSON.stringify(fullUserData));
+    try{
+        const toSave = Object.assign({}, fullUserData);
+        if (toSave.active_services) delete toSave.active_services;
+        if (toSave.pending_services) delete toSave.pending_services;
+        localStorage.setItem('vvUser', JSON.stringify(toSave));
+    }catch(e){ try{ const f = Object.assign({}, fullUserData); if (f.active_services) delete f.active_services; if (f.pending_services) delete f.pending_services; localStorage.setItem('vvUser', JSON.stringify(f)); }catch(_){} }
     console.log('[DEBUG] Final complete user data saved to localStorage.');
+
+    // TRIGGER SIDEBAR UNLOCK IMMEDIATELY
+    if (window.vv_applyPackageUnlocks) {
+        console.log('[DEBUG] Triggering sidebar unlock from dashboard.js');
+        window.vv_applyPackageUnlocks();
+    }
 
     // Defer signalling readiness until essential UI pieces (admin name, business name, package)
     // are visible. This avoids hiding the loader too early while subscription/package UI
@@ -500,7 +516,7 @@ export async function authenticateByPhone(phoneInput, enteredFirstName) {
 
         fullUserData.firstName = fullUserData.admin_first_name || (fullUserData.admin_name ? String(fullUserData.admin_name).split(' ')[0] : '') || '';
 
-        try { localStorage.setItem('vvUser', JSON.stringify(fullUserData)); } catch (e) { console.warn('Failed saving vvUser', e); }
+        try { const toSave = Object.assign({}, fullUserData); if (toSave.active_services) delete toSave.active_services; if (toSave.pending_services) delete toSave.pending_services; localStorage.setItem('vvUser', JSON.stringify(toSave)); } catch (e) { console.warn('Failed saving vvUser', e); }
 
         // Proceed to dashboard
         proceedToDashboard(userData, phoneInput);
@@ -605,6 +621,12 @@ export function updateSubscriptionStatus(userData) {
                 buttonClass = 'bg-purple-600 hover:bg-purple-700';
             }
         } catch (e) {
+            period = 30;
+        }
+
+        // Override period to 30 days if renew date exists
+        const renewDate = userData['renewed date'] || userData.renewed_date;
+        if (renewDate) {
             period = 30;
         }
 

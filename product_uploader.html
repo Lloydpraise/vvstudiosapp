@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Product Importer - VV Studios</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f1115; color: white; }
+        
+        /* VV Studios Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background-color: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: #374151; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: #4b5563; }
+
+        .glass-panel {
+            background: #1a1d23;
+            border: 1px solid #2b2f3a;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+
+        .input-dark {
+            background: #0f1115;
+            border: 1px solid #2b2f3a;
+            color: white;
+            transition: all 0.2s;
+        }
+        .input-dark:focus {
+            border-color: #a855f7;
+            outline: none;
+        }
+
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .loader {
+            border: 2px solid #374151;
+            border-top: 2px solid #a855f7;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        @media (max-width: 1023px) {
+            .mobile-expanded #header-section {
+                display: none;
+            }
+            .mobile-expanded #upload-panel {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col p-6 gap-6 max-w-7xl mx-auto">
+
+    <div id="header-section" class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-white flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center shadow-lg">
+                    <i class="fa-solid fa-robot text-white"></i>
+                </div>
+                AI Product Importer (GPT-4o)
+            </h1>
+            <p class="text-white/40 text-sm mt-1 ml-14">Bulk upload images • Auto-generate metadata • Review & Publish</p>
+        </div>
+        
+        <div class="flex gap-2">
+            <input type="text" id="openAiKey" placeholder="Paste OpenAI API Key" class="input-dark px-3 py-2 rounded-lg text-sm w-48">
+            <input type="text" id="businessId" value="kisasacraft66" placeholder="Business ID" class="input-dark px-3 py-2 rounded-lg text-sm w-32">
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
+        
+        <div id="upload-panel" class="glass-panel rounded-2xl flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-[#2b2f3a] bg-[#232730]">
+                <h2 class="font-semibold text-sm text-white/80">Upload Queue</h2>
+            </div>
+            
+            <div class="p-4 flex flex-col gap-4 flex-1 overflow-hidden">
+                <div class="border-2 border-dashed border-[#2b2f3a] hover:border-green-500/50 bg-[#15171c] rounded-xl p-8 flex flex-col items-center justify-center text-center transition-colors cursor-pointer group" onclick="document.getElementById('fileInput').click()">
+                    <input type="file" id="fileInput" multiple accept="image/*" class="hidden" onchange="handleFileSelect(this)">
+                    <div class="w-12 h-12 rounded-full bg-[#2b2f3a] group-hover:bg-[#374151] flex items-center justify-center mb-3 transition-colors">
+                        <i class="fa-solid fa-cloud-arrow-up text-green-400 text-xl"></i>
+                    </div>
+                    <p class="text-white font-medium text-sm">Click to select product images</p>
+                    <p class="text-white/30 text-xs mt-1">Supports JPG, PNG, WEBP</p>
+                </div>
+
+                <button onclick="startProcessing()" id="processBtn" class="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-xl font-bold shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-play mr-2"></i> Start GPT Processing
+                </button>
+
+                <div id="queueList" class="flex-1 overflow-y-auto space-y-2 pr-1">
+                    <div class="text-center text-white/20 text-xs py-10 italic" id="emptyQueueMsg">
+                        No images selected yet
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-2 glass-panel rounded-2xl flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-[#2b2f3a] bg-[#232730] flex justify-between items-center">
+                <h2 class="font-semibold text-sm text-white/80">Product Review <span id="reviewCount" class="bg-[#2b2f3a] text-white/60 px-2 py-0.5 rounded text-xs ml-2">0</span></h2>
+                <div class="text-xs text-white/40">
+                    <i class="fa-solid fa-circle-info mr-1"></i> Edit lists as one item per line
+                </div>
+            </div>
+            
+            <div id="reviewContainer" class="flex-1 overflow-y-auto p-4 grid grid-cols-1 xl:grid-cols-2 gap-4 content-start">
+                <div class="col-span-full h-full flex flex-col items-center justify-center text-white/30">
+                    <i class="fa-solid fa-boxes-stacked text-5xl mb-4 opacity-50"></i>
+                    <p>Processed products will appear here for review.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // --- 1. SUPABASE INIT ---
+        const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // --- 2. STATE ---
+        let queue = [];
+        let isProcessing = false;
+
+        // --- 3. UI HANDLERS ---
+        window.handleFileSelect = (input) => {
+            const files = Array.from(input.files);
+            if (files.length === 0) return;
+
+            document.getElementById('emptyQueueMsg').classList.add('hidden');
+            const queueList = document.getElementById('queueList');
+
+            files.forEach(file => {
+                const id = Math.random().toString(36).substr(2, 9);
+                queue.push({ id, file, status: 'waiting' });
+
+                const el = document.createElement('div');
+                el.id = `q-${id}`;
+                el.className = "flex items-center gap-3 p-3 rounded-lg bg-[#0f1115] border border-[#2b2f3a] fade-in";
+                el.innerHTML = `
+                    <div class="w-10 h-10 rounded bg-[#1a1d23] overflow-hidden flex-shrink-0">
+                        <img src="${URL.createObjectURL(file)}" class="w-full h-full object-cover opacity-70">
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium truncate text-white/90">${file.name}</div>
+                        <div class="text-xs text-white/40" id="status-${id}">Waiting...</div>
+                    </div>
+                    <div id="icon-${id}" class="text-white/30 pr-2">
+                        <i class="fa-regular fa-clock"></i>
+                    </div>
+                `;
+                queueList.appendChild(el);
+            });
+            input.value = ''; 
+        };
+
+        window.startProcessing = async () => {
+            if (isProcessing) return;
+            const apiKey = document.getElementById('openAiKey').value.trim();
+            if (!apiKey) return alert("Please enter your OpenAI API Key at the top.");
+            
+            isProcessing = true;
+            document.getElementById('processBtn').disabled = true;
+            document.getElementById('processBtn').innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Processing...`;
+
+            try {
+                const businessId = document.getElementById('businessId').value || 'user_default';
+
+                for (let item of queue) {
+                    if (item.status !== 'waiting') continue;
+
+                    updateStatus(item.id, 'processing');
+                    
+                    try {
+                        // A. Convert Image
+                        const base64 = await toBase64(item.file);
+                        
+                        // B. OpenAI GPT-4o Analysis
+                        // UPDATED PROMPT: Enforcing "HP 87A" style content and structure
+                        const prompt = `Act as a professional e-commerce copywriter. Analyze this product image.
+                        Return a JSON object with these exact keys:
+                        - title: (catchy, brand-focused, max 60 chars)
+                        - description_short: (One punchy sentence focusing on the primary benefit)
+                        - key_features: (Array of 4-6 strings. Format: "Emoji Feature: Benefit". The last item must be "⚙️ Specs: [list technical specifications]")
+                        - description_long: (Detailed sales copy. Use markdown: use **bold** for important terms, use emojis, include "Why You’ll Love It" and "Best Use Cases" sections. Make it fun, professional, and skimmable).
+                        - price: (number, estimate based on visual value, default 0 if unknown)
+
+                        Return ONLY valid JSON.`;
+
+                        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${apiKey}`
+                            },
+                            body: JSON.stringify({
+                                model: "gpt-4o",
+                                messages: [
+                                    {
+                                        role: "user",
+                                        content: [
+                                            { type: "text", text: prompt },
+                                            { type: "image_url", image_url: { url: base64 } }
+                                        ]
+                                    }
+                                ],
+                                response_format: { type: "json_object" },
+                                max_tokens: 1200,
+                                temperature: 0.7 // Added creativity for fun/professional tone
+                            })
+                        });
+
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error?.message || "OpenAI API Error");
+                        }
+
+                        const resultData = await response.json();
+                        const aiData = JSON.parse(resultData.choices[0].message.content);
+
+                        // C. Upload Image to Supabase
+                        const fileExt = item.file.name.split('.').pop();
+                        const fileName = `${businessId}/${Date.now()}_${Math.random().toString(36).substr(2,5)}.${fileExt}`;
+                        
+                        const { data: storageData, error: storageError } = await supabase.storage
+                            .from('ecommerce-assets/products')
+                            .upload(fileName, item.file);
+
+                        if (storageError) throw new Error("Image Upload Failed: " + storageError.message);
+
+                        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/ecommerce-assets/products/${fileName}`;
+
+                        // D. Insert into DB
+                        const newId = crypto.randomUUID();
+                        const { error: dbError } = await supabase
+                            .from('products')
+                            .insert([{
+                                id: newId,
+                                business_id: businessId,
+                                title: aiData.title,
+                                description_short: aiData.description_short,
+                                description_long: aiData.description_long,
+                                price: aiData.price || 0,
+                                images: [publicUrl],
+                                key_features: aiData.key_features || [],
+                                is_visible: true,
+                                type: 'product'
+                            }]);
+
+                        if (dbError) throw new Error("DB Insert Failed: " + dbError.message);
+
+                        // E. Success
+                        updateStatus(item.id, 'done');
+                        addReviewCard(newId, aiData, publicUrl);
+                        
+                        // Small pause
+                        await new Promise(r => setTimeout(r, 1000));
+
+                    } catch (err) {
+                        console.error(err);
+                        updateStatus(item.id, 'error', err.message);
+                    }
+                }
+            } catch (mainErr) {
+                alert("Critical Error: " + mainErr.message);
+            }
+
+            isProcessing = false;
+            document.getElementById('processBtn').disabled = false;
+            document.getElementById('processBtn').innerHTML = `<i class="fa-solid fa-play mr-2"></i> Start GPT Processing`;
+        };
+
+        // --- 4. HELPERS ---
+        function updateStatus(id, status, msg = '') {
+            const item = queue.find(i => i.id === id);
+            if(item) item.status = status;
+
+            const stEl = document.getElementById(`status-${id}`);
+            const icEl = document.getElementById(`icon-${id}`);
+            const row = document.getElementById(`q-${id}`);
+
+            if (status === 'processing') {
+                stEl.innerText = "Analyzing & Uploading...";
+                stEl.className = "text-xs text-green-400";
+                icEl.innerHTML = `<div class="loader"></div>`;
+                row.style.borderColor = "#10b981"; // green-500
+            } else if (status === 'done') {
+                stEl.innerText = "Complete";
+                stEl.className = "text-xs text-green-500";
+                icEl.innerHTML = `<i class="fa-solid fa-check text-green-500"></i>`;
+                row.style.borderColor = "#22c55e";
+            } else if (status === 'error') {
+                stEl.innerText = msg || "Failed";
+                stEl.className = "text-xs text-red-500";
+                icEl.innerHTML = `<i class="fa-solid fa-circle-exclamation text-red-500"></i>`;
+                row.style.borderColor = "#ef4444";
+            }
+        }
+
+        function addReviewCard(dbId, data, imgUrl) {
+            const container = document.getElementById('reviewContainer');
+            if (container.children[0]?.tagName === 'DIV' && container.children[0].className.includes('col-span-full')) {
+                container.innerHTML = '';
+            }
+
+            const card = document.createElement('div');
+            card.className = "bg-[#0f1115] border border-[#2b2f3a] rounded-xl overflow-hidden flex flex-col md:flex-row gap-4 p-4 fade-in relative group";
+            card.innerHTML = `
+                <div class="w-full md:w-32 h-32 bg-[#1a1d23] rounded-lg overflow-hidden flex-shrink-0 border border-[#2b2f3a]">
+                    <img src="${imgUrl}" class="w-full h-full object-cover">
+                </div>
+                <div class="flex-1 space-y-3 min-w-0">
+                    <div>
+                        <label class="text-[10px] uppercase text-white/40 font-bold tracking-wider">Product Title</label>
+                        <input type="text" id="title-${dbId}" value="${data.title.replace(/"/g, '&quot;')}" class="w-full bg-transparent border-b border-[#2b2f3a] focus:border-green-500 text-white font-medium pb-1 outline-none transition-colors">
+                    </div>
+                    <div class="flex gap-4">
+                         <div class="w-1/2">
+                            <label class="text-[10px] uppercase text-white/40 font-bold tracking-wider">Price</label>
+                            <input type="number" id="price-${dbId}" value="${data.price}" class="w-full bg-transparent border-b border-[#2b2f3a] focus:border-green-500 text-white pb-1 outline-none transition-colors">
+                        </div>
+                        <div class="w-1/2 flex items-end justify-end">
+                            <button onclick="updateProduct('${dbId}')" id="btn-${dbId}" class="px-4 py-1.5 bg-[#2b2f3a] hover:bg-green-600 text-white text-xs rounded-md transition-colors shadow flex items-center gap-2">
+                                <i class="fa-solid fa-save"></i> Save
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase text-white/40 font-bold tracking-wider">Short Description</label>
+                        <textarea id="desc-short-${dbId}" rows="2" class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded p-2 text-xs text-white/80 focus:border-green-500 outline-none resize-none">${data.description_short}</textarea>
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase text-white/40 font-bold tracking-wider">Key Features (One per line)</label>
+                        <textarea id="features-${dbId}" rows="4" class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded p-2 text-xs text-white/80 focus:border-green-500 outline-none resize-none">${(data.key_features || []).join('\n')}</textarea>
+                    </div>
+                    <div>
+                        <label class="text-[10px] uppercase text-white/40 font-bold tracking-wider">Long Description (Markdown)</label>
+                        <textarea id="desc-long-${dbId}" rows="6" class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded p-2 text-xs text-white/80 focus:border-green-500 outline-none resize-none">${data.description_long}</textarea>
+                    </div>
+                </div>
+            `;
+            container.append(card);
+            container.scrollTop = container.scrollHeight;
+            document.getElementById('reviewCount').innerText = container.children.length;
+
+            window.updateProduct = async (id) => {
+                const btn = document.getElementById(`btn-${id}`);
+                const originalText = btn.innerHTML;
+                btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Saving`;
+                
+                // Get values
+                const newTitle = document.getElementById(`title-${id}`).value;
+                const newPrice = document.getElementById(`price-${id}`).value;
+                const newDescShort = document.getElementById(`desc-short-${id}`).value;
+                const newDescLong = document.getElementById(`desc-long-${id}`).value;
+                
+                // Process features: Split by newline and remove empty lines
+                const featuresText = document.getElementById(`features-${id}`).value;
+                const newFeatures = featuresText.split('\n').filter(line => line.trim() !== '');
+
+                const { error } = await supabase
+                    .from('products')
+                    .update({ 
+                        title: newTitle, 
+                        price: newPrice, 
+                        description_short: newDescShort,
+                        description_long: newDescLong,
+                        key_features: newFeatures
+                    })
+                    .eq('id', id);
+
+                if (error) {
+                    alert('Error updating: ' + error.message);
+                    btn.innerHTML = originalText;
+                } else {
+                    btn.className = "px-4 py-1.5 bg-green-600 text-white text-xs rounded-md shadow flex items-center gap-2";
+                    btn.innerHTML = `<i class="fa-solid fa-check"></i> Saved`;
+                    setTimeout(() => {
+                         btn.className = "px-4 py-1.5 bg-[#2b2f3a] hover:bg-green-600 text-white text-xs rounded-md transition-colors shadow flex items-center gap-2";
+                         btn.innerHTML = originalText;
+                    }, 2000);
+                }
+            }
+        }
+
+        function toBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        // Mobile scroll expansion
+        if (window.innerWidth < 1024) {
+            const container = document.getElementById('reviewContainer');
+            container.addEventListener('scroll', () => {
+                if (container.scrollTop > 10) {
+                    document.body.classList.add('mobile-expanded');
+                } else {
+                    document.body.classList.remove('mobile-expanded');
+                }
+            });
+        }
+    </script>
+</body>
+</html>

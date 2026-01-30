@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Collection | VVStudios</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .chat-scroll::-webkit-scrollbar { width: 6px; }
+        .chat-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
+        .typing-dot { animation: typing 1.4s infinite ease-in-out both; }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <div class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="max-w-md mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="font-bold text-lg text-slate-900" id="business-name">Your Collection</h1>
+            <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Personalized for you</span>
+        </div>
+    </div>
+
+    <div class="max-w-md mx-auto px-4 py-6 space-y-6 min-h-screen pb-24">
+        
+        <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-800 hidden" id="welcome-msg">
+            👋 Hi! I found these items based on your request. Click the chat button below if you have any questions!
+        </div>
+
+        <div id="loader" class="text-center py-20 text-slate-400">
+            <div class="animate-spin w-8 h-8 border-4 border-slate-200 border-t-blue-600 rounded-full mx-auto mb-4"></div>
+            Loading your finds...
+        </div>
+
+        <div id="product-list" class="space-y-6"></div>
+
+    </div>
+
+    <button onclick="toggleChat()" class="fixed bottom-6 right-6 bg-slate-900 text-white p-4 rounded-full shadow-xl hover:bg-slate-800 transition-all z-50 flex items-center gap-2 group">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        <span class="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 whitespace-nowrap">Ask Assistant</span>
+    </button>
+
+    <div id="chat-window" class="fixed bottom-24 right-6 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 hidden flex-col z-50" style="height: 450px;">
+        <div class="bg-slate-900 text-white p-4 rounded-t-2xl flex justify-between items-center">
+            <span class="font-semibold text-sm">Shopping Assistant</span>
+            <button onclick="toggleChat()" class="text-slate-400 hover:text-white">&times;</button>
+        </div>
+        
+        <div id="chat-messages" class="flex-1 p-4 overflow-y-auto chat-scroll space-y-3 text-sm bg-slate-50">
+            <div class="flex justify-start">
+                <div class="bg-white border border-slate-200 p-3 rounded-2xl rounded-tl-none max-w-[85%] shadow-sm text-slate-600">
+                    I'm here! Ask me about size, delivery, or other products.
+                </div>
+            </div>
+        </div>
+
+        <div class="p-3 bg-white border-t border-slate-100 rounded-b-2xl">
+            <form onsubmit="sendMessage(event)" class="flex gap-2">
+                <input type="text" id="user-input" placeholder="Type a message..." class="flex-1 bg-slate-100 border-0 rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-slate-900 outline-none">
+                <button type="submit" class="bg-slate-900 text-white p-2 rounded-full hover:bg-slate-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const SUPABASE_URL = "YOUR_SUPABASE_URL";
+        const SUPABASE_ANON_KEY = "YOUR_PUBLIC_ANON_KEY";
+        
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // State
+        let sessionData = null;
+        let conversationId = null;
+        let businessId = null;
+        let customerId = null;
+
+        // --- INIT ---
+        async function init() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionId = urlParams.get('s');
+
+            if (!sessionId) {
+                document.getElementById('loader').innerHTML = "Invalid Link 😕";
+                return;
+            }
+
+            // 1. Fetch Session
+            const { data: session, error } = await supabase
+                .from('link_sessions')
+                .select('*')
+                .eq('id', sessionId)
+                .single();
+
+            if (error || !session) {
+                document.getElementById('loader').innerHTML = "Collection Expired.";
+                return;
+            }
+
+            sessionData = session;
+            businessId = session.business_id;
+            // The customer_id (social ID) stored in metadata is key to linking chat
+            customerId = session.metadata?.customer_id; 
+
+            // 2. Log View (Analytics)
+            supabase.rpc('increment_session_view', { session_id: sessionId }).then(() => console.log('View logged'));
+
+            // 3. Fetch Products
+            const { data: products } = await supabase
+                .from('products')
+                .select('*')
+                .in('id', session.product_ids);
+
+            renderProducts(products);
+
+            // 4. Setup Chat Context (Find existing conversation)
+            setupChat();
+        }
+
+        // --- RENDER PRODUCTS ---
+        function renderProducts(products) {
+            const list = document.getElementById('product-list');
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('welcome-msg').style.display = 'block';
+
+            if (!products || products.length === 0) {
+                list.innerHTML = "<div class='text-center'>No items found.</div>";
+                return;
+            }
+
+            products.forEach(p => {
+                // Determine Buy Link
+                let actionUrl = `https://wa.me/254700000000?text=I'm%20interested%20in%20${encodeURIComponent(p.title)}`;
+                if (p.shopify_variant_id) {
+                    actionUrl = `https://your-shopify.com/cart/${p.shopify_variant_id}:1`;
+                } else if (p.custom_url) {
+                    actionUrl = p.custom_url;
+                }
+
+                const shortDesc = p.description_short || "Premium quality.";
+
+                list.innerHTML += `
+                    <div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100">
+                        <img src="${p.images ? p.images[0] : 'https://via.placeholder.com/400'}" alt="${p.title}" class="w-full h-64 object-cover">
+                        <div class="p-5">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="font-bold text-lg leading-tight text-slate-900">${p.title}</h3>
+                                <span class="font-bold text-green-600 bg-green-50 px-2 py-1 rounded-lg text-sm whitespace-nowrap">${p.price} KES</span>
+                            </div>
+                            <p class="text-slate-500 text-sm mb-4 line-clamp-2">${shortDesc}</p>
+                            <a href="${actionUrl}" target="_blank" class="block w-full bg-slate-900 text-white text-center font-semibold py-3 rounded-xl hover:bg-slate-800 transition-colors">
+                                Buy Now
+                            </a>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // --- CHAT LOGIC ---
+        async function setupChat() {
+            if (!customerId || !businessId) return;
+
+            // Try to find the conversation ID associated with this social user
+            // We look up the contact first
+            const { data: contact } = await supabase.from('contacts').select('id').eq('social_id', customerId).maybeSingle();
+            
+            if (contact) {
+                const { data: conv } = await supabase.from('conversations').select('id').eq('contact_id', contact.id).eq('status', 'open').maybeSingle();
+                if (conv) conversationId = conv.id;
+            }
+            
+            // If no conversation found, we'll let the Brain create one/handle it, 
+            // but we need to pass a temporary ID or handle it in the edge function.
+            // For now, let's assume one exists since they came from ManyChat.
+        }
+
+        function toggleChat() {
+            const win = document.getElementById('chat-window');
+            win.classList.toggle('hidden');
+            win.classList.toggle('flex');
+        }
+
+        async function sendMessage(e) {
+            e.preventDefault();
+            const input = document.getElementById('user-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            // 1. Show User Message
+            addMessage(text, 'user');
+            input.value = '';
+
+            // 2. Show Typing Indicator
+            const typingId = addTyping();
+
+            // 3. Call AI Brain
+            // Note: We use the Web Platform flag
+            try {
+                const payload = {
+                    conversationId: conversationId || `temp-${Date.now()}`, // Fallback
+                    userText: text,
+                    businessId: businessId,
+                    platform: 'web', // Tell Brain it's web
+                    senderId: customerId
+                };
+
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-brain`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                
+                // Remove typing
+                document.getElementById(typingId).remove();
+
+                // 4. Parse ManyChat JSON for Web
+                // The Brain returns { version: "v2", content: { messages: [...] } }
+                // We need to extract the text from that structure.
+                if (data.content && data.content.messages) {
+                    const aiText = data.content.messages.find(m => m.type === 'text')?.text || "Here are some items.";
+                    addMessage(aiText, 'ai');
+                    
+                    // If AI returned cards (products), we could technically render them in chat too!
+                    // But for now, text is enough.
+                } else {
+                    addMessage("I'm having trouble connecting.", 'ai');
+                }
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById(typingId).remove();
+                addMessage("Connection error.", 'ai');
+            }
+        }
+
+        function addMessage(text, sender) {
+            const div = document.createElement('div');
+            div.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'}`;
+            
+            const bubble = document.createElement('div');
+            bubble.className = sender === 'user' 
+                ? 'bg-slate-900 text-white p-3 rounded-2xl rounded-tr-none max-w-[85%] text-sm shadow-sm'
+                : 'bg-white border border-slate-200 p-3 rounded-2xl rounded-tl-none max-w-[85%] text-sm shadow-sm text-slate-600';
+            
+            bubble.innerText = text;
+            div.appendChild(bubble);
+            
+            const container = document.getElementById('chat-messages');
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function addTyping() {
+            const id = `typing-${Date.now()}`;
+            const div = document.createElement('div');
+            div.id = id;
+            div.className = 'flex justify-start';
+            div.innerHTML = `
+                <div class="bg-white border border-slate-200 p-4 rounded-2xl rounded-tl-none shadow-sm flex gap-1">
+                    <div class="w-2 h-2 bg-slate-400 rounded-full typing-dot"></div>
+                    <div class="w-2 h-2 bg-slate-400 rounded-full typing-dot"></div>
+                    <div class="w-2 h-2 bg-slate-400 rounded-full typing-dot"></div>
+                </div>`;
+            document.getElementById('chat-messages').appendChild(div);
+            return id;
+        }
+
+        init();
+    </script>
+</body>
+</html>

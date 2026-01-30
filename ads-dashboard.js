@@ -211,6 +211,12 @@ function updateSubscriptionStatus(userData) {
           buttonClass = "bg-blue-600 hover:bg-blue-700"; // Mini button is blue
         }
 
+        // Override period to 30 days if renew date exists
+        const renewDate = userData['renewed date'] || userData.renewed_date;
+        if (renewDate) {
+            period = 30;
+        }
+
         let totalAmount = 0;
         services.forEach(service => {
             const lowerService = service.toLowerCase();

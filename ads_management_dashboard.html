@@ -148,96 +148,7 @@
     <!-- Login removed from Ads section. Uses centralized My Businesses login (index.html). -->
     <div id="dashboard-container" style="display: none;">
         <div class="flex min-h-screen">
-            <aside id="sidebar" class="w-64 bg-[#14161a] p-6 fixed inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out z-50 flex-shrink-0">
-                <div class="flex flex-col items-center space-y-2 mb-8">
-                    <img src="assets/logo.png" alt="VV Studios Logo" class="w-16 h-16">
-                    <span class="text-xl font-bold">VV Studios</span>
-                    <span class="text-sm text-white/60">Client Portal</span>
-                </div>
-                <nav>
-    <ul class="space-y-2">
-        <!-- My Business -->
-        <li class="mb-4">
-            <a href="index.html"
-                class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
-                <i class="fa-solid fa-briefcase w-5 h-5"></i>
-                <span>My Business</span>
-                <span class="tooltip">View your business overview and key insights</span>
-            </a>
-        </li>
-
-        <!-- Ads (highlighted) -->
-        <li class="mb-4">
-            <a href="ads_management_dashboard.html"
-                class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors active">
-                <i class="fa-solid fa-bullhorn w-5 h-5"></i>
-                <span>Ads</span>
-                <span class="tooltip">Optimize your ad campaigns for maximum ROI!</span>
-            </a>
-        </li>
-
-        <!-- Sales & Follow-Ups (CRM) -->
-        <li class="mb-4">
-            <a href="crmlanding.html"
-                class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
-                <i class="fa-solid fa-handshake w-5 h-5"></i>
-                <span>Sales & Follow-Ups</span>
-                <span class="tooltip">Track and manage your customers easily</span>
-            </a>
-        </li>
-
-        <!-- Ecommerce (Growth+) -->
-        <li class="mb-4" id="sidebar-ecommerce-item">
-            <a href="ecommerce.html" data-always-allow="true"
-                class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
-                <i class="fa-solid fa-store w-5 h-5"></i>
-                <span>Ecommerce</span>
-                <span class="tooltip">Sell products, bundles and offers</span>
-            </a>
-        </li>
-
-        <!-- Business Assistant (Copilot) - back to dashboard from Ads section -->
-        <li class="mb-4">
-            <!-- default href points back to dashboard; JS may switch this to copilot.html for Growth+ packages -->
-            <a href="index.html" data-copilot-target="copilot.html"
-                class="flex items-center space-x-3 text-white hover:text-white sidebar-link p-3 rounded-xl transition-colors">
-                <i class="fa-solid fa-robot w-5 h-5"></i>
-                <span>Business Assistant</span>
-                <span class="tooltip">Your AI Copilot that helps you run the business</span>
-            </a>
-        </li>
-
-        <!-- Messaging (replaces AI Sales Assistant) -->
-        <li class="mb-4" id="messaging-item">
-            <button type="button" id="messaging-toggle" aria-expanded="false"
-                onclick="(function(btn){try{ if(btn.classList.contains('locked')) return; const sub=btn.nextElementSibling;if(!sub) return; const ch=btn.querySelector('.fa-chevron-down'); sub.classList.toggle('hidden'); ch && ch.classList.toggle('rotate-180'); btn.setAttribute('aria-expanded', String(! (btn.getAttribute('aria-expanded')==='true')));}catch(e){}})(this)"
-                class="locked w-full flex items-center space-x-3 text-white/30 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
-                <i class="fa-solid fa-comments w-5 h-5"></i>
-                <span>Messaging</span>
-                <i class="fa-solid fa-chevron-down w-4 h-4 ml-auto transition-transform"></i>
-                <i class="fa-solid fa-lock w-3 h-3 text-white/30 ml-2" id="messaging-lock"></i>
-            </button>
-            <ul id="messaging-submenu" class="mt-2 hidden space-y-2 pl-3">
-                <li>
-                    <a href="#" class="flex items-center space-x-3 text-white/60 hover:text-white p-2 rounded-lg">
-                        <i class="fa-brands fa-whatsapp w-4 h-4"></i>
-                        <span>WhatsApp</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" class="flex items-center space-x-3 text-white/60 hover:text-white p-2 rounded-lg">
-                        <i class="fa-brands fa-facebook w-4 h-4"></i>
-                        <span>Facebook</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" class="flex items-center space-x-3 text-white/60 hover:text-white p-2 rounded-lg">
-                        <i class="fa-brands fa-instagram w-4 h-4"></i>
-                        <span>Instagram</span>
-                    </a>
-                </li>
-            </ul>
-        </li>
+            <script src="sidebar.js" defer></script>
         <script>
         (function(){
             try{
@@ -250,50 +161,6 @@
             }catch(e){console.error(e)}
         })();
         </script>
-
-        <!-- Automations (locked) -->
-        <li class="mb-4">
-            <a href="#"
-                class="flex items-center space-x-3 text-white/30 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
-                <i class="fa-solid fa-arrows-spin w-5 h-5"></i>
-                <span>Automations</span>
-                <span class="tooltip">Automate your business and save 10+ hours a week!</span>
-                <i class="fa-solid fa-lock w-3 h-3 text-white/30 ml-auto"></i>
-            </a>
-        </li>
-
-        <!-- Marketing Systems (locked) -->
-        <li class="mb-4">
-            <a href="#"
-                class="flex items-center space-x-3 text-white/30 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
-                <i class="fa-solid fa-gear w-5 h-5"></i>
-                <span>Marketing Systems</span>
-                <span class="tooltip">Sales and marketing on autopilot!</span>
-                <i class="fa-solid fa-lock w-3 h-3 text-white/30 ml-auto"></i>
-            </a>
-        </li>
-
-        <!-- Content Creation -->
-        <li class="mb-4">
-            <a href="contentcreation.html"
-                class="flex items-center space-x-3 text-white/60 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
-                <i class="fa-solid fa-pen-nib w-5 h-5"></i>
-                <span>Content Creation</span>
-            </a>
-        </li>
-
-        <!-- Live Chat -->
-        <li class="mb-4">
-            <a href="livechat.html"
-                class="flex items-center space-x-3 text-white/60 hover:text-white sidebar-link p-3 rounded-xl transition-colors">
-                <i class="fa-solid fa-comments w-5 h-5"></i>
-                <span>Live Chat</span>
-                <span class="tooltip">Engage with customers in real-time!</span>
-            </a>
-        </li>
-    </ul>
-</nav>
-</aside>
 
 <script>
 // Ensure Ecommerce sidebar item always navigates to `ecommerce.html` (Ads page)

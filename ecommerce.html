@@ -1035,7 +1035,6 @@
             const sidebar = document.getElementById('sidebar');
             const backdrop = document.getElementById('sidebar-backdrop');
             sidebar.classList.toggle('open');
-            sidebar.classList.toggle('-translate-x-full');
             backdrop.classList.toggle('show');
         }
 
@@ -1303,10 +1302,45 @@
                 td1.appendChild(img);
                 td1.appendChild(titleDiv);
 
-                // Column 2: price
+                // Column 2: price (editable)
                 const td2 = document.createElement('td');
-                td2.className = 'px-6 py-4 whitespace-nowrap text-sm text-white/70';
-                td2.innerHTML = `KES ${p.price.toLocaleString()} ${p.old_price ? `<span class="text-xs text-red-400 line-through ml-1">${p.old_price.toLocaleString()}</span>` : ''}`;
+                td2.className = 'px-6 py-4 whitespace-nowrap text-sm text-white/70 relative cursor-pointer';
+                
+                const priceContainer = document.createElement('div');
+                priceContainer.className = 'flex items-center gap-2';
+                
+                const priceText = document.createElement('span');
+                priceText.textContent = `KES ${p.price.toLocaleString()}`;
+                if (p.old_price) {
+                    const oldPriceSpan = document.createElement('span');
+                    oldPriceSpan.className = 'text-xs text-red-400 line-through ml-1';
+                    oldPriceSpan.textContent = p.old_price.toLocaleString();
+                    priceText.appendChild(oldPriceSpan);
+                }
+                
+                const editIcon = document.createElement('span');
+                editIcon.className = 'hidden text-white/50 hover:text-white text-xs cursor-pointer';
+                editIcon.innerHTML = '✏️';
+                editIcon.title = 'Edit price';
+                editIcon.onclick = (e) => {
+                    e.stopPropagation();
+                    makePriceEditable(td2, p.id, p.price, p.old_price);
+                };
+                
+                priceContainer.appendChild(priceText);
+                priceContainer.appendChild(editIcon);
+                td2.appendChild(priceContainer);
+                
+                // Show pen icon when cell is clicked
+                td2.onclick = () => {
+                    editIcon.classList.remove('hidden');
+                    // Hide after 3 seconds if not clicked
+                    setTimeout(() => {
+                        if (!td2.querySelector('input')) {
+                            editIcon.classList.add('hidden');
+                        }
+                    }, 3000);
+                };
 
                 // Column 3: visibility toggle
                 const td3 = document.createElement('td');
@@ -1344,6 +1378,110 @@
 
                 list.appendChild(tr);
             }
+        }
+
+        // Make price editable inline
+        async function makePriceEditable(tdElement, productId, currentPrice, oldPrice) {
+            // Prevent multiple edits
+            if (tdElement.querySelector('input')) return;
+            
+            // Create input field
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.value = currentPrice;
+            input.className = 'bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-sm w-20';
+            input.min = '0';
+            input.step = '0.01';
+            
+            // Replace content with input
+            tdElement.innerHTML = '';
+            tdElement.appendChild(input);
+            input.focus();
+            input.select();
+            
+            // Function to restore the original display
+            const restoreOriginalDisplay = (price = currentPrice) => {
+                const priceContainer = document.createElement('div');
+                priceContainer.className = 'flex items-center gap-2';
+                
+                const priceText = document.createElement('span');
+                priceText.textContent = `KES ${price.toLocaleString()}`;
+                if (oldPrice) {
+                    const oldPriceSpan = document.createElement('span');
+                    oldPriceSpan.className = 'text-xs text-red-400 line-through ml-1';
+                    oldPriceSpan.textContent = oldPrice.toLocaleString();
+                    priceText.appendChild(oldPriceSpan);
+                }
+                
+                const editIcon = document.createElement('span');
+                editIcon.className = 'hidden text-white/50 hover:text-white text-xs cursor-pointer';
+                editIcon.innerHTML = '✏️';
+                editIcon.title = 'Edit price';
+                editIcon.onclick = (e) => {
+                    e.stopPropagation();
+                    makePriceEditable(tdElement, productId, price, oldPrice);
+                };
+                
+                priceContainer.appendChild(priceText);
+                priceContainer.appendChild(editIcon);
+                tdElement.innerHTML = '';
+                tdElement.appendChild(priceContainer);
+                
+                // Re-attach click handler to show pen
+                tdElement.onclick = () => {
+                    editIcon.classList.remove('hidden');
+                    setTimeout(() => {
+                        if (!tdElement.querySelector('input')) {
+                            editIcon.classList.add('hidden');
+                        }
+                    }, 3000);
+                };
+            };
+            
+            // Handle save on enter or blur
+            const savePrice = async () => {
+                const newPrice = parseFloat(input.value) || 0;
+                if (newPrice === currentPrice) {
+                    // No change, restore original
+                    restoreOriginalDisplay();
+                    return;
+                }
+                
+                try {
+                    const client = window.supabaseClient;
+                    if (!client) {
+                        alert('Supabase client not initialized');
+                        restoreOriginalDisplay();
+                        return;
+                    }
+                    
+                    const { error } = await client.from('products').update({ price: newPrice }).eq('id', productId);
+                    
+                    if (error) {
+                        alert('Error updating price: ' + error.message);
+                        restoreOriginalDisplay();
+                        return;
+                    }
+                    
+                    // Success - update the display with new price
+                    restoreOriginalDisplay(newPrice);
+                    
+                } catch (err) {
+                    console.error('Error updating price:', err);
+                    alert('Error updating price');
+                    restoreOriginalDisplay();
+                }
+            };
+            
+            input.onblur = savePrice;
+            input.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    savePrice();
+                } else if (e.key === 'Escape') {
+                    restoreOriginalDisplay();
+                }
+            };
         }
 
         // Toggle listing type UI
