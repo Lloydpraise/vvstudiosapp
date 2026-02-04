@@ -162,35 +162,78 @@ function renderBusinessItem(container, biz, isCurrent) {
     `;
     
     if(!isCurrent) {
-        div.addEventListener('click', () => switchBusiness(biz));
+        div.addEventListener('click', () => window.authUtils.switchBusiness(biz));
     }
+    // Right-click to delete business
+    div.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        showDeleteBusinessModal(biz, isCurrent);
+    });
     container.appendChild(div);
 }
 
-// 3. Switch Business Logic
-function switchBusiness(biz) {
-    // 1. Update LocalStorage
-    const user = JSON.parse(localStorage.getItem('vvUser') || '{}');
-    user.business_id = biz.business_id;
-    user['business id'] = biz.business_id; // Support both keys
-    user.business_name = biz.name;
-    // Keep other user fields (phone, name, etc) the same
-    try{
-        const toSave = Object.assign({}, user);
-        if (toSave.active_services) delete toSave.active_services;
-        if (toSave.pending_services) delete toSave.pending_services;
-        localStorage.setItem('vvUser', JSON.stringify(toSave));
-    }catch(e){ try{ const f = Object.assign({}, user); if (f.active_services) delete f.active_services; if (f.pending_services) delete f.pending_services; localStorage.setItem('vvUser', JSON.stringify(f)); }catch(_){} }
-
-    // 2. Show loading feedback
-    const dd = document.getElementById('business-dropdown');
-    if(dd) dd.classList.add('hidden');
-    const nameEl = document.getElementById('businessName');
-    if(nameEl) nameEl.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Switching...';
-
-    // 3. Reload Page to refresh all data
-    setTimeout(() => window.location.reload(), 500);
+function showDeleteBusinessModal(biz, isCurrent) {
+    const modal = document.getElementById('delete-business-modal');
+    const textEl = document.getElementById('delete-business-text');
+    const confirmBtn = document.getElementById('delete-business-confirm');
+    const cancelBtn = document.getElementById('delete-business-cancel');
+    
+    textEl.textContent = `Are you sure you want to delete "${biz.name}"? This will permanently remove the business and all associated data. ${isCurrent ? 'You will be logged out.' : ''}`;
+    
+    modal.classList.remove('hidden');
+    
+    const closeModal = () => modal.classList.add('hidden');
+    
+    cancelBtn.onclick = closeModal;
+    modal.onclick = (e) => { if (e.target === modal) closeModal(); };
+    
+    confirmBtn.onclick = async () => {
+        closeModal();
+        await deleteBusiness(biz, isCurrent);
+    };
 }
+
+async function deleteBusiness(biz, isCurrent) {
+    try {
+        // Delete from businesses
+        const { error: bizError } = await supabase
+            .from('businesses')
+            .delete()
+            .eq('business_id', biz.business_id);
+        
+        if (bizError) throw bizError;
+        
+        // Delete from business_members
+        const { error: memberError } = await supabase
+            .from('business_members')
+            .delete()
+            .eq('business_id', biz.business_id);
+        
+        if (memberError) throw memberError;
+        
+        // Delete from logins
+        const { error: loginError } = await supabase
+            .from('logins')
+            .delete()
+            .eq('business id', biz.business_id);
+        
+        if (loginError) throw loginError;
+        
+        if (isCurrent) {
+            // If deleting current business, logout
+            localStorage.removeItem('vvUser');
+            window.location.href = 'index.html';
+        } else {
+            // Refresh the business list
+            initBusinessHeaderUI();
+        }
+    } catch (err) {
+        console.error('Delete business failed', err);
+        alert('Failed to delete business. Please try again.');
+    }
+}
+
+// 3. Switch Business Logic - moved to auth.js
 
 // 4. Create New Business Logic
 async function handleCreateBusiness(e) {
@@ -244,7 +287,7 @@ async function handleCreateBusiness(e) {
         if(memberError) throw memberError;
 
         // Success! Switch to new business immediately
-        switchBusiness({ business_id: newBid, name: name });
+        window.authUtils.switchBusiness({ business_id: newBid, name: name });
 
     } catch(err) {
         console.error('Create business failed', err);
@@ -572,6 +615,7 @@ export async function loadUserData() {
     const { data: userDataArray, error } = await supabase
         .from('logins')
         .select('*')
+        .eq('phone_number', savedUser.phone_number)
         .eq('business id', businessId)
         .limit(1);
 
@@ -661,7 +705,7 @@ export function updateSubscriptionStatus(userData) {
             }
         }
 
-        const joinTimestamp = userData['joined date'] || userData['renewed date'] || userData.joined_date || userData.renewed_date;
+        const joinTimestamp = userData['renewed date'] || userData.renewed_date || userData['joined date'] || userData.joined_date;
         let daysRemaining = period;
         
         if (joinTimestamp) {
@@ -2024,7 +2068,88 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                     }
                 });
-            }
+async function handleCreateBusiness(e) {
+    e.preventDefault();
+    const btn = document.getElementById('create-biz-btn');
+    const errEl = document.getElementById('add-biz-error');
+    const user = JSON.parse(localStorage.getItem('vvUser') || '{}');
+    
+    // Inputs
+    const name = document.getElementById('new-biz-name').value.trim();
+    const industry = document.getElementById('new-biz-industry').value;
+    const role = document.getElementById('new-biz-role').value;
+    const employees = document.getElementById('new-biz-employees').value;
+    
+    if(!name) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Creating...';
+    errEl.classList.add('hidden');
+
+    try {
+        // Generate ID
+        const cleanName = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const random = Math.floor(Math.random() * 9000) + 1000;
+        const newBid = `${cleanName}${random}`; // e.g., apexconsulting4821
+
+        // 1. Insert into Businesses Table
+        const { error: bizError } = await supabase
+            .from('businesses')
+            .insert([{ 
+                business_id: newBid,
+                name: name,
+                industry: industry,
+                employees: employees,
+                owner_email: user.email || null,
+                business_type: 'general',
+                subscription_active: true
+            }]);
+
+        if(bizError) throw bizError;
+
+        // 2. Insert into Business Members Table
+        const { error: memberError } = await supabase
+            .from('business_members')
+            .insert([{ 
+                business_id: newBid,
+                phone_number: user.phone_number || user.phone,
+                role: role
+            }]);
+
+        if(memberError) throw memberError;
+
+        // 3. Insert a new login record for the new business
+        const newRecord = Object.assign({}, user, {
+            'business id': newBid,
+            business_id: newBid,
+            business_name: name
+        });
+        // Remove id if present to avoid conflict
+        if (newRecord.id) delete newRecord.id;
+        if (newRecord.user_id) delete newRecord.user_id;
+
+        const { error: insertError } = await supabase
+            .from('logins')
+            .insert([newRecord]);
+
+        if (insertError) throw insertError;
+
+
+        // Success! Switch to new business immediately
+        window.authUtils.switchBusiness({ business_id: newBid, name: name });
+
+    } catch(err) {
+        console.error('Create business failed', err);
+        if(errEl) {
+            errEl.textContent = 'Failed to create business. Please try again.';
+            errEl.classList.remove('hidden');
+        }
+        if(btn) {
+            btn.disabled = false;
+            btn.textContent = 'Create Business';
+        }
+    }
+}            }
             // TODO: implement Card/Bank flows later
         });
     });

@@ -1,4 +1,14 @@
 // Shared auth utilities
+// Updated import to use esm.sh for better compatibility and to resolve AuthClient null error
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+// --- SUPABASE CONFIGURATION ---
+const supabaseUrl = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
+
+// Create Supabase client directly
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 const firebaseConfig = {
     apiKey: "AIzaSyCHz35J4yav-16whNExV9V93VKkwApLO3A",
     authDomain: "sasa-ai-datastore.firebaseapp.com",
@@ -62,23 +72,21 @@ window.authUtils = {
     getLoggedInUser,
     getBusinessId,
     checkLoginAndRedirect,
-    logout
+    logout,
+    switchBusiness
 };
 
 // Helpers to toggle services locally (useful for admin to enable features)
 function _saveLoggedInUser(userObj) {
     try {
-        try {
             const copy = Object.assign({}, userObj);
-            if (copy.active_services) delete copy.active_services;
-            if (copy.pending_services) delete copy.pending_services;
+        // Do not strip active_services or pending_services as applyDefaultPackageSettings handles defaults
+        // if (copy.active_services) delete copy.active_services;
+        // if (copy.pending_services) delete copy.pending_services;
             localStorage.setItem('vvUser', JSON.stringify(copy));
         } catch (e) {
-            // fallback: attempt naive save but still strip arrays
-            try { const f = Object.assign({}, userObj); if (f.active_services) delete f.active_services; if (f.pending_services) delete f.pending_services; localStorage.setItem('vvUser', JSON.stringify(f)); } catch (ee) { try { localStorage.setItem('vvUser', JSON.stringify(userObj)); } catch (_) {} }
-        }
-    } catch (e) {
         console.warn('failed saving vvUser', e);
+        // Fallback attempts removed to simplify and centralize error handling
     }
 }
 
@@ -135,7 +143,7 @@ function getPackageDetails(pkg) {
     // Default package definitions
     const packages = {
         'Free': {
-            durationDays: 3,
+            durationDays: 365, // Changed from 3 to 365 days
             amount: 0,
             services: ['My Business']
         },
@@ -156,6 +164,73 @@ function getPackageDetails(pkg) {
         }
     };
     return packages[name] || { durationDays: null, amount: null, services: [] };
+}
+
+// --- Business Switching Logic ---
+async function switchBusiness(biz) {
+    // 1. Get current user data
+    const user = JSON.parse(localStorage.getItem('vvUser') || '{}');
+
+    // 2. Check if login record exists for this business
+    const phone = normalizePhoneNumber(user.phone_number || user.phone);
+    if (phone) {
+        try {
+            const { data: existingRecord, error } = await supabase
+                .from('logins')
+                .select('*')
+                .eq('phone_number', phone)
+                .eq('business id', biz.business_id)
+                .limit(1);
+
+            if (error) {
+                console.warn('Error checking for existing login record:', error);
+            } else if (!existingRecord || existingRecord.length === 0) {
+                // No record exists, create one
+                const newRecord = Object.assign({}, user, {
+                    'business id': biz.business_id,
+                    business_id: biz.business_id,
+                    business_name: biz.name,
+                    phone_number: phone
+                });
+                // Remove id if present to avoid conflict
+                if (newRecord.id) delete newRecord.id;
+                if (newRecord.user_id) delete newRecord.user_id;
+
+                const { error: insertError } = await supabase
+                    .from('logins')
+                    .insert([newRecord]);
+
+                if (insertError) {
+                    console.warn('Error creating login record for business:', insertError);
+                } else {
+                    console.log('Created login record for business:', biz.business_id);
+                }
+            }
+        } catch (e) {
+            console.warn('Exception in switchBusiness check:', e);
+        }
+    }
+
+    // 3. Update LocalStorage
+    user.business_id = biz.business_id;
+    user['business id'] = biz.business_id; // Support both keys
+    user.business_name = biz.name;
+    // Keep other user fields (phone, name, etc) the same
+    try{
+        const toSave = Object.assign({}, user);
+        if (toSave.active_services) delete toSave.active_services;
+        if (toSave.pending_services) delete toSave.pending_services;
+        localStorage.setItem('vvUser', JSON.stringify(toSave));
+    }catch(e){ try{ const f = Object.assign({}, user); if (f.active_services) delete f.active_services; if (f.pending_services) delete f.pending_services; localStorage.setItem('vvUser', JSON.stringify(f)); }catch(_){} }
+
+    // 4. Show loading feedback
+    const dd = document.getElementById('business-dropdown');
+    if(dd) dd.classList.add('hidden');
+    const nameEl = document.getElementById('businessName');
+    if(nameEl) nameEl.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Switching...';
+
+    // 5. Reload Page to refresh all data
+    setTimeout(() => window.location.reload(), 500);
 }
 
 function computePackageExpiryDate(joinedDate, pkg) {
@@ -428,11 +503,15 @@ window.authUtils.applyDefaultPackageSettings = applyDefaultPackageSettings;
                     link.classList.remove('text-white/30');
                     link.classList.add('text-white');
                     const existingLock = link.querySelector('.fa-lock'); if (existingLock) existingLock.remove();
-                    return;
+                    // We don't return here so that the 'isActive' check below can still run
+                    // and ensure the link is properly set up if it's already in active_services.
+                    // This prevents potential issues if 'ecommerce' is explicitly in active_services.
                 }
 
                 // Determine if this title is covered by active services
-                const isActive = active.some(a => {
+                // Also, explicitly consider 'ecommerce' as active, regardless of package services.
+                const isEcommerce = (norm === 'ecommerce');
+                const isActive = isEcommerce || active.some(a => {
                     return a && (norm.includes(a) || a.includes(norm) || norm === a);
                 });
 
@@ -460,3 +539,4 @@ window.authUtils.applyDefaultPackageSettings = applyDefaultPackageSettings;
         }
     });
 })();
+

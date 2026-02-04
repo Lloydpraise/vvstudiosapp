@@ -29,10 +29,10 @@
         const msgHref = isProOrBetter ? "messages.html" : "#";
         const msgLock = isProOrBetter ? "" : '<i class="fa-solid fa-lock w-3 h-3 text-white/30 ml-auto" id="messaging-lock"></i>';
 
-        const isGrowthOrBetter = (pkg === 'growth' || pkg === 'pro' || pkg === 'premium');
-        const ecomClass = isGrowthOrBetter ? "text-white hover:text-white" : "text-white/30 hover:text-white";
-        const ecomHref = isGrowthOrBetter ? "ecommerce.html" : "#";
-        const ecomLock = isGrowthOrBetter ? "" : '<i class="fa-solid fa-lock w-3 h-3 text-white/30 ml-auto" id="ecommerce-lock"></i>';
+        // Ecommerce is always unlocked for all packages
+        const ecomClass = "text-white hover:text-white";
+        const ecomHref = "ecommerce.html";
+        const ecomLock = "";
 
         // Helper for Premium-only items
         const premiumClass = isPremium ? "text-white hover:text-white" : "text-white/30 hover:text-white";
@@ -153,7 +153,7 @@
         // --- Standard Event Listeners (Toggle, Active State, Logout) ---
         const backdrop = document.getElementById('mobile-menu-backdrop') || (function(){
             let b = document.getElementById('sidebar-backdrop');
-            if (!b){ b = document.createElement('div'); b.id = 'sidebar-backdrop'; b.className = 'fixed inset-0 bg-black bg-opacity-50 z-40 hidden'; document.body.appendChild(b); }
+            if (!b){ b = document.createElement('div'); b.id = 'sidebar-backdrop'; b.className = 'fixed inset-0 bg-black bg-opacity-50 z-40 hidden pointer-events-none'; document.body.appendChild(b); }
             return b;
         })();
 
@@ -165,6 +165,21 @@
             sidebar.classList.toggle('open');
             backdrop.classList.toggle('hidden');
         };
+
+        // Close sidebar when clicking outside
+        const main = document.querySelector('main');
+        if (main) {
+            main.addEventListener('click', () => {
+                if (!sidebar.classList.contains('-translate-x-full')) {
+                    sidebar.classList.add('-translate-x-full');
+                    sidebar.classList.remove('open');
+                    backdrop.classList.add('hidden');
+                }
+            });
+        }
+
+        // Prevent closing when clicking inside sidebar
+        sidebar.addEventListener('click', (e) => e.stopPropagation());
 
         // Active link highlighter
         function updateActive(){

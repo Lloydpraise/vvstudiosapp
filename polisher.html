@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edens Collection - Expert Polisher</title>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; max-width: 700px; margin: 40px auto; padding: 20px; background: #f0f2f5; color: #333; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h2 { margin-top: 0; display: flex; align-items: center; gap: 10px; }
+        .badge { background: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 6px; font-size: 0.8em; }
+        
+        .controls { display: grid; grid-template-columns: 3fr 1fr; gap: 10px; margin-top: 20px; }
+        
+        button { border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; transition: 0.2s; }
+        #startBtn { background: #000; color: white; }
+        #startBtn:disabled { background: #ccc; cursor: not-allowed; }
+        
+        #stopBtn { background: #ef4444; color: white; display: none; }
+        #stopBtn:hover { background: #dc2626; }
+
+        #log { margin-top: 20px; height: 400px; overflow-y: auto; background: #1e293b; color: #4ade80; padding: 15px; font-family: monospace; border-radius: 8px; font-size: 13px; line-height: 1.5; }
+        .log-err { color: #f87171; border-left: 3px solid #f87171; padding-left: 5px; margin: 2px 0; }
+        .log-info { color: #94a3b8; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>💎 Product Polisher <span class="badge">V4 Anti-Limit</span></h2>
+    <p>Status: <b id="statusText">Ready</b> | Processed: <b id="countText">0</b></p>
+
+    <div class="controls">
+        <button id="startBtn" onclick="startPolishing()">Start Cycle</button>
+        <button id="stopBtn" onclick="forceStop()">STOP 🛑</button>
+    </div>
+
+    <div id="log">Logs will appear here...</div>
+</div>
+
+<script>
+    // --- YOUR KEYS ---
+    const FUNCTION_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co/functions/v1/polish-product';
+    const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
+    // -----------------
+
+    let isRunning = false;
+    let totalProcessed = 0;
+
+    function log(msg, type = 'normal') {
+        const box = document.getElementById('log');
+        const div = document.createElement('div');
+        div.className = type === 'error' ? 'log-err' : type === 'info' ? 'log-info' : '';
+        div.innerText = `> ${msg}`;
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
+    }
+
+    function forceStop() {
+        if (!isRunning) return;
+        isRunning = false;
+        log("🛑 USER STOPPED PROCESS.", "error");
+        resetControls();
+    }
+
+    function resetControls() {
+        document.getElementById('startBtn').disabled = false;
+        document.getElementById('stopBtn').style.display = 'none';
+        document.getElementById('statusText').innerText = "Stopped";
+    }
+
+    async function startPolishing() {
+        isRunning = true;
+        document.getElementById('startBtn').disabled = true;
+        document.getElementById('stopBtn').style.display = 'block';
+        document.getElementById('statusText').innerText = "Running...";
+        
+        log("🚀 Starting process...");
+
+        while (isRunning) {
+            try {
+                log("Fetching next 3 items...", "info");
+                
+                const res = await fetch(FUNCTION_URL, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json' }
+                });
+
+                if (!res.ok) {
+                    const txt = await res.text();
+                    throw new Error(`Server Error: ${res.status} ${txt}`);
+                }
+
+                const data = await res.json();
+
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                if (data.count === 0) {
+                    log("✅ No items left to polish!", "info");
+                    isRunning = false;
+                    resetControls();
+                    return;
+                } 
+
+                let hasError = false;
+                totalProcessed += data.count;
+                document.getElementById('countText').innerText = totalProcessed;
+                
+                data.results.forEach(r => {
+                    if (r.success) {
+                        log(`   "${r.title}" - OK`);
+                    } else {
+                        log(`   ❌ ID ${r.id} FAILED: ${r.error}`, "error");
+                        hasError = true;
+                    }
+                });
+
+                if (hasError) {
+                    log("⚠️ ERROR DETECTED: Stopping safely.", "error");
+                    isRunning = false;
+                    resetControls();
+                    return;
+                }
+
+                // INCREASED COOL DOWN TO 5 SECONDS
+                log("⏳ Cooling down 5s to save limits...", "info");
+                await new Promise(r => setTimeout(r, 5000));
+
+            } catch (err) {
+                log(`❌ CRITICAL ERROR: ${err.message}`, "error");
+                isRunning = false;
+                resetControls();
+            }
+        }
+    }
+</script>
+
+</body>
+</html>

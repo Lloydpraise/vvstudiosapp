@@ -34,7 +34,7 @@
 [data-theme="light"] .text-white\/60 { color: #475569 !important; }
 [data-theme="light"] .text-white\/50 { color: #6b7280 !important; }
 [data-theme="light"] .text-white\/40 { color: #6b7280 !important; }
-[data-theme="light"] .text-white\/50 { color: #6b7280 !important; }
+[data-theme="light"] .text-white\/30 { color: #374151 !important; }
 
 /* Placeholder and helper text: ensure guidance is visible on light backgrounds */
 [data-theme="light"] input::placeholder,
