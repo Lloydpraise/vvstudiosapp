@@ -293,19 +293,19 @@
             <div class="flex bg-[#0f1115] p-1 rounded-lg border border-[#2b2f3a]">
                 <button id="btn-whatsapp" onclick="switchPlatform('whatsapp')" class="top-nav-btn px-4 py-2 rounded-md flex items-center gap-2 transition-all text-sm font-medium relative">
                     <i class="fa-brands fa-whatsapp text-green-500 text-lg"></i> <span class="hidden md:inline">WhatsApp</span>
-                    <span id="whatsapp-unread-badge" class="absolute -top-2 -right-2 bg-green-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold hidden z-10">0</span>
+                    <span id="whatsapp-unread-badge" class="absolute -top-1 -right-1 bg-green-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold hidden z-10 min-w-5 text-center">0</span>
                 </button>
                 <button id="btn-facebook" onclick="switchPlatform('facebook')" class="top-nav-btn px-4 py-2 rounded-md flex items-center gap-2 transition-all text-sm font-medium text-white/50 relative">
                     <i class="fa-brands fa-facebook text-blue-600 text-lg"></i> <span class="hidden md:inline">Facebook</span>
-                    <span id="facebook-unread-badge" class="absolute -top-2 -right-2 bg-blue-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold hidden z-10">0</span>
+                    <span id="facebook-unread-badge" class="absolute -top-1 -right-1 bg-blue-500 text-white text-[10px] px-1 py-0.5 rounded-full font-bold hidden z-10 h-5 w-5 flex items-center justify-center">0</span>
                 </button>
                 <button id="btn-instagram" onclick="switchPlatform('instagram')" class="top-nav-btn px-4 py-2 rounded-md flex items-center gap-2 transition-all text-sm font-medium text-white/50 relative">
                     <i class="fa-brands fa-instagram text-pink-500 text-lg"></i> <span class="hidden md:inline">Instagram</span>
-                    <span id="instagram-unread-badge" class="absolute -top-2 -right-2 bg-pink-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold hidden z-10">0</span>
+                    <span id="instagram-unread-badge" class="absolute -top-1 -right-1 bg-pink-500 text-white text-[10px] px-1 py-0.5 rounded-full font-bold hidden z-10 h-5 w-5 flex items-center justify-center">0</span>
                 </button>
                 <button id="btn-tiktok" onclick="switchPlatform('tiktok')" class="top-nav-btn px-4 py-2 rounded-md flex items-center gap-2 transition-all text-sm font-medium text-white/50 relative">
                     <i class="fa-brands fa-tiktok text-white text-lg"></i> <span class="hidden md:inline">TikTok</span>
-                    <span id="tiktok-unread-badge" class="absolute -top-2 -right-2 bg-cyan-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold hidden z-10">0</span>
+                    <span id="tiktok-unread-badge" class="absolute -top-1 -right-1 bg-cyan-500 text-white text-[10px] px-1 py-0.5 rounded-full font-bold hidden z-10 h-5 w-5 flex items-center justify-center">0</span>
                 </button>
                 <button onclick="switchTab('ai-playground')" id="nav-ai-playground" class="nav-item w-full flex items-center gap-3 px-3 py-2 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors group">
     <div class="w-5 h-5 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform">
@@ -359,72 +359,171 @@
     <div id="crm-tab-content" class="flex-1 overflow-hidden relative flex flex-col h-full p-4 md:p-6">
         
         <!-- WhatsApp Livechat Section -->
-        <div id="crm-chats" class="view-section h-full flex gap-4 lg:gap-6 relative fade-in">
-            
-            <div id="crm-chat-list-panel" class="w-full md:w-80 lg:w-96 bg-[#1a1d23] border border-[#2b2f3a] rounded-2xl flex flex-col h-full shadow-xl overflow-hidden">
-                <div class="p-4 border-b border-[#2b2f3a] bg-[#1a1d23]">
-                    <div class="relative group">
-                        <i class="fa-solid fa-search absolute left-4 top-3.5 text-white/30 group-focus-within:text-purple-500 transition-colors"></i>
-                        <input type="text" placeholder="Search..." class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500 transition-all placeholder-white/20">
-                    </div>
-                </div>
-                <div id="crm-contact-list" class="flex-1 overflow-y-auto p-2 space-y-1">
-                    <!-- Conversations will be dynamically rendered here by messages.js with unread badges -->
-                </div>
-                <div id="crm-empty-state" class="hidden flex-1 flex flex-col items-center justify-center p-4 text-center">
-                    <i class="fa-brands fa-whatsapp text-6xl text-green-500 mb-4 opacity-40"></i>
-                    <p class="text-white/50 text-sm">Your conversations appear here</p>
-                </div>
+        <div id="crm-chats" class="view-section flex flex-1 overflow-hidden relative">
+    
+    <div id="crm-chat-list-panel" class="w-full md:w-80 border-r border-white/10 flex flex-col bg-[#111318]">
+        <div class="p-4 border-b border-white/5">
+            <div class="relative">
+                <i class="fa-solid fa-search absolute left-3 top-3 text-white/30 text-xs"></i>
+                <input type="text" placeholder="Search conversations..." 
+                       class="w-full bg-[#0f1115] border border-white/10 rounded-lg pl-8 pr-3 py-2 text-xs text-white focus:border-purple-500 outline-none transition-all">
             </div>
-
-            <div id="crm-chat-window" class="mobile-chat-overlay hidden md:flex flex-1 bg-[#1a1d23] border border-[#2b2f3a] rounded-2xl flex-col h-full relative overflow-hidden shadow-xl md:rounded-2xl md:border">
-                <div class="p-3 border-b border-[#2b2f3a] flex justify-between items-center bg-[#202c33] z-10">
-                    <div class="flex items-center gap-3 flex-1">
-                        <button onclick="crm.closeMobileChat()" class="mobile-close-btn text-white/70 mr-2"><i class="fa-solid fa-arrow-left"></i></button>
-                        <div class="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold relative">
-                            <span id="chat-header-avatar">?</span>
-                        </div>
-                        <div>
-                            <div class="font-bold text-sm cursor-pointer" id="chat-header-name" title="View contact">Select a contact</div>
-                            <div class="flex items-center gap-2">
-                                <div id="chat-header-indicator" class="w-2 h-2 rounded-full bg-gray-500"></div>
-                                <div class="text-xs text-white/50" id="chat-header-status">...</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <div class="flex items-center gap-2 mr-2 bg-white/5 px-3 py-1 rounded-full border border-white/10">
-                            <span class="text-xs text-white/60"><i class="fa-solid fa-robot mr-1"></i> Auto-Pilot</span>
-                            <button id="ai-toggle-btn" onclick="crm.toggleAI()" class="w-8 h-4 rounded-full bg-gray-600 relative transition-colors">
-                                <div class="w-2 h-2 bg-white rounded-full absolute top-1 left-1 transition-all"></div>
-                            </button>
-                        </div>
-                        <button id="contact-notes-btn" onclick="crm.openContactModal()" class="px-3 py-1 bg-white/5 hover:bg-white/10 text-xs rounded-md border border-white/10 flex items-center gap-2">
-                            <i class="fa-regular fa-note-sticky"></i>
-                            Notes
-                        </button>
-                    </div>
-                </div>
-
-                <div id="crm-messages-area" class="flex-1 overflow-y-auto p-4 space-y-3 bg-[#0b141a] chat-bg relative">
-                    <div class="flex h-full items-center justify-center text-white/30 text-sm flex-col">
-                        <i class="fa-brands fa-whatsapp text-4xl mb-3 opacity-50"></i>
-                        <p>Select a conversation</p>
-                    </div>
-                </div>
-
-                <div id="chat-input-container" class="p-3 bg-[#202c33] flex gap-2 items-center hidden">
-                    <input type="file" id="chat-file-upload" class="hidden" onchange="alert('File uploaded (Mock)')">
-                    <button onclick="document.getElementById('chat-file-upload').click()" class="text-white/50 hover:text-white p-2"><i class="fa-solid fa-paperclip"></i></button>
-                    <input type="text" id="chat-input" placeholder="Type a message..." class="flex-1 bg-[#2a3942] rounded-lg px-4 py-3 text-sm text-white focus:outline-none" onkeypress="if(event.key === 'Enter') crm.sendMessage()">
-                    <button onclick="crm.sendMessage()" class="p-3 bg-[#005c4b] hover:bg-[#005c4b]/80 rounded-full text-white w-10 h-10 flex items-center justify-center shadow-lg"><i class="fa-solid fa-paper-plane text-sm"></i></button>
-                </div>
-                
-                <div id="chat-input-disabled" class="p-4 bg-[#202c33] text-center text-xs text-white/40 border-t border-[#2b2f3a] hidden">
-                    <i class="fa-solid fa-robot mr-2"></i> AI Auto-Pilot is active. Turn off to type manually.
-                </div>
+            <div class="flex gap-2 mt-3 overflow-x-auto no-scrollbar">
+                <button class="px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 text-[10px] text-white/70 whitespace-nowrap border border-white/5">All</button>
+                <button class="px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 text-[10px] text-white/70 whitespace-nowrap border border-white/5">Unread</button>
+                <button class="px-3 py-1 rounded-full bg-purple-500/10 hover:bg-purple-500/20 text-[10px] text-purple-400 whitespace-nowrap border border-purple-500/20">AI Active</button>
             </div>
         </div>
+
+        <div id="crm-contact-list" class="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
+            </div>
+    </div>
+
+    <div id="crm-chat-window" class="hidden md:flex flex-1 flex-col bg-[#0f1115] relative">
+        
+        <div class="h-16 border-b border-white/5 flex justify-between items-center px-6 bg-[#111318]/50 backdrop-blur-sm">
+            <div class="flex items-center gap-3">
+                <button class="md:hidden text-white/60 mr-2 mobile-close-btn" onclick="crm.closeChat()">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <div class="relative">
+                    <div id="chat-header-avatar" class="w-9 h-9 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center font-bold text-sm">?</div>
+                    <div id="chat-header-indicator" class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-gray-500 border-2 border-[#0f1115] rounded-full"></div>
+                </div>
+                <div>
+                    <h3 id="chat-header-name" class="font-medium text-sm text-white leading-tight cursor-pointer hover:underline decoration-white/30">Select a Chat</h3>
+                    <p id="chat-header-status" class="text-[10px] text-white/40 font-mono mt-0.5">IDLE</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2 bg-white/5 px-2 py-1 rounded-lg border border-white/5">
+                    <span class="text-[10px] text-white/50 uppercase tracking-wider font-bold">AI Agent</span>
+                    <button id="ai-toggle-btn" onclick="crm.toggleAI()" class="w-8 h-4 bg-gray-600 rounded-full relative transition-colors">
+                        <div class="w-3 h-3 bg-white rounded-full absolute top-0.5 left-0.5 transition-all shadow-sm"></div>
+                    </button>
+                </div>
+                
+                <button onclick="crm.resolveChat()" title="Mark Resolved" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-green-500/20 text-white/40 hover:text-green-400 transition-all">
+                    <i class="fa-solid fa-check"></i>
+                </button>
+                <button onclick="crm.toggleContextSidebar()" title="Toggle Context" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-all xl:hidden">
+                    <i class="fa-solid fa-sidebar"></i>
+                </button>
+            </div>
+        </div>
+
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar scroll-smooth">
+            <div class="h-full flex flex-col items-center justify-center text-white/20">
+                <i class="fa-brands fa-whatsapp text-4xl mb-3 opacity-20"></i>
+                <p class="text-sm">Select a conversation to start messaging</p>
+            </div>
+        </div>
+
+        <div class="p-4 bg-[#111318] border-t border-white/5">
+            <div class="relative flex items-end gap-2 bg-[#0f1115] p-2 rounded-xl border border-white/10 focus-within:border-white/20 transition-colors">
+                <div class="relative">
+                    <div id="attach-menu" class="hidden absolute bottom-full mb-4 left-0 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                        <div class="bg-[#1a1d23] border border-[#2b2f3a] rounded-xl shadow-2xl p-2 flex flex-col gap-1 w-48">
+                            <button onclick="openProductPicker('single')" class="flex items-center gap-3 px-3 py-2 hover:bg-white/5 rounded-lg text-left">
+                                <i class="fa-solid fa-tag text-purple-400"></i>
+                                <span class="text-sm text-white">Product</span>
+                            </button>
+                            <button onclick="openProductPicker('multi')" class="flex items-center gap-3 px-3 py-2 hover:bg-white/5 rounded-lg text-left">
+                                <i class="fa-solid fa-layer-group text-blue-400"></i>
+                                <span class="text-sm text-white">Collection</span>
+                            </button>
+                            <button onclick="triggerFileUpload('image')" class="flex items-center gap-3 px-3 py-2 hover:bg-white/5 rounded-lg text-left">
+                                <i class="fa-solid fa-image text-green-400"></i>
+                                <span class="text-sm text-white">Image</span>
+                            </button>
+                            <button onclick="triggerFileUpload('document')" class="flex items-center gap-3 px-3 py-2 hover:bg-white/5 rounded-lg text-left">
+                                <i class="fa-solid fa-file-pdf text-orange-400"></i>
+                                <span class="text-sm text-white">Document</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button onclick="toggleAttachMenu()" class="w-10 h-10 rounded-full hover:bg-white/10 flex items-center justify-center text-white/60">
+                        <i class="fa-solid fa-paperclip text-lg"></i>
+                    </button>
+                </div>
+
+                <textarea id="message-input" rows="1" placeholder="Type a message..." 
+                    class="w-full bg-transparent text-sm text-white focus:outline-none resize-none py-1.5 max-h-32 custom-scrollbar"></textarea>
+                <button onclick="crm.sendMessage()" class="w-8 h-8 flex items-center justify-center bg-purple-600 hover:bg-purple-500 text-white rounded-lg shadow-lg shrink-0 transition-transform active:scale-95">
+                    <i class="fa-solid fa-paper-plane text-xs"></i>
+                </button>
+            </div>
+            <div id="ai-typing-indicator" class="hidden absolute bottom-20 left-6 flex items-center gap-2 bg-[#1a1d23] px-3 py-1.5 rounded-full border border-white/5 shadow-xl fade-in">
+                <div class="flex gap-1">
+                    <div class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce"></div>
+                    <div class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce delay-75"></div>
+                    <div class="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce delay-150"></div>
+                </div>
+                <span class="text-[10px] text-white/50 font-medium">AI is replying...</span>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="hidden-file-input" class="hidden" onchange="handleFileSelected(this)">
+
+    <div id="right-sidebar" class="hidden xl:flex w-80 bg-[#111318] border-l border-white/10 flex-col transition-all duration-300 transform translate-x-0 overflow-y-auto">
+        
+        <div class="p-4 border-b border-white/5 sticky top-0 bg-[#111318] z-10">
+            <h4 class="text-xs font-bold text-white/40 uppercase tracking-widest">Contact Info</h4>
+        </div>
+
+        <div id="right-sidebar-content" class="flex-1 overflow-y-auto p-4 space-y-6">
+            
+            <!-- Avatar & Contact Info Section -->
+            <div class="flex flex-col items-center mb-6">
+                <div id="sidebar-avatar" class="w-20 h-20 rounded-full bg-purple-600 flex items-center justify-center text-2xl font-bold mb-3 shadow-lg">
+                </div>
+                <h3 id="sidebar-name" class="text-xl font-semibold">Select a Contact</h3>
+                <p id="sidebar-phone" class="text-white/50 text-sm font-mono mt-1">--</p>
+                <span id="sidebar-platform" class="mt-2 px-2 py-0.5 rounded text-[10px] font-bold bg-white/10 text-white/60 uppercase tracking-wider hidden">
+                    WHATSAPP
+                </span>
+            </div>
+
+            <!-- Active Interest Card -->
+            <div class="mb-6">
+                <div class="flex items-center justify-between mb-2">
+                    <h4 class="text-xs font-bold text-white/40 uppercase tracking-wider">Active Interest</h4>
+                    <button id="btn-create-deal" class="text-xs text-purple-400 hover:text-purple-300">
+                        <i class="fa-solid fa-plus"></i> Deal
+                    </button>
+                </div>
+                <div id="sidebar-cart-container" class="bg-[#1a1d23] rounded-xl p-4 border border-[#2b2f3a] min-h-[80px]">
+                    <p class="text-white/20 text-xs text-center italic mt-2">No active items or deals.</p>
+                </div>
+            </div>
+
+            <!-- AI Memory & Notes Section -->
+            <div class="mb-6">
+                <div class="flex items-center justify-between mb-2">
+                    <h4 class="text-xs font-bold text-white/40 uppercase tracking-wider">AI Memory & Notes</h4>
+                    <span class="text-[10px] text-green-500/60"><i class="fa-solid fa-brain"></i> Auto-updating</span>
+                </div>
+                <textarea id="sidebar-notes" 
+                    class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded-xl p-3 text-sm text-white/80 focus:border-purple-500 outline-none resize-none h-32 transition-colors"
+                    placeholder="AI will generate notes here based on the conversation..."></textarea>
+                <div class="flex justify-end mt-2">
+                     <button onclick="saveContactNotes()" class="text-xs bg-white/5 hover:bg-white/10 px-3 py-1 rounded text-white/60">Save Notes</button>
+                </div>
+            </div>
+
+            <!-- Tags Section -->
+            <div class="mb-6">
+                <h4 class="text-xs font-bold text-white/40 uppercase tracking-wider mb-2">Tags</h4>
+                <div id="sidebar-tags" class="flex flex-wrap gap-2">
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
 
         <!-- Facebook Section -->
         <div id="view-facebook" class="view-section hidden h-full flex gap-4 lg:gap-6 relative fade-in">
@@ -469,7 +568,7 @@
 
                 <div id="facebook-chat-input-container" class="p-3 bg-[#202c33] flex gap-2 items-center hidden">
                     <input type="file" id="facebook-chat-file-upload" class="hidden" onchange="alert('File uploaded (Mock)')">
-                    <button onclick="document.getElementById('facebook-chat-file-upload').click()" class="text-white/50 hover:text-white p-2"><i class="fa-solid fa-paperclip"></i></button>
+                    <button onclick="toggleAttachMenu()" class="text-white/50 hover:text-white p-2"><i class="fa-solid fa-paperclip"></i></button>
                     <input type="text" id="facebook-chat-input" placeholder="Type a message..." class="flex-1 bg-[#2a3942] rounded-lg px-4 py-3 text-sm text-white focus:outline-none" onkeypress="if(event.key === 'Enter') crm.sendMessage()">
                     <button onclick="crm.sendMessage()" class="p-3 bg-[#005c4b] hover:bg-[#005c4b]/80 rounded-full text-white w-10 h-10 flex items-center justify-center shadow-lg"><i class="fa-solid fa-paper-plane text-sm"></i></button>
                 </div>
@@ -523,7 +622,7 @@
 
                 <div id="instagram-chat-input-container" class="p-3 bg-[#202c33] flex gap-2 items-center hidden">
                     <input type="file" id="instagram-chat-file-upload" class="hidden" onchange="alert('File uploaded (Mock)')">
-                    <button onclick="document.getElementById('instagram-chat-file-upload').click()" class="text-white/50 hover:text-white p-2"><i class="fa-solid fa-paperclip"></i></button>
+                    <button onclick="toggleAttachMenu()" class="text-white/50 hover:text-white p-2"><i class="fa-solid fa-paperclip"></i></button>
                     <input type="text" id="instagram-chat-input" placeholder="Type a message..." class="flex-1 bg-[#2a3942] rounded-lg px-4 py-3 text-sm text-white focus:outline-none" onkeypress="if(event.key === 'Enter') crm.sendMessage()">
                     <button onclick="crm.sendMessage()" class="p-3 bg-[#005c4b] hover:bg-[#005c4b]/80 rounded-full text-white w-10 h-10 flex items-center justify-center shadow-lg"><i class="fa-solid fa-paper-plane text-sm"></i></button>
                 </div>
@@ -577,7 +676,7 @@
 
                 <div id="tiktok-chat-input-container" class="p-3 bg-[#202c33] flex gap-2 items-center hidden">
                     <input type="file" id="tiktok-chat-file-upload" class="hidden" onchange="alert('File uploaded (Mock)')">
-                    <button onclick="document.getElementById('tiktok-chat-file-upload').click()" class="text-white/50 hover:text-white p-2"><i class="fa-solid fa-paperclip"></i></button>
+                    <button onclick="toggleAttachMenu()" class="text-white/50 hover:text-white p-2"><i class="fa-solid fa-paperclip"></i></button>
                     <input type="text" id="tiktok-chat-input" placeholder="Type a message..." class="flex-1 bg-[#2a3942] rounded-lg px-4 py-3 text-sm text-white focus:outline-none" onkeypress="if(event.key === 'Enter') crm.sendMessage()">
                     <button onclick="crm.sendMessage()" class="p-3 bg-[#005c4b] hover:bg-[#005c4b]/80 rounded-full text-white w-10 h-10 flex items-center justify-center shadow-lg"><i class="fa-solid fa-paper-plane text-sm"></i></button>
                 </div>
@@ -729,6 +828,41 @@
             </div>
         </div>
     </div>
+    
+
+<div id="product-picker-modal" class="hidden fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-[#1a1d23] w-full max-w-lg rounded-2xl border border-[#2b2f3a] shadow-2xl flex flex-col max-h-[80vh]">
+        
+        <div class="p-4 border-b border-white/5 flex justify-between items-center">
+            <h3 id="picker-title" class="font-semibold text-white">Select Product</h3>
+            <button onclick="closeProductPicker()" class="text-white/40 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="p-4 pb-0">
+            <div class="relative">
+                <i class="fa-solid fa-search absolute left-3 top-3 text-white/30 text-xs"></i>
+                <input type="text" id="picker-search" onkeyup="searchPickerProducts()" placeholder="Type to search inventory..." 
+                    class="w-full bg-[#0f1115] border border-[#2b2f3a] rounded-lg py-2 pl-9 pr-3 text-sm text-white focus:border-purple-500 outline-none">
+            </div>
+        </div>
+
+        <div id="picker-list" class="flex-1 overflow-y-auto p-4 space-y-2">
+            <div class="text-center text-white/20 py-8 text-xs">Loading inventory...</div>
+        </div>
+
+        <div class="p-3 border-t border-white/5 bg-[#14161a] flex items-center justify-center gap-3">
+            <button id="picker-show-more" onclick="loadMoreProducts()" class="px-4 py-2 bg-white/5 hover:bg-white/10 text-sm rounded-lg text-white/70 hidden">Show more</button>
+            <div id="picker-loading-indicator" class="text-xs text-white/40 hidden">Loading...</div>
+        </div>
+
+        <div class="p-4 border-t border-white/5 flex justify-between items-center bg-[#14161a] rounded-b-2xl">
+            <span id="picker-count" class="text-xs text-white/40">0 selected</span>
+            <button id="picker-send-btn" onclick="sendProductSelection()" class="bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium px-6 py-2 rounded-lg transition-colors">
+                Send
+            </button>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>

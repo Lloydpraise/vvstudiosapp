@@ -195,7 +195,10 @@
         // Attach mobile menu button listener
         const mobileMenuBtn = document.getElementById('mobile-menu-button');
         if (mobileMenuBtn) {
-            mobileMenuBtn.addEventListener('click', window.vv_toggleSidebarGuarded);
+            mobileMenuBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                window.vv_toggleSidebarGuarded();
+            });
         }
     }
 

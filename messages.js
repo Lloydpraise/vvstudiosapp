@@ -223,16 +223,49 @@ const crm = {
                 const igUnread = crmStore.conversations.filter(c => c.channel === 'instagram').reduce((s,x) => s + (Number(x.unread_count)||0), 0);
                 const ttUnread = crmStore.conversations.filter(c => c.channel === 'tiktok').reduce((s,x) => s + (Number(x.unread_count)||0), 0);
                 
+                // Check if AI is enabled for social channels
+                const fbAiEnabled = crmStore.conversations.some(c => c.channel === 'facebook' && c.ai_enabled);
+                const igAiEnabled = crmStore.conversations.some(c => c.channel === 'instagram' && c.ai_enabled);
+                const ttAiEnabled = crmStore.conversations.some(c => c.channel === 'tiktok' && c.ai_enabled);
+                
                 // Update platform button badges (top navigation)
                 const waBtn = document.getElementById('whatsapp-unread-badge');
                 const fbBtn = document.getElementById('facebook-unread-badge');
                 const igBtn = document.getElementById('instagram-unread-badge');
                 const ttBtn = document.getElementById('tiktok-unread-badge');
                 
+                // WhatsApp: Always show count
                 if (waBtn) { if (waUnread > 0) { waBtn.textContent = waUnread; waBtn.classList.remove('hidden'); } else { waBtn.classList.add('hidden'); } }
-                if (fbBtn) { if (fbUnread > 0) { fbBtn.textContent = fbUnread; fbBtn.classList.remove('hidden'); } else { fbBtn.classList.add('hidden'); } }
-                if (igBtn) { if (igUnread > 0) { igBtn.textContent = igUnread; igBtn.classList.remove('hidden'); } else { igBtn.classList.add('hidden'); } }
-                if (ttBtn) { if (ttUnread > 0) { ttBtn.textContent = ttUnread; ttBtn.classList.remove('hidden'); } else { ttBtn.classList.add('hidden'); } }
+                
+                // Facebook: Show count only if AI is off, otherwise show dot
+                if (fbBtn) { 
+                    if (fbUnread > 0) { 
+                        fbBtn.textContent = fbAiEnabled ? '●' : fbUnread;
+                        fbBtn.classList.remove('hidden'); 
+                    } else { 
+                        fbBtn.classList.add('hidden'); 
+                    } 
+                }
+                
+                // Instagram: Show count only if AI is off, otherwise show dot
+                if (igBtn) { 
+                    if (igUnread > 0) { 
+                        igBtn.textContent = igAiEnabled ? '●' : igUnread;
+                        igBtn.classList.remove('hidden'); 
+                    } else { 
+                        igBtn.classList.add('hidden'); 
+                    } 
+                }
+                
+                // TikTok: Show count only if AI is off, otherwise show dot
+                if (ttBtn) { 
+                    if (ttUnread > 0) { 
+                        ttBtn.textContent = ttAiEnabled ? '●' : ttUnread;
+                        ttBtn.classList.remove('hidden'); 
+                    } else { 
+                        ttBtn.classList.add('hidden'); 
+                    } 
+                }
                 
                 // Update platform header bars (admin.html specific)
                 const fbEl = document.getElementById('fb-unread-total');
@@ -338,46 +371,218 @@ const crm = {
         }
     },
 
+    // Toggle the Right Sidebar on smaller screens
+    toggleContextSidebar() {
+        const sidebar = document.getElementById('right-sidebar');
+        if (sidebar.classList.contains('hidden')) {
+            sidebar.classList.remove('hidden', 'xl:flex');
+            sidebar.classList.add('flex', 'absolute', 'right-0', 'top-0', 'bottom-0', 'z-20', 'shadow-2xl');
+        } else {
+            sidebar.classList.add('hidden', 'xl:flex');
+            sidebar.classList.remove('flex', 'absolute', 'right-0', 'top-0', 'bottom-0', 'z-20', 'shadow-2xl');
+        }
+    },
+
+    // Render the Right Sidebar with contact info, deals, and notes
+    renderRightSidebar(contact, deals = []) {
+        // 1. Basic Info
+        document.getElementById('sidebar-name').innerText = contact.name || contact.phone || "Unknown";
+        document.getElementById('sidebar-phone').innerText = contact.phone || "--";
+        
+        // Initials
+        const name = contact.name || "U";
+        document.getElementById('sidebar-avatar').innerText = name.substring(0, 2).toUpperCase();
+
+        // Platform Badge (Show if it's WhatsApp)
+        const platformBadge = document.getElementById('sidebar-platform');
+        if (contact.platform === 'whatsapp') {
+            platformBadge.classList.remove('hidden');
+            platformBadge.innerText = 'WHATSAPP';
+            platformBadge.className = "mt-2 px-2 py-0.5 rounded text-[10px] font-bold bg-green-500/20 text-green-400 uppercase tracking-wider";
+        } else {
+            platformBadge.classList.add('hidden');
+        }
+
+        // 2. AI NOTES (Populate from DB)
+        // Assuming contact has a column 'ai_summary' or 'notes'
+        const notesField = document.getElementById('sidebar-notes');
+        notesField.value = contact.notes || contact.ai_summary || ""; 
+        // Store contact ID on the element for saving later
+        notesField.dataset.contactId = contact.id; 
+
+        // 3. RENDER CART / DEALS (The New Logic)
+        const cartContainer = document.getElementById('sidebar-cart-container');
+        cartContainer.innerHTML = ''; // Clear previous
+
+        if (deals && deals.length > 0) {
+            deals.forEach(deal => {
+                const dealEl = document.createElement('div');
+                dealEl.className = "flex items-start gap-3 mb-3 pb-3 border-b border-white/5 last:border-0 last:mb-0 last:pb-0";
+                
+                // Format currency
+                const price = deal.amount ? parseFloat(deal.amount).toFixed(2) : '0.00';
+                
+                dealEl.innerHTML = `
+                    <div class="mt-1 w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
+                    <div>
+                        <p class="text-sm font-medium text-white">${deal.deal_name || 'Interested Product'}</p>
+                        <p class="text-xs text-white/50 capitalize">
+                            ${deal.stage.replace('_', ' ') || 'New Lead'} • KES ${price}
+                        </p>
+                    </div>
+                `;
+                cartContainer.appendChild(dealEl);
+            });
+        } else {
+            // Empty State - AI Suggestion Placeholder
+            cartContainer.innerHTML = `
+                <div class="text-center py-2">
+                    <i class="fa-solid fa-cart-shopping text-white/10 text-xl mb-2"></i>
+                    <p class="text-white/30 text-xs">No active deals.</p>
+                    <p class="text-white/20 text-[10px] mt-1">AI will auto-add items here based on chat.</p>
+                </div>
+            `;
+        }
+
+        // 4. Tags (render empty for now - can be populated from contact.tags)
+        const tagsContainer = document.getElementById('sidebar-tags');
+        if (contact.tags && contact.tags.length > 0) {
+            tagsContainer.innerHTML = contact.tags.map(tag => 
+                `<span class="bg-white/5 border border-white/10 px-2 py-1 rounded text-xs text-white/70">${tag}</span>`
+            ).join('');
+        } else {
+            tagsContainer.innerHTML = '<p class="text-white/30 text-xs">No tags yet</p>';
+        }
+    },
+
+    // Renders the Pro Sidebar data (deprecated - kept for compatibility)
+    renderContextSidebar(conv) {
+        // This function is now replaced by renderRightSidebar
+        // Keeping for backward compatibility
+        if (conv && conv.contacts) {
+            this.renderRightSidebar(conv.contacts, []);
+        }
+    },
+
+    // Enhanced Message Renderer (Native Styles)
+    renderMessages(convId) {
+        const container = document.getElementById('chat-messages');
+        const msgs = crmStore.messages.filter(m => m.conversation_id == convId); // Use loose equality for safety
+        
+        if (msgs.length === 0) {
+            container.innerHTML = `<div class="text-center text-white/20 mt-10">No messages yet.</div>`;
+            return;
+        }
+
+        // Identify current platform style
+        const isInsta = crmStore.activePlatform === 'instagram';
+        const isWhatsapp = crmStore.activePlatform === 'whatsapp';
+
+        container.innerHTML = msgs.map(msg => {
+            const isMe = msg.sender === 'ai' || msg.sender === 'admin';
+            
+            // Dynamic Styles based on Platform
+            let bubbleClass = isMe 
+                ? (isWhatsapp ? "bg-[#005c4b] text-white rounded-tr-none" : "bg-[#3797f0] text-white rounded-br-none") 
+                : (isWhatsapp ? "bg-[#202c33] text-white rounded-tl-none" : "bg-[#262626] text-white rounded-bl-none");
+            
+            // Alignment
+            let alignClass = isMe ? "justify-end" : "justify-start";
+
+            return `
+                <div class="flex w-full ${alignClass} mb-2 group">
+                    <div class="max-w-[70%] relative">
+                        <div class="${bubbleClass} px-3 py-2 rounded-xl text-sm shadow-sm leading-relaxed relative">
+                            ${msg.body}
+                            
+                            <div class="text-[10px] text-white/40 text-right mt-1 flex justify-end gap-1 items-center">
+                                ${new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                ${isMe && isWhatsapp ? '<i class="fa-solid fa-check-double text-blue-400"></i>' : ''}
+                            </div>
+                        </div>
+                        
+                        ${msg.sender === 'ai' ? `<div class="text-[9px] text-white/30 mt-1 text-right font-mono uppercase">🤖 AI Agent</div>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Auto Scroll to bottom
+        container.scrollTop = container.scrollHeight;
+    },
+
+    async loadConversation(contactId) {
+        console.log("Loading conversation for:", contactId);
+        crmStore.activeChatId = contactId;
+
+        // 1. Fetch Contact Basic Info
+        const { data: contact, error } = await getSupabase()
+            .from('contacts')
+            .select('*')
+            .eq('id', contactId)
+            .single();
+
+        if (error || !contact) {
+            console.error("Error loading contact:", error);
+            return;
+        }
+
+        // 2. FETCH EXTRA CONTEXT: Deals/Cart
+        // Fetch deals with correct schema: deal_name, amount, stage, status
+        const { data: deals } = await getSupabase()
+            .from('deals') 
+            .select('deal_name, amount, stage, status, created_at')
+            .eq('contact_id', contactId)
+            .neq('status', 'lost') // Hide lost deals
+            .order('created_at', { ascending: false });
+
+        // 3. Render Sidebar with new Context
+        this.renderRightSidebar(contact, deals);
+    },
+
     async openChat(convId) {
+        // 1. Set internal active ID
+        this.activeConversationId = convId;
         crmStore.activeChatId = convId;
-        crmStore.activePlatform = 'whatsapp';
+
+        // 2. Optimistic UI Update (Instant feedback)
+        // Find the conversation in our local store and zero out the count visually immediately
+        const convIndex = crmStore.conversations.findIndex(c => c.id === convId);
+        if (convIndex > -1) {
+            crmStore.conversations[convIndex].unread_count = 0;
+            // Re-render the list to remove the badge instantly
+            this.renderContacts(); 
+        }
+
+        // 3. Database Update (The actual fix)
+        // We call the RPC function we just created
+        const { error } = await getSupabase()
+            .rpc('mark_conversation_read', { p_conversation_id: convId });
+
+        if (error) console.error("Error marking read:", error);
+
+        // 4. Update UI for the Chat Window
         const conv = crmStore.conversations.find(c => c.id === convId);
-
-        if(window.innerWidth < 768) {
-            document.getElementById('crm-chat-list-panel').classList.add('mobile-chat-list-hidden');
-            document.getElementById('crm-chat-window').classList.add('mobile-chat-view-active');
-            document.getElementById('crm-chat-window').style.display = 'flex';
+        if (conv) {
+            document.getElementById('chat-header-name').textContent = conv.contacts?.name || conv.contacts?.phone || 'Unknown';
+            document.getElementById('chat-header-avatar').textContent = conv.contacts?.name?.[0] || '#';
+            
+            // Fetch and render the new right sidebar with deals/cart
+            if (conv.contact_id) {
+                await this.loadConversation(conv.contact_id);
+            } else {
+                // Fallback to rendering with embedded contact
+                const deals = [];
+                this.renderRightSidebar(conv.contacts || {}, deals);
+            }
         }
 
-        await getSupabase().from('conversations').update({ unread_count: 0 }).eq('id', convId);
-
-        // Mark unread messages as read in the messages table
-        await getSupabase().from('messages').update({ is_read: true }).eq('conversation_id', convId).eq('is_read', false);
-
-        // Update local store immediately to remove unread badge
-        const localConv = crmStore.conversations.find(c => c.id === convId);
-        if (localConv) {
-            localConv.unread_count = 0;
-        }
-
-        document.getElementById('chat-header-name').textContent = conv.contacts?.name || 'Unknown';
-        document.getElementById('chat-header-avatar').textContent = conv.contacts?.name?.[0] || '?';
-        // clicking header opens contact modal for quick view/notes
-        try { document.getElementById('chat-header-name').onclick = () => this.openContactModal(); } catch(e) {}
-        
-        const isActive = this.isWindowActive(conv.last_user_message_at);
-        document.getElementById('chat-header-status').textContent = isActive ? "Active Session" : "Session Expired";
-        document.getElementById('chat-header-indicator').className = isActive ? "w-2 h-2 rounded-full bg-green-500" : "w-2 h-2 rounded-full bg-yellow-500";
-
-        this.updateInputVisibility(isActive, conv.ai_enabled);
-        this.updateAIToggleUI(Boolean(conv.ai_enabled));
-        
-        const { data } = await getSupabase().from('messages').select('*').eq('conversation_id', convId).order('created_at', { ascending: true });
-        crmStore.messages = data || [];
-        
+        // 5. Render Messages
         this.renderMessages(convId);
-        this.subscribeToMessages(convId, 'whatsapp');
-        this.renderContacts(); 
+        
+        // 6. Reveal Mobile View
+        document.getElementById('crm-chat-window').classList.remove('hidden');
+        document.getElementById('crm-chat-list-panel').classList.add('hidden', 'md:flex');
     },
 
     // Open contact details modal and allow editing notes
@@ -940,53 +1145,66 @@ const crm = {
     },
 
     async sendMessage() {
-        const platform = crmStore.activePlatform || 'whatsapp';
-        const inputId = platform === 'whatsapp' ? 'chat-input' : `${platform}-chat-input`;
-        const input = document.getElementById(inputId);
-        if (!input) return;
-
+        const input = document.getElementById('message-input');
         const text = input.value.trim();
+        
         if (!text || !crmStore.activeChatId) return;
 
+        // 1. Get Contact & Conversation Details
         const conv = crmStore.conversations.find(c => c.id === crmStore.activeChatId);
-        
-        // Optimistic UI
-        const tempId = 'temp-' + Date.now();
-        crmStore.messages.push({
-            id: tempId,
-            conversation_id: crmStore.activeChatId,
-            direction: 'out',
-            role: 'admin',
+        if (!conv || !conv.contacts) {
+            console.error("Conversation or contact not found for sending");
+            alert("Error: Contact information not found.");
+            return;
+        }
+
+        const platform = conv.channel || 'whatsapp';
+        const contact = conv.contacts;
+
+        // 2. Optimistic UI Update (Show message immediately)
+        const tempMsg = {
+            id: 'temp-' + Date.now(),
+            role: 'agent', // Match the new DB label
             content: { text: text },
-            status: 'pending', 
-            created_at: new Date().toISOString()
-        });
+            created_at: new Date().toISOString(),
+            status: 'sending'
+        };
+        
+        crmStore.messages.push(tempMsg);
+        this.renderMessages(crmStore.activeChatId);
 
-        // Render immediately based on active platform
-        if(crmStore.activePlatform === 'whatsapp') this.renderMessages(crmStore.activeChatId);
-        else this.renderSocialMessages(crmStore.activeChatId, crmStore.activePlatform);
-
+        // Clear input
         input.value = '';
 
-        // API Call
         try {
-            await fetch('https://xgtnbxdxbbywvzrttixf.supabase.co/functions/v1/whatsapp-webhook', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    recipientId: conv.contacts.phone, // Or PSID for social
-                    platform: conv.channel,
+            // 3. CONSTRUCT PAYLOAD (The "Schema" compliance)
+            // We package the text into a strict object
+            const payload = { 
+                type: "text", 
+                text: text 
+            };
+
+            // 4. CALL THE NEW UNIFIED FUNCTION
+            const { data, error } = await getSupabase().functions.invoke('agent-outbound', {
+                body: { 
+                    recipientId: contact.social_id || contact.phone, // Prioritize social_id for FB/IG
+                    payload: payload,
                     conversationId: crmStore.activeChatId,
-                    businessId: crmStore.businessId,
-                    payload: { text: text },
+                    businessId: resolveBusinessId(),
+                    platform: platform,
                     contactId: conv.contact_id
-                })
+                }
             });
-            // Realtime will replace the temp message
-            crmStore.messages = crmStore.messages.filter(m => m.id !== tempId);
+
+            if (error) throw error;
+            console.log("Agent message sent:", data);
+            
+            // Remove temp message - realtime will handle actual message display
+            crmStore.messages = crmStore.messages.filter(m => m.id !== tempMsg.id);
+
         } catch (err) {
-            console.error("Send Error:", err);
-            alert("Failed to send");
+            console.error("Send failed:", err);
+            alert("Failed to send. " + (err.message || ""));
         }
     },
 
@@ -1761,6 +1979,49 @@ window.aiPlayground = {
     }
 };
 
+// Global function for Save Notes button in right sidebar
+async function saveContactNotes() {
+    try {
+        const notesField = document.getElementById('sidebar-notes');
+        if (!notesField) return alert('Notes field not found');
+        
+        const contactId = notesField.dataset.contactId;
+        if (!contactId) return alert('No contact selected');
+
+        const notes = notesField.value;
+
+        // Update the contact notes in Supabase
+        const { error } = await getSupabase()
+            .from('contacts')
+            .update({ notes: notes, updated_at: new Date().toISOString() })
+            .eq('id', contactId);
+
+        if (error) {
+            console.error('Failed saving notes:', error);
+            return alert('Error saving notes. Check console.');
+        }
+
+        // Update local store conversations if present
+        if (crm && crm.updateContactInStore) {
+            crm.updateContactInStore(contactId, { notes });
+        } else {
+            // Fallback: manually update store
+            crmStore.conversations = crmStore.conversations.map(c => {
+                if (c.contact_id && String(c.contact_id) === String(contactId)) {
+                    if (!c.contacts) c.contacts = {};
+                    c.contacts.notes = notes;
+                }
+                return c;
+            });
+        }
+
+        alert('Notes saved successfully!');
+    } catch (err) {
+        console.error('saveContactNotes error:', err);
+        alert('Error saving notes.');
+    }
+}
+
 // Initialize the listener immediately
 aiPlayground.init();
 
@@ -1841,7 +2102,371 @@ aiPlayground.submitSuggestion = async function() {
     }
 };
 
-
 /* ==========================================================================
-   END OF MESSAGES.JS
+   SMART ATTACHMENT SYSTEM
    ========================================================================== */
+
+let pickerMode = 'single'; // 'single' or 'multi'
+let selectedProductIds = new Set();
+let pickerProductsCache = [];
+let pickerPage = 1;
+let pickerPageSize = 20; // fetch 20 at a time
+let pickerHasMore = true;
+let pickerLoading = false;
+let pickerQuery = '';
+let pickerImageObserver = null;
+
+// 1. Toggle Menu
+function toggleAttachMenu() {
+    const menu = document.getElementById('attach-menu');
+    menu.classList.toggle('hidden');
+}
+
+// 2. Open Picker
+async function openProductPicker(mode) {
+    toggleAttachMenu(); // Close menu
+    pickerMode = mode;
+    selectedProductIds.clear();
+    updatePickerUI();
+    
+    document.getElementById('product-picker-modal').classList.remove('hidden');
+    document.getElementById('picker-title').innerText = mode === 'single' ? "Select a Product" : "Build a Collection";
+    document.getElementById('picker-send-btn').innerText = mode === 'single' ? "Send Product" : "Create & Send Link";
+
+    // Reset pagination and search context
+    pickerPage = 1;
+    pickerQuery = '';
+    pickerHasMore = true;
+    // Fetch first page
+    await fetchPickerProducts(1, '');
+}
+
+function closeProductPicker() {
+    document.getElementById('product-picker-modal').classList.add('hidden');
+}
+
+// 3. Fetch Products (paged)
+async function fetchPickerProducts(page = 1, query = '') {
+    if (pickerLoading) return;
+    pickerLoading = true;
+    document.getElementById('picker-loading-indicator').classList.remove('hidden');
+    const bizId = resolveBusinessId();
+
+    try {
+        const from = (page - 1) * pickerPageSize;
+        const to = (page * pickerPageSize) - 1;
+
+        let builder = supabase
+            .from('products')
+            .select('id, title, price, images, stock_quantity')
+            .eq('business_id', bizId)
+            .eq('is_visible', true)
+            .order('created_at', { ascending: false })
+            .range(from, to);
+
+        if (query && query.trim().length > 0) {
+            // Use ilike for case-insensitive match
+            builder = builder.ilike('title', `%${query}%`);
+        }
+
+        const { data, error } = await builder;
+        if (error) {
+            console.error('Supabase error fetching products:', error.message || error);
+            return [];
+        }
+
+        const mapped = (data || []).map(p => ({
+            ...p,
+            image_url: (p.images && p.images.length > 0) ? p.images[0] : ''
+        }));
+
+        // If first page and query changed, replace cache; otherwise append
+        if (page === 1) {
+            pickerProductsCache = mapped;
+        } else {
+            pickerProductsCache = pickerProductsCache.concat(mapped);
+        }
+
+        // Determine if more exists (if we received less than pageSize)
+        pickerHasMore = (mapped.length === pickerPageSize);
+
+        // Render current cache
+        renderPickerList(pickerProductsCache);
+
+        // Toggle show more button
+        document.getElementById('picker-show-more').classList.toggle('hidden', !pickerHasMore || Boolean(query));
+        return mapped;
+    } finally {
+        pickerLoading = false;
+        document.getElementById('picker-loading-indicator').classList.add('hidden');
+    }
+}
+
+// 4. Search Filter
+function searchPickerProducts() {
+    const input = document.getElementById('picker-search');
+    const query = (input.value || '').trim();
+    pickerQuery = query;
+    pickerPage = 1;
+    pickerHasMore = true;
+
+    if (!query) {
+        // reset to loaded cache (first page) or fetch if empty
+        if (pickerProductsCache.length === 0) fetchPickerProducts(1, '');
+        renderPickerList(pickerProductsCache);
+        document.getElementById('picker-show-more').classList.toggle('hidden', !pickerHasMore);
+        return;
+    }
+
+    // For search, fetch first page filtered by query and hide Show more (we'll still allow more if needed but hide to avoid accidental extra fetches while typing)
+    fetchPickerProducts(1, query);
+}
+
+// 5. Render List
+function renderPickerList(products) {
+    const container = document.getElementById('picker-list');
+    container.innerHTML = '';
+
+    if (!pickerImageObserver) {
+        pickerImageObserver = new IntersectionObserver((entries) => {
+            entries.forEach(ent => {
+                if (ent.isIntersecting) {
+                    const img = ent.target;
+                    const src = img.getAttribute('data-src');
+                    if (src) {
+                        img.src = src;
+                        img.removeAttribute('data-src');
+                    }
+                    pickerImageObserver.unobserve(img);
+                }
+            });
+        }, { root: container, rootMargin: '200px', threshold: 0.1 });
+    }
+
+    if(products.length === 0) {
+        container.innerHTML = '<div class="text-center text-white/20 text-xs">No products found.</div>';
+        return;
+    }
+
+    products.forEach(p => {
+        const isSelected = selectedProductIds.has(p.id);
+        const div = document.createElement('div');
+        div.className = `flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-all ${isSelected ? 'bg-purple-500/10 border-purple-500' : 'bg-[#0f1115] border-[#2b2f3a] hover:border-white/20'}`;
+        div.onclick = () => toggleProductSelection(p.id);
+
+        const imgWrapper = document.createElement('div');
+        imgWrapper.className = 'w-10 h-10 rounded bg-[#1a1d23] overflow-hidden flex-shrink-0 flex items-center justify-center';
+
+        const img = document.createElement('img');
+        img.className = 'w-full h-full object-cover';
+        // Use placeholder/stud style until image loads
+        img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="100%" height="100%" fill="%2313191b"/></svg>';
+        if (p.image_url) img.setAttribute('data-src', p.image_url);
+        imgWrapper.appendChild(img);
+
+        // Observe for lazy loading
+        if (p.image_url) pickerImageObserver.observe(img);
+
+        const meta = document.createElement('div');
+        meta.className = 'flex-1 min-w-0';
+        meta.innerHTML = `<h4 class="text-sm text-white font-medium truncate">${p.title}</h4><p class="text-[10px] text-white/50">Stock: ${p.stock_quantity || 0}</p>`;
+
+        const right = document.createElement('div');
+        right.className = 'text-right';
+        right.innerHTML = `<span class="text-sm font-bold text-white">KES ${p.price}</span>` + (isSelected ? '<div class="text-purple-400 text-xs"><i class="fa-solid fa-circle-check"></i></div>' : '');
+
+        div.appendChild(imgWrapper);
+        div.appendChild(meta);
+        div.appendChild(right);
+
+        container.appendChild(div);
+    });
+
+    // Update selected count
+    document.getElementById('picker-count').innerText = `${selectedProductIds.size} selected`;
+}
+
+// Load next page
+function loadMoreProducts() {
+    if (!pickerHasMore || pickerLoading) return;
+    pickerPage += 1;
+    fetchPickerProducts(pickerPage, pickerQuery);
+}
+
+function toggleProductSelection(id) {
+    if (pickerMode === 'single') {
+        selectedProductIds.clear(); // Only one allowed
+        selectedProductIds.add(id);
+    } else {
+        // Multi select toggle
+        if (selectedProductIds.has(id)) selectedProductIds.delete(id);
+        else selectedProductIds.add(id);
+    }
+    renderPickerList(pickerProductsCache); // Re-render to show active state
+    updatePickerUI();
+}
+
+function updatePickerUI() {
+    const count = selectedProductIds.size;
+    document.getElementById('picker-count').innerText = `${count} selected`;
+    
+    const btn = document.getElementById('picker-send-btn');
+    if (count === 0) {
+        btn.disabled = true;
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+    } else {
+        btn.disabled = false;
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+}
+
+// 6. ACTION: SEND SELECTION
+async function sendProductSelection() {
+    const ids = Array.from(selectedProductIds);
+    if(ids.length === 0) return;
+
+    // Show loading state
+    const btn = document.getElementById('picker-send-btn');
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+
+    const selectedProducts = pickerProductsCache.filter(p => ids.includes(p.id));
+
+    try {
+        let payload = {};
+
+        // SCENARIO A: SINGLE PRODUCT
+        if (pickerMode === 'single' || ids.length === 1) {
+            const p = selectedProducts[0];
+            
+            // Construct Image + Caption Payload
+            payload = {
+                type: "image",
+                image: p.image_url,
+                caption: `*${p.title}*\n💰 Price: KES ${p.price}\n\nInterested? Reply 'Yes' to order!`
+            };
+        } 
+        
+        // SCENARIO B: COLLECTION (Create Session)
+        else {
+            // 1. Create Link Session
+            const { data: session, error } = await supabase
+                .from('link_sessions')
+                .insert({
+                    business_id: resolveBusinessId(),
+                    product_ids: ids,
+                    platform: 'whatsapp', // Defaulting to WA for now
+                    metadata: { source: 'agent_manual_collection' }
+                })
+                .select()
+                .single();
+            
+            if(error) throw error;
+
+            const link = `https://vvstudios.netlify.app/view?s=${session.id}`;
+            const previewText = selectedProducts.map(p => `• ${p.title}`).join('\n');
+
+            payload = {
+                type: "text",
+                text: `I've put together a collection for you:\n\n${previewText}\n\n👇 *View & Shop Here:*\n${link}`
+            };
+        }
+
+        // SEND VIA AGENT-OUTBOUND
+        // Reuse your existing logic but bypass the text input
+        await dispatchAgentMessage(payload);
+        
+        closeProductPicker();
+        
+    } catch (e) {
+        console.error("Selection Error", e);
+        alert("Failed to process selection.");
+    } finally {
+        btn.innerHTML = 'Send';
+    }
+}
+
+// 7. ACTION: UPLOAD FILE
+let uploadType = 'image'; // 'image' or 'document'
+
+function triggerFileUpload(type) {
+    toggleAttachMenu();
+    uploadType = type;
+    const input = document.getElementById('hidden-file-input');
+    input.accept = type === 'image' ? 'image/*' : '.pdf,.doc,.docx,.txt';
+    input.click();
+}
+
+async function handleFileSelected(input) {
+    const file = input.files[0];
+    if(!file) return;
+
+    // Optimistic UI could go here...
+
+    try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}.${fileExt}`;
+        const filePath = `${resolveBusinessId()}/${fileName}`;
+
+        // Upload to Supabase Storage
+        const { error: uploadError } = await supabase.storage
+            .from('chat-attachments')
+            .upload(filePath, file);
+
+        if(uploadError) throw uploadError;
+
+        // Get Public URL
+        const { data: { publicUrl } } = supabase.storage
+            .from('chat-attachments')
+            .getPublicUrl(filePath);
+
+        // Construct Payload
+        const payload = {
+            type: uploadType, // 'image' or 'document'
+            [uploadType]: publicUrl, // Dynamically set key 'image': url or 'document': url
+            caption: file.name
+        };
+
+        // Send
+        await dispatchAgentMessage(payload);
+
+    } catch(e) {
+        console.error("Upload failed", e);
+        alert("Upload failed: " + e.message);
+    } finally {
+        input.value = ''; // Reset
+    }
+}
+
+// 8. HELPER: Dispatcher (Refactored from your sendMessage)
+async function dispatchAgentMessage(payload) {
+    if (!currentContactId) return;
+    
+    const { data: contact } = await supabase.from('contacts').select('phone, platform, social_id').eq('id', currentContactId).single();
+    if(!contact) return;
+
+    // Optimistic UI (Generic)
+    let displayContent = "";
+    if(payload.type === 'text') displayContent = payload.text;
+    else if(payload.type === 'image') displayContent = `📷 Image: ${payload.caption || ''}`;
+    else displayContent = `📎 Attachment`;
+
+    renderMessage({
+        id: 'temp-' + Date.now(),
+        role: 'agent',
+        content: { text: displayContent },
+        status: 'sending'
+    });
+    scrollToBottom();
+
+    // Invoke Function
+    await supabase.functions.invoke('agent-outbound', {
+        body: { 
+            recipientId: contact.social_id || contact.phone, 
+            payload: payload,
+            conversationId: currentConversationId,
+            businessId: resolveBusinessId(),
+            platform: contact.platform,
+            contactId: currentContactId
+        }
+    });
+}

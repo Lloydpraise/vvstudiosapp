@@ -863,33 +863,10 @@
             // Load onboarding status and update UI
             loadOnboardingStatus();
 
-            // Mobile Menu
-            const menuBtn = document.getElementById("mobile-menu-button");
-            const sidebar = document.getElementById("sidebar");
-            const backdrop = document.getElementById("mobile-menu-backdrop");
-            const main = document.getElementById("main-scroll");
-            if (menuBtn && sidebar) {
-                menuBtn.addEventListener("click", () => {
-                    sidebar.classList.toggle("-translate-x-full");
-                    if (backdrop) backdrop.classList.toggle("hidden");
-                });
-            }
-            if (main && sidebar && backdrop) {
-                main.addEventListener("click", () => {
-                    if (!sidebar.classList.contains("-translate-x-full")) {
-                        sidebar.classList.add("-translate-x-full");
-                        backdrop.classList.add("hidden");
-                    }
-                });
-            }
-            if (sidebar) {
-                sidebar.addEventListener("click", (e) => e.stopPropagation());
-            }
-
             // Profile Dropdown
             const profileBtn = document.getElementById('profile-menu-button');
             const profileDropdown = document.getElementById('profile-dropdown');
-            if (profileBtn) {
+            if (profileBtn) { 
                 profileBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     profileDropdown.classList.toggle('hidden');
@@ -1200,6 +1177,43 @@
                 }
             });
         });
+
+        // Mobile menu functionality
+        (function(){
+            const mobileMenuBtn = document.getElementById('mobile-menu-button');
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('mobile-menu-backdrop');
+            
+            if (mobileMenuBtn && sidebar && backdrop) {
+                function toggleSidebar() {
+                    sidebar.classList.toggle('-translate-x-full');
+                    backdrop.classList.toggle('hidden');
+                    if (!backdrop.classList.contains('hidden')) {
+                        backdrop.classList.remove('pointer-events-none');
+                    } else {
+                        backdrop.classList.add('pointer-events-none');
+                    }
+                }
+                
+                mobileMenuBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleSidebar();
+                });
+                
+                // Close sidebar when clicking backdrop
+                backdrop.addEventListener('click', toggleSidebar);
+                
+                // Close sidebar when clicking main content on mobile
+                const main = document.getElementById('main-scroll');
+                if (main) {
+                    main.addEventListener('click', function() {
+                        if (!sidebar.classList.contains('-translate-x-full')) {
+                            toggleSidebar();
+                        }
+                    });
+                }
+            }
+        })();
     </script>
 </body>
 </html>
