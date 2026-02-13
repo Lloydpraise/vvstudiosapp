@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Match Queue</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { background: #0f1115; color: white; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .loader { border: 2px solid #333; border-top: 2px solid #a855f7; border-radius: 50%; width: 16px; height: 16px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Mobile Optimizations */
+        .card { background: #1a1d23; border: 1px solid #2b2f3a; border-radius: 12px; overflow: hidden; }
+        .radio-selected { border-color: #22c55e !important; background-color: rgba(34, 197, 94, 0.1); }
+    </style>
+</head>
+<body class="pb-24">
+
+    <div class="fixed top-0 left-0 right-0 bg-[#0f1115]/90 backdrop-blur-md z-50 border-b border-gray-800 p-4 flex justify-between items-center">
+        <div>
+            <h1 class="font-bold text-lg">Pending Matches</h1>
+            <p class="text-xs text-gray-400" id="queue-count">Loading...</p>
+        </div>
+        <button id="analyze-all-btn" onclick="analyzeAll()" class="bg-purple-600 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg shadow-purple-900/20 disabled:opacity-50">
+            <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Match All
+        </button>
+    </div>
+
+    <div class="h-20"></div>
+
+    <div id="queue-container" class="px-4 space-y-6">
+        </div>
+
+    <div class="fixed bottom-6 left-4 right-4 z-50">
+        <button onclick="confirmSelections()" id="confirm-btn" class="w-full bg-green-600 hover:bg-green-500 text-white py-4 rounded-xl font-bold text-lg shadow-xl shadow-green-900/30 flex justify-center items-center gap-2 transition-transform active:scale-95">
+            <i class="fa-solid fa-paper-plane"></i> Send Selected (<span id="selected-count">0</span>)
+        </button>
+    </div>
+
+    <canvas id="cropCanvas" class="hidden"></canvas>
+
+    <script type="module">
+        import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
+        
+        env.allowLocalModels = false;
+        env.useBrowserCache = true;
+
+        // CONFIG
+        const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // STATE
+        let pendingItems = [];
+        let aiExtractor = null;
+        let selections = {}; // { queueId: productId }
+
+        // INIT
+        const params = new URLSearchParams(window.location.search);
+        const businessId = params.get('bid'); // We need business_id to filter
+
+        async function init() {
+            if(!businessId) return alert("Missing Business ID in URL");
+
+            const { data, error } = await supabase
+                .from('pending_matches')
+                .select('*')
+                .eq('business_id', businessId)
+                .eq('status', 'pending')
+                .order('created_at', { ascending: false });
+
+            if(error) return alert("Error loading queue");
+            
+            pendingItems = data;
+            document.getElementById('queue-count').innerText = `${data.length} requests waiting`;
+            renderQueue();
+            
+            // Preload AI silently
+            try {
+                aiExtractor = await pipeline('image-feature-extraction', 'Xenova/clip-vit-base-patch32', { quantized: true });
+                console.log("AI Ready");
+            } catch(e) { console.error("AI Load Error", e); }
+        }
+
+        function getPlatformIcon(platform) {
+            const map = {
+                'whatsapp': '<i class="fa-brands fa-whatsapp text-green-500"></i>',
+                'facebook': '<i class="fa-brands fa-facebook text-blue-500"></i>',
+                'instagram': '<i class="fa-brands fa-instagram text-pink-500"></i>',
+                'tiktok': '<i class="fa-brands fa-tiktok text-white"></i>'
+            };
+            return map[platform] || '<i class="fa-solid fa-comment text-gray-500"></i>';
+        }
+
+        function renderQueue() {
+            const container = document.getElementById('queue-container');
+            container.innerHTML = "";
+
+            if(pendingItems.length === 0) {
+                container.innerHTML = `<div class="text-center text-gray-500 mt-10">All caught up! 🎉</div>`;
+                return;
+            }
+
+            pendingItems.forEach(item => {
+                const el = document.createElement('div');
+                el.className = "card p-3 relative";
+                el.id = `card-${item.id}`;
+                el.innerHTML = `
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center border border-gray-700">
+                                ${getPlatformIcon(item.platform)}
+                            </div>
+                            <div>
+                                <div class="text-xs font-bold text-gray-300">${item.user_id}</div>
+                                <div class="text-[10px] text-gray-500">${new Date(item.created_at).toLocaleTimeString()}</div>
+                            </div>
+                        </div>
+                        <button onclick="dismissItem('${item.id}')" class="text-gray-600 hover:text-red-500 px-2"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <div class="w-1/3 aspect-square rounded-lg overflow-hidden bg-black border border-gray-800 relative">
+                            <img id="img-${item.id}" src="${item.image_url}" class="w-full h-full object-cover" crossorigin="anonymous">
+                        </div>
+                        
+                        <div class="w-2/3 space-y-2" id="suggestions-${item.id}">
+                            <div class="h-full flex flex-col items-center justify-center text-gray-600 text-xs border border-dashed border-gray-700 rounded-lg">
+                                <i class="fa-solid fa-clock mb-1"></i>
+                                <span>Waiting to analyze</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        // --- GLOBAL ACTIONS ---
+        
+        window.analyzeAll = async () => {
+            const btn = document.getElementById('analyze-all-btn');
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Processing...`;
+
+            if(!aiExtractor) aiExtractor = await pipeline('image-feature-extraction', 'Xenova/clip-vit-base-patch32', { quantized: true });
+
+            for (const item of pendingItems) {
+                await processItem(item);
+            }
+
+            btn.innerHTML = `<i class="fa-solid fa-check"></i> Done`;
+        };
+
+        async function processItem(item) {
+            const suggestDiv = document.getElementById(`suggestions-${item.id}`);
+            suggestDiv.innerHTML = `<div class="text-center text-purple-400 text-xs"><div class="loader mx-auto mb-2"></div>Analyzing...</div>`;
+
+            try {
+                // 1. Vectorize
+                const img = document.getElementById(`img-${item.id}`);
+                const embedding = await vectorizeImage(img);
+
+                // 2. RPC Search
+                const { data: products } = await supabase.rpc('match_images_v1', {
+                    query_embedding: embedding,
+                    match_threshold: 0.5,
+                    match_count: 3, // Only Top 3
+                    filter_business_id: businessId
+                });
+
+                // 3. Render Options
+                if(!products || products.length === 0) {
+                    suggestDiv.innerHTML = `<div class="text-xs text-red-400">No close matches found.</div>`;
+                    return;
+                }
+
+                suggestDiv.innerHTML = "";
+                products.forEach(p => {
+                    const imgUrl = Array.isArray(p.images) ? p.images[0] : p.images;
+                    
+                    const option = document.createElement('div');
+                    option.className = "flex items-center gap-2 p-2 rounded-lg border border-gray-700 bg-[#15171c] cursor-pointer transition-all hover:bg-gray-800";
+                    option.onclick = () => selectMatch(item.id, p.id, option);
+                    
+                    option.innerHTML = `
+                        <img src="${imgUrl}" class="w-10 h-10 rounded bg-black object-cover">
+                        <div class="min-w-0 flex-1">
+                            <div class="text-[11px] font-bold text-gray-200 truncate">${p.title}</div>
+                            <div class="text-[10px] text-green-400">${p.price} KES</div>
+                        </div>
+                        <div class="w-4 h-4 rounded-full border border-gray-500 flex items-center justify-center radio-circle">
+                            <div class="w-2 h-2 rounded-full bg-green-500 hidden check-dot"></div>
+                        </div>
+                    `;
+                    suggestDiv.appendChild(option);
+                });
+
+            } catch(e) {
+                console.error(e);
+                suggestDiv.innerHTML = `<div class="text-xs text-red-500">Error analyzing.</div>`;
+            }
+        }
+
+        async function vectorizeImage(imgElement) {
+            // Reusing your canvas crop logic roughly
+            const canvas = document.getElementById('cropCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 224; canvas.height = 224;
+            // Simple center crop for speed
+            ctx.drawImage(imgElement, 0, 0, 224, 224); 
+            const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.9));
+            // In a real browser env with transformers.js, we can pass the URL or Blob
+            const output = await aiExtractor(imgElement.src); 
+            return Array.from(output.data);
+        }
+
+        window.selectMatch = (queueId, productId, element) => {
+            // Clear previous selection styles in this group
+            const parent = element.parentElement;
+            Array.from(parent.children).forEach(c => {
+                c.classList.remove('radio-selected');
+                c.querySelector('.check-dot').classList.add('hidden');
+            });
+
+            // Set new selection
+            element.classList.add('radio-selected');
+            element.querySelector('.check-dot').classList.remove('hidden');
+
+            // Save to state
+            selections[queueId] = productId;
+            updateCount();
+        };
+
+        function updateCount() {
+            const count = Object.keys(selections).length;
+            document.getElementById('selected-count').innerText = count;
+        }
+
+        window.confirmSelections = async () => {
+            const queueIds = Object.keys(selections);
+            if(queueIds.length === 0) return alert("Select at least one match!");
+
+            const btn = document.getElementById('confirm-btn');
+            btn.innerHTML = `<div class="loader"></div> Sending...`;
+
+            // Prepare Batch
+            const batch = queueIds.map(qid => ({
+                queue_id: qid,
+                product_id: selections[qid]
+            }));
+
+            try {
+                // CALL EDGE FUNCTION TO PROCESS BATCH
+                await fetch('https://xgtnbxdxbbywvzrttixf.supabase.co/functions/v1/process-queue-batch', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SUPABASE_KEY}`
+                    },
+                    body: JSON.stringify({ batch, business_id: businessId })
+                });
+
+                alert("✅ Sent successfully!");
+                location.reload(); // Refresh to clear
+            } catch(e) {
+                alert("Error sending: " + e.message);
+                btn.innerHTML = "Try Again";
+            }
+        };
+
+        window.dismissItem = async (id) => {
+            if(!confirm("Dismiss this request?")) return;
+            await supabase.from('pending_matches').update({ status: 'dismissed' }).eq('id', id);
+            document.getElementById(`card-${id}`).remove();
+        }
+
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Visual Search Test - VVStudios</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { background: #0f1115; color: white; font-family: 'Inter', sans-serif; }
+        .result-card { background: #1a1d23; border: 1px solid #2b2f3a; transition: transform 0.2s; }
+        .result-card:hover { transform: translateY(-4px); border-color: #a855f7; }
+    </style>
+</head>
+<body class="p-8 max-w-6xl mx-auto">
+    <div class="mb-10 text-center">
+        <h1 class="text-3xl font-bold mb-2">Visual Match Tester</h1>
+        <p class="text-gray-400">Upload a screenshot to find the closest match in your Supabase DB</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div class="md:col-span-1 space-y-4">
+            <div class="p-6 rounded-2xl bg-[#1a1d23] border border-[#2b2f3a]">
+                <label class="block text-sm font-medium mb-4">Search Image</label>
+                <input type="file" id="imageInput" accept="image/*" class="hidden">
+                <div onclick="document.getElementById('imageInput').click()" 
+                     class="border-2 border-dashed border-[#2b2f3a] rounded-xl p-8 text-center cursor-pointer hover:border-purple-500 transition-colors">
+                    <img id="preview" class="hidden mb-4 rounded-lg max-h-40 mx-auto">
+                    <p id="uploadText" class="text-gray-500 text-sm">Click to upload screenshot</p>
+                </div>
+
+                <div id="cropContainer" class="mt-6 hidden">
+                    <label class="block text-[10px] text-gray-500 uppercase mb-2 font-bold text-center">What the AI Sees (Center 70%)</label>
+                    <canvas id="cropPreview" class="w-full mx-auto max-w-[224px] rounded-lg border-2 border-purple-500/50 bg-black/20"></canvas>
+                </div>
+
+                <button id="searchBtn" class="w-full mt-6 py-3 bg-purple-600 hover:bg-purple-500 rounded-xl font-bold transition-all shadow-lg shadow-purple-900/20">
+                    Find Matches
+                </button>
+            </div>
+            <div id="status" class="text-center text-sm text-purple-400 font-medium"></div>
+        </div>
+
+        <div class="md:col-span-2">
+            <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                Top Matches <span id="matchCount" class="text-xs bg-[#2b2f3a] px-2 py-1 rounded">0</span>
+            </h2>
+            <div id="resultsGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
+        env.allowLocalModels = false;
+
+        const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
+        
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        let aiExtractor = null;
+
+        // --- IMAGE PREVIEW LOGIC ---
+        document.getElementById('imageInput').onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const img = document.getElementById('preview');
+                    // Wait for image to fully load before allowing search
+                    img.onload = () => {
+                        img.classList.remove('hidden');
+                        document.getElementById('uploadText').classList.add('hidden');
+                        document.getElementById('cropContainer').classList.add('hidden'); // Hide old crop
+                    }
+                    img.src = ev.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+        };
+
+        // --- SMART CROP & COMPRESS LOGIC ---
+        async function prepareImageForAI(imgElement) {
+            const canvas = document.getElementById('cropPreview');
+            const ctx = canvas.getContext('2d');
+            
+            // 1. Define the Crop Area (Center 70% of the image)
+            // This strips away Facebook Reel captions, Like buttons, and UI noise.
+            const cropPercent = 0.70; 
+            const sourceW = imgElement.naturalWidth;
+            const sourceH = imgElement.naturalHeight;
+            
+            const cropW = sourceW * cropPercent;
+            const cropH = sourceH * cropPercent;
+            const startX = (sourceW - cropW) / 2;
+            const startY = (sourceH - cropH) / 2;
+
+            // 2. Set canvas to CLIP's native 224x224 size
+            canvas.width = 224;
+            canvas.height = 224;
+
+            // 3. Draw the center-cropped portion to the canvas
+            ctx.drawImage(
+                imgElement, 
+                startX, startY, cropW, cropH, // Source coordinates (the crop)
+                0, 0, 224, 224                // Destination coordinates (the canvas)
+            );
+
+            // 4. Show the user what the AI is seeing
+            document.getElementById('cropContainer').classList.remove('hidden');
+
+            return canvas.toDataURL("image/jpeg", 0.9);
+        }
+
+        // --- SEARCH EVENT LOGIC ---
+        document.getElementById('searchBtn').onclick = async () => {
+            const img = document.getElementById('preview');
+            const status = document.getElementById('status');
+            const resultsGrid = document.getElementById('resultsGrid');
+            if (!img.src) return alert("Select an image first");
+
+            try {
+                status.innerText = "Loading AI Engine...";
+                if (!aiExtractor) {
+                    // CRITICAL: Using 'image-feature-extraction' task
+                    aiExtractor = await pipeline('image-feature-extraction', 'Xenova/clip-vit-base-patch32', { quantized: true });
+                }
+
+                status.innerText = "Applying Smart Center Crop...";
+                const croppedDataUrl = await prepareImageForAI(img);
+
+                status.innerText = "Vectorizing Focused Image...";
+                const output = await aiExtractor(croppedDataUrl);
+                const embedding = Array.from(output.data);
+
+                status.innerText = "Querying Database...";
+                const { data, error } = await supabaseClient.rpc('match_images_v1', {
+                    query_embedding: embedding,
+                    match_threshold: 0.5, // High threshold for testing (allows looser matches)
+                    match_count: 6
+                });
+
+                if (error) throw error;
+
+                resultsGrid.innerHTML = '';
+                document.getElementById('matchCount').innerText = data.length;
+
+                data.forEach(item => {
+                    // Turn distance into a readable percentage
+                    const sim = (1 - item.cosine_distance) * 100; 
+                    resultsGrid.innerHTML += `
+                        <div class="result-card p-3 rounded-xl flex gap-4 items-center animate-fade-in">
+                            <img src="${item.images[0]}" class="w-20 h-20 object-cover rounded-lg bg-black/50">
+                            <div class="min-w-0">
+                                <div class="font-bold text-sm truncate">${item.title}</div>
+                                <div class="text-xs text-green-400 mt-1">${sim.toFixed(1)}% Match</div>
+                                <div class="text-[10px] text-gray-500 mt-1">Dist: ${item.cosine_distance.toFixed(4)}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+                status.innerText = "Search Complete.";
+
+            } catch (err) {
+                console.error(err);
+                status.innerText = "Search Failed.";
+            }
+        };
+    </script>
+</body>
+</html>

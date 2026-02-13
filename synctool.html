@@ -66,7 +66,6 @@
     const DELAY_MS = 1500; 
 
     // STATE
-    let cursor = null;
     let totalSynced = 0;
     let isRunning = false;
 
@@ -78,10 +77,9 @@
 
         try {
             while (isRunning) {
-                const payload = { business_id: BUSINESS_ID, cursor: cursor };
+                const payload = { business_id: BUSINESS_ID }; 
                 
-                log(`Requesting batch... ${cursor ? '(Cursor Active)' : '(Starting Fresh)'}`, "info");
-                if(cursor) log(`Cursor: ${cursor}`, "cursor");
+                log(`Fetching next batch of 50 missing handles...`, "info");
 
                 const response = await fetch(FUNCTION_URL, {
                     method: "POST",
@@ -99,13 +97,15 @@
                 totalSynced += batchCount;
                 
                 updateUI(totalSynced);
-                log(`✅ Successfully synced ${batchCount} products.`, "success");
+                
+                if (batchCount > 0) {
+                     log(`✅ ${data.message} (${batchCount} items)`, "success");
+                }
 
-                if (data.hasNextPage && data.nextCursor) {
-                    cursor = data.nextCursor;
+                if (data.hasMore) {
                     await new Promise(r => setTimeout(r, DELAY_MS));
                 } else {
-                    log("🏁 MISSION COMPLETE. All pages synced.", "success");
+                    log("🏁 MISSION COMPLETE. All products have handles.", "success");
                     document.getElementById("startBtn").innerText = "SYNC COMPLETE";
                     isRunning = false;
                     break;

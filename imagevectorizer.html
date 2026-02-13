@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Vectorizer - Browser AI Mode</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f1115; color: white; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background-color: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: #374151; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: #4b5563; }
+        .glass-panel { background: #1a1d23; border: 1px solid #2b2f3a; }
+        .input-dark { background: #0f1115; border: 1px solid #2b2f3a; color: white; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col p-6 gap-6 max-w-[1600px] mx-auto">
+
+    <div id="header-section" class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-white flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-purple-600 flex items-center justify-center shadow-lg">
+                    <i class="fa-solid fa-microchip text-white"></i>
+                </div>
+                Browser-Side Image Vectorizer
+            </h1>
+            <p class="text-white/40 text-sm mt-1 ml-14">Runs CLIP AI locally to save server memory.</p>
+        </div>
+        
+        <div class="flex gap-2 items-center">
+            <div class="flex flex-col items-end mr-4">
+                <label class="text-[10px] text-white/30 uppercase font-bold">Safe Delay</label>
+                <input type="number" id="rateLimitDelay" value="1" class="input-dark px-2 py-1 rounded text-center w-16 text-sm text-green-400 font-bold">
+            </div>
+            <input type="text" id="businessId" value="kisasacraft66" placeholder="Business ID" class="input-dark px-3 py-2 rounded-lg text-sm w-40">
+            <button onclick="loadQueue()" class="bg-[#2b2f3a] hover:bg-white/10 text-white px-4 py-2 rounded-lg text-sm font-medium border border-white/5">
+                <i class="fa-solid fa-rotate mr-2"></i> Load Queue
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
+        
+        <div class="lg:col-span-4 glass-panel rounded-2xl flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-[#2b2f3a] bg-[#232730] flex justify-between items-center">
+                <h2 class="font-semibold text-sm text-white/80">Missing Vectors Queue</h2>
+                <span id="queueCount" class="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded text-xs">0</span>
+            </div>
+            
+            <div class="p-4 flex flex-col gap-4 flex-1 overflow-hidden">
+                <button onclick="startWorker()" id="processBtn" class="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold shadow-lg transition-all">
+                    <i class="fa-solid fa-play mr-2"></i> Start Vectorizing
+                </button>
+                <button onclick="stopWorker()" id="stopBtn" class="hidden w-full py-3 bg-red-600/20 text-red-400 border border-red-600/50 rounded-xl font-bold">
+                    <i class="fa-solid fa-stop mr-2"></i> Stop Worker
+                </button>
+
+                <div id="queueList" class="flex-1 overflow-y-auto space-y-2 pr-1">
+                    <div class="text-center text-white/20 text-xs py-10 italic" id="emptyQueueMsg">
+                        Load queue to begin
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-8 glass-panel rounded-2xl flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-[#2b2f3a] bg-[#232730] flex justify-between items-center">
+                <div class="flex items-center gap-4">
+                    <h2 class="font-semibold text-sm text-white/80">Successfully Vectorized <span id="reviewCount" class="bg-[#2b2f3a] text-white/60 px-2 py-0.5 rounded text-xs ml-2">0</span></h2>
+                </div>
+            </div>
+            
+            <div id="reviewContainer" class="flex-1 overflow-y-auto p-4 grid grid-cols-1 xl:grid-cols-3 gap-4 content-start"></div>
+        </div>
+    </div>
+
+    <canvas id="compressCanvas" style="display: none;"></canvas>
+
+    <script type="module">
+        import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
+
+        env.allowLocalModels = false;
+
+        // --- KEYS ---
+        const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
+        const FUNCTION_URL = "https://xgtnbxdxbbywvzrttixf.supabase.co/functions/v1/image-vectorizer";
+
+        // FIX: Renamed variable to avoid collision with CDN global object
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        let queue = [];
+        let isRunning = false;
+        let currentIndex = 0;
+        let aiExtractor = null; 
+
+        // --- IMAGE COMPRESSOR ---
+        async function compressImage(imageUrl) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = "Anonymous"; 
+                img.src = imageUrl;
+                img.onload = () => {
+                    const canvas = document.getElementById('compressCanvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    const MAX_WIDTH = 300; 
+                    const scaleSize = MAX_WIDTH / img.width;
+                    const newWidth = (img.width > MAX_WIDTH) ? MAX_WIDTH : img.width;
+                    const newHeight = (img.width > MAX_WIDTH) ? (img.height * scaleSize) : img.height;
+
+                    canvas.width = newWidth;
+                    canvas.height = newHeight;
+                    ctx.drawImage(img, 0, 0, newWidth, newHeight);
+                    
+                    resolve(canvas.toDataURL("image/jpeg", 0.8));
+                };
+                img.onerror = () => reject("Image Load Failed");
+            });
+        }
+
+        // --- 1. LOAD QUEUE ---
+        window.loadQueue = async () => {
+            const bid = document.getElementById('businessId').value;
+            const list = document.getElementById('queueList');
+            const countBadge = document.getElementById('queueCount');
+            
+            list.innerHTML = `<div class="text-center py-4 text-white/50">Fetching...</div>`;
+            
+            const { data, error } = await supabaseClient
+                .from('products')
+                .select('id, title, images')
+                .eq('business_id', bid)
+                .is('image_embedding', null)
+                .not('images', 'is', null)
+                .limit(50);
+
+            if (error) return alert("Error: " + error.message);
+
+            queue = data || [];
+            currentIndex = 0;
+            countBadge.innerText = queue.length;
+            list.innerHTML = '';
+
+            if (queue.length === 0) {
+                list.innerHTML = `<div class="text-center text-green-400 text-xs py-10">All products have vectors! 🎉</div>`;
+                return;
+            }
+
+            queue.forEach((p, idx) => {
+                const el = document.createElement('div');
+                el.id = `q-${p.id}`;
+                el.className = "flex items-center gap-3 p-3 rounded-lg bg-[#0f1115] border border-[#2b2f3a] opacity-50"; 
+                el.innerHTML = `
+                    <div class="text-xs text-white/30 font-mono w-4">${idx + 1}</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-medium truncate text-white/90">${p.title}</div>
+                        <div class="text-[10px] text-white/40" id="status-${p.id}">Queued</div>
+                    </div>
+                `;
+                list.appendChild(el);
+            });
+        };
+
+        // --- 2. WORKER LOGIC ---
+        window.startWorker = () => {
+            if (queue.length === 0) return alert("Queue empty.");
+            isRunning = true;
+            document.getElementById('processBtn').classList.add('hidden');
+            document.getElementById('stopBtn').classList.remove('hidden');
+            processNext(); 
+        };
+
+        window.stopWorker = () => {
+            isRunning = false;
+            document.getElementById('processBtn').classList.remove('hidden');
+            document.getElementById('stopBtn').classList.add('hidden');
+        };
+
+        async function processNext() {
+            if (!isRunning) return;
+            if (currentIndex >= queue.length) {
+                alert("Batch Complete! Load Queue again to process the next 50.");
+                stopWorker();
+                return;
+            }
+
+            const item = queue[currentIndex];
+            const statusEl = document.getElementById(`status-${item.id}`);
+            const row = document.getElementById(`q-${item.id}`);
+
+            row.classList.remove('opacity-50');
+            row.style.borderColor = "#a855f7";
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+           try {
+                // A. Load AI Model with the specific VISION task
+                if (!aiExtractor) {
+                    statusEl.innerText = "Downloading AI Model (~80MB)...";
+                    statusEl.className = "text-[10px] text-yellow-400 animate-pulse";
+                    
+                    // Changed 'feature-extraction' to 'image-feature-extraction'
+                    aiExtractor = await pipeline('image-feature-extraction', 'Xenova/clip-vit-base-patch32', { 
+                        quantized: true 
+                    });
+                }
+
+                // B. Compress Image
+                statusEl.innerText = "Compressing...";
+                statusEl.className = "text-[10px] text-blue-400";
+                const dataUrl = await compressImage(item.images[0]);
+
+                // C. Generate Vector in Browser
+                statusEl.innerText = "Running Local AI...";
+                statusEl.className = "text-[10px] text-purple-400 animate-pulse";
+                
+                // Processing the image specifically for the vision encoder
+                const output = await aiExtractor(dataUrl);
+                const embeddingArray = Array.from(output.data);
+
+                // D. Send Array to Simple Edge Function
+                statusEl.innerText = "Saving to DB...";
+                const apiRes = await fetch(FUNCTION_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        embedding: embeddingArray,  
+                        product_id: item.id,
+                        mode: 'process_queue' 
+                    })
+                });
+
+                if (!apiRes.ok) throw new Error("API Error " + apiRes.status);
+                
+                statusEl.innerText = "Complete";
+                statusEl.className = "text-[10px] text-green-500";
+                row.style.borderColor = "#22c55e";
+                
+                addSuccessCard(item.id, item.title, item.images[0]);
+                currentIndex++;
+
+                // E. Cooldown
+                const delay = parseInt(document.getElementById('rateLimitDelay').value);
+                for (let i = delay; i > 0; i--) {
+                    if (!isRunning) return;
+                    statusEl.innerText = `Waiting... ${i}s`;
+                    await new Promise(r => setTimeout(r, 1000));
+                }
+                
+                statusEl.innerText = "Done";
+                processNext();
+
+            } catch (err) {
+                console.error(err);
+                statusEl.innerText = "Failed";
+                statusEl.className = "text-[10px] text-red-500";
+                row.style.borderColor = "#ef4444";
+                currentIndex++;
+                setTimeout(processNext, 2000); 
+            }
+            
+        }
+
+        // --- 3. UI HELPERS ---
+        function addSuccessCard(id, title, imgUrl) {
+            const container = document.getElementById('reviewContainer');
+            const card = document.createElement('div');
+            card.className = "bg-[#0f1115] border border-green-500/30 rounded-xl p-3 fade-in flex gap-3 items-center";
+            card.innerHTML = `
+                <div class="w-12 h-12 bg-[#1a1d23] rounded overflow-hidden shrink-0">
+                    <img src="${imgUrl}" class="w-full h-full object-cover">
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="text-xs text-white/80 font-medium truncate">${title}</div>
+                    <div class="text-[10px] text-green-400 mt-1"><i class="fa-solid fa-check-circle mr-1"></i>Vectorized</div>
+                </div>
+            `;
+            container.prepend(card);
+            document.getElementById('reviewCount').innerText = container.children.length;
+        }
+        
+        // Expose functions to window so the HTML buttons can call them from inside the module
+        window.loadQueue = loadQueue;
+        window.startWorker = startWorker;
+        window.stopWorker = stopWorker;
+    </script>
+</body>
+</html>
