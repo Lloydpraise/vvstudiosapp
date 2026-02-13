@@ -43,48 +43,105 @@
 
     <canvas id="cropCanvas" class="hidden"></canvas>
 
+    <!-- Image Fullscreen Modal -->
+    <div id="img-modal" class="hidden fixed inset-0 bg-black/90 z-60 flex items-center justify-center p-4">
+        <button id="img-modal-close" class="absolute top-6 right-6 text-white bg-black/30 rounded-full p-3 z-70">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <img id="img-modal-img" src="" class="max-h-full max-w-full rounded-lg shadow-2xl" />
+    </div>
+
+    <!-- Product Detail Modal -->
+    <div id="product-modal" class="hidden fixed inset-0 bg-black/60 z-70 flex items-center justify-center p-4">
+        <div id="product-modal-card" class="bg-[#0b0c0f] rounded-lg overflow-hidden shadow-2xl max-w-md w-full">
+            <div class="relative">
+                <button id="product-modal-close" class="absolute top-3 right-3 text-white bg-black/30 rounded-full p-2 z-10">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                <img id="product-modal-img" src="" class="w-full h-56 object-cover">
+            </div>
+            <div class="p-4">
+                <div id="product-modal-title" class="text-white font-bold text-lg truncate"></div>
+                <div id="product-modal-price" class="text-green-400 text-sm mt-1"></div>
+                <div class="flex gap-3 mt-4">
+                    <button id="product-modal-cancel" class="flex-1 bg-gray-600 text-white py-2 rounded">Cancel</button>
+                    <button id="product-modal-select" class="flex-1 bg-green-600 text-white py-2 rounded font-bold">Select</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
-        import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
+    import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
+    
+    // 1. GLOBAL CONFIG
+    env.allowLocalModels = false;
+    env.useBrowserCache = true;
+
+    const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    // 2. STATE & PARAMS (Fixing the ReferenceError)
+    const params = new URLSearchParams(window.location.search);
+    const businessId = params.get('bid'); // <--- Defined here at the top level
+    
+    let pendingItems = [];
+    let aiExtractor = null;
+    let selections = {}; 
+
+    // 3. INIT FUNCTION
+    async function init() {
+        console.log("🚀 Init started...");
         
-        env.allowLocalModels = false;
-        env.useBrowserCache = true;
-
-        // CONFIG
-        const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        
-        // STATE
-        let pendingItems = [];
-        let aiExtractor = null;
-        let selections = {}; // { queueId: productId }
-
-        // INIT
-        const params = new URLSearchParams(window.location.search);
-        const businessId = params.get('bid'); // We need business_id to filter
-
-        async function init() {
-            if(!businessId) return alert("Missing Business ID in URL");
-
-            const { data, error } = await supabase
-                .from('pending_matches')
-                .select('*')
-                .eq('business_id', businessId)
-                .eq('status', 'pending')
-                .order('created_at', { ascending: false });
-
-            if(error) return alert("Error loading queue");
-            
-            pendingItems = data;
-            document.getElementById('queue-count').innerText = `${data.length} requests waiting`;
-            renderQueue();
-            
-            // Preload AI silently
-            try {
-                aiExtractor = await pipeline('image-feature-extraction', 'Xenova/clip-vit-base-patch32', { quantized: true });
-                console.log("AI Ready");
-            } catch(e) { console.error("AI Load Error", e); }
+        if(!businessId) {
+            console.error("❌ No business ID found in URL. Use ?bid=kisasacraft66");
+            alert("Missing Business ID in URL. Please check the link sent to your WhatsApp.");
+            return;
         }
+
+        console.log(`🔎 Querying pending_matches for: ${businessId}`);
+
+        const { data, error } = await supabase
+            .from('pending_matches')
+            .select('*')
+            .eq('business_id', businessId)
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error("❌ Supabase Error:", error);
+            document.getElementById('queue-container').innerHTML = `<div class="p-4 text-red-500">${error.message}</div>`;
+            return;
+        }
+
+        console.log("📦 Data received:", data);
+        
+        pendingItems = data;
+        document.getElementById('queue-count').innerText = `${data.length} requests waiting`;
+        renderQueue();
+        
+        try {
+            console.log("🤖 Loading AI Model...");
+            aiExtractor = await pipeline('image-feature-extraction', 'Xenova/clip-vit-base-patch32', { quantized: true });
+            console.log("✅ AI Ready");
+            
+            // UI Update: Enable the match button once AI is ready
+            const btn = document.getElementById('analyze-all-btn');
+            if(btn) {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50');
+            }
+        } catch(e) { 
+            console.error("❌ AI Load Error", e); 
+        }
+    }
+
+    // --- The rest of your functions (renderQueue, processItem, etc.) ---
+    // [Keep them as they were in the previous admin-queue code]
+
+    // Start the app
+    init();
 
         function getPlatformIcon(platform) {
             const map = {
@@ -123,18 +180,18 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                         <button onclick="dismissItem('${item.id}')" class="text-gray-600 hover:text-red-500 px-2"><i class="fa-solid fa-trash"></i></button>
                     </div>
 
-                    <div class="flex gap-3">
-                        <div class="w-1/3 aspect-square rounded-lg overflow-hidden bg-black border border-gray-800 relative">
-                            <img id="img-${item.id}" src="${item.image_url}" class="w-full h-full object-cover" crossorigin="anonymous">
-                        </div>
-                        
-                        <div class="w-2/3 space-y-2" id="suggestions-${item.id}">
-                            <div class="h-full flex flex-col items-center justify-center text-gray-600 text-xs border border-dashed border-gray-700 rounded-lg">
-                                <i class="fa-solid fa-clock mb-1"></i>
-                                <span>Waiting to analyze</span>
+                        <div class="flex flex-col md:flex-row gap-3">
+                            <div class="md:w-1/2 w-full rounded-lg overflow-hidden bg-black border border-gray-800 relative">
+                                <img id="img-${item.id}" src="${item.image_url}" class="w-full h-56 md:h-full object-cover cursor-zoom-in" crossorigin="anonymous" onclick="openImageFullscreen('${item.image_url}')">
+                            </div>
+
+                            <div class="md:w-1/2 w-full space-y-2" id="suggestions-${item.id}">
+                                <div class="h-48 md:h-full flex flex-col items-center justify-center text-gray-600 text-xs border border-dashed border-gray-700 rounded-lg">
+                                    <i class="fa-solid fa-clock mb-1"></i>
+                                    <span>Waiting to analyze</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
                 `;
                 container.appendChild(el);
             });
@@ -166,10 +223,10 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 const embedding = await vectorizeImage(img);
 
                 // 2. RPC Search
-                const { data: products } = await supabase.rpc('match_images_v1', {
+                const { data: products } = await supabase.rpc('match_image_products_v1', {
                     query_embedding: embedding,
                     match_threshold: 0.5,
-                    match_count: 3, // Only Top 3
+                    match_count: 5, // Only Top 3
                     filter_business_id: businessId
                 });
 
@@ -184,19 +241,38 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     const imgUrl = Array.isArray(p.images) ? p.images[0] : p.images;
                     
                     const option = document.createElement('div');
-                    option.className = "flex items-center gap-2 p-2 rounded-lg border border-gray-700 bg-[#15171c] cursor-pointer transition-all hover:bg-gray-800";
-                    option.onclick = () => selectMatch(item.id, p.id, option);
-                    
+                    option.className = "flex items-center gap-3 p-3 rounded-lg border border-gray-700 bg-[#15171c] transition-all cursor-pointer";
+                    option.dataset.productId = p.id;
+
                     option.innerHTML = `
-                        <img src="${imgUrl}" class="w-10 h-10 rounded bg-black object-cover">
+                        <img src="${imgUrl}" class="w-20 h-20 md:w-24 md:h-24 rounded bg-black object-cover cursor-zoom-in">
                         <div class="min-w-0 flex-1">
-                            <div class="text-[11px] font-bold text-gray-200 truncate">${p.title}</div>
-                            <div class="text-[10px] text-green-400">${p.price} KES</div>
+                            <div class="text-[12px] font-bold text-gray-200 truncate">${p.title}</div>
+                            <div class="text-[11px] text-green-400">${p.price} KES</div>
                         </div>
-                        <div class="w-4 h-4 rounded-full border border-gray-500 flex items-center justify-center radio-circle">
-                            <div class="w-2 h-2 rounded-full bg-green-500 hidden check-dot"></div>
+                        <div class="flex items-center gap-2">
+                            <button class="select-btn bg-green-600 hover:bg-green-500 text-white py-1 px-3 rounded text-sm font-bold">Select</button>
                         </div>
                     `;
+
+                    // Open product modal when whole option is clicked
+                    option.addEventListener('click', () => {
+                        openProductModal(item.id, p.id, imgUrl, p.title, p.price);
+                    });
+
+                    // Thumbnail opens fullscreen image
+                    option.querySelector('img').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        openImageFullscreen(imgUrl);
+                    });
+
+                    // Wire up select button: prevent bubbling and call selectMatch
+                    const btn = option.querySelector('.select-btn');
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        selectMatch(item.id, p.id, btn);
+                    });
+
                     suggestDiv.appendChild(option);
                 });
 
@@ -219,21 +295,110 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             return Array.from(output.data);
         }
 
+        // Modal helpers
+        window.openImageFullscreen = (src) => {
+            const modal = document.getElementById('img-modal');
+            const img = document.getElementById('img-modal-img');
+            img.src = src;
+            modal.classList.remove('hidden');
+        };
+
+        document.getElementById('img-modal-close').addEventListener('click', () => {
+            const modal = document.getElementById('img-modal');
+            const img = document.getElementById('img-modal-img');
+            img.src = '';
+            modal.classList.add('hidden');
+        });
+
+        // Close modal on background click
+        document.getElementById('img-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'img-modal' || e.target.id === 'img-modal-img') {
+                const modal = document.getElementById('img-modal');
+                const img = document.getElementById('img-modal-img');
+                img.src = '';
+                modal.classList.add('hidden');
+            }
+        });
+
+        // Product modal handlers
+        function openProductModal(queueId, productId, imgUrl, title, price) {
+            const modal = document.getElementById('product-modal');
+            document.getElementById('product-modal-img').src = imgUrl;
+            document.getElementById('product-modal-title').innerText = title;
+            document.getElementById('product-modal-price').innerText = price + ' KES';
+            modal.dataset.queueId = queueId;
+            modal.dataset.productId = productId;
+            modal.classList.remove('hidden');
+        }
+
+        function closeProductModal() {
+            const modal = document.getElementById('product-modal');
+            document.getElementById('product-modal-img').src = '';
+            modal.classList.add('hidden');
+            delete modal.dataset.queueId;
+            delete modal.dataset.productId;
+        }
+
+        document.getElementById('product-modal-close').addEventListener('click', closeProductModal);
+        document.getElementById('product-modal-cancel').addEventListener('click', closeProductModal);
+        document.getElementById('product-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'product-modal') closeProductModal();
+        });
+
+        document.getElementById('product-modal-select').addEventListener('click', (e) => {
+            const modal = document.getElementById('product-modal');
+            const qid = modal.dataset.queueId;
+            const pid = modal.dataset.productId;
+            if (qid && pid) {
+                selectMatch(qid, pid, null);
+            }
+            closeProductModal();
+        });
+
         window.selectMatch = (queueId, productId, element) => {
+            // When called from the Select button, `element` may be the button itself.
+            // Find the option container
+            let optionEl = element;
+            if (optionEl && optionEl.tagName === 'BUTTON') optionEl = optionEl.closest('div');
+
+            if (!optionEl) optionEl = document.getElementById(`suggestions-${queueId}`);
+
             // Clear previous selection styles in this group
-            const parent = element.parentElement;
+            const parent = optionEl.parentElement;
             Array.from(parent.children).forEach(c => {
                 c.classList.remove('radio-selected');
-                c.querySelector('.check-dot').classList.add('hidden');
+                const dot = c.querySelector('.check-dot');
+                if (dot) dot.classList.add('hidden');
             });
 
-            // Set new selection
-            element.classList.add('radio-selected');
-            element.querySelector('.check-dot').classList.remove('hidden');
+            // Set new selection visual
+            optionEl.classList.add('radio-selected');
+            const dot = optionEl.querySelector('.check-dot');
+            if (dot) dot.classList.remove('hidden');
 
             // Save to state
             selections[queueId] = productId;
             updateCount();
+
+            // Update select button states: mark the selected option's button as 'Selected' (purple)
+            try {
+                const suggest = document.getElementById(`suggestions-${queueId}`);
+                if (suggest) {
+                    Array.from(suggest.children).forEach(c => {
+                        const b = c.querySelector('.select-btn');
+                        if (!b) return;
+                        if (c.dataset && c.dataset.productId === String(productId)) {
+                            b.textContent = 'Selected';
+                            b.classList.remove('bg-green-600','hover:bg-green-500');
+                            b.classList.add('bg-purple-600');
+                        } else {
+                            b.textContent = 'Select';
+                            b.classList.remove('bg-purple-600');
+                            b.classList.add('bg-green-600','hover:bg-green-500');
+                        }
+                    });
+                }
+            } catch (e) { /* ignore */ }
         };
 
         function updateCount() {
