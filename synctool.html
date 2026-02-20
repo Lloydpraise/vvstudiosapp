@@ -3,24 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VVStudios Command Center</title>
+    <title>VVStudios Image Sync</title>
     <style>
-        :root { --bg: #09090b; --card: #18181b; --text: #e4e4e7; --accent: #22c55e; --border: #27272a; }
+        :root { --bg: #09090b; --card: #18181b; --text: #e4e4e7; --accent: #3b82f6; --border: #27272a; }
         body { font-family: 'Courier New', monospace; max-width: 800px; margin: 40px auto; padding: 20px; background: var(--bg); color: var(--text); }
         .card { background: var(--card); padding: 2rem; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
         h1 { margin-top: 0; color: #fff; font-size: 1.5rem; letter-spacing: -0.05em; border-bottom: 1px solid var(--border); padding-bottom: 15px; }
         
         .status-box { margin: 20px 0; padding: 15px; background: #000; border-radius: 6px; font-size: 13px; height: 350px; overflow-y: auto; border: 1px solid var(--border); color: #a1a1aa; }
         .log-entry { margin-bottom: 6px; border-bottom: 1px solid #1f1f22; padding-bottom: 4px; }
-        .success { color: var(--accent); }
+        .success { color: #22c55e; }
         .error { color: #ef4444; }
-        .info { color: #3b82f6; }
-        .cursor { color: #a855f7; font-size: 11px; }
+        .info { color: var(--accent); }
 
         .controls { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; }
         button { padding: 12px 24px; background: var(--text); color: #000; border: none; border-radius: 6px; cursor: pointer; font-weight: 700; transition: all 0.2s; }
-        button:hover { background: var(--accent); }
-        button:disabled { background: #52525b; cursor: not-allowed; opacity: 0.5; }
+        button:hover { background: var(--accent); color: white; }
+        button:disabled { background: #52525b; cursor: not-allowed; opacity: 0.5; color: #aaa; }
         
         .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
         .stat-box { background: #27272a; padding: 10px; border-radius: 6px; text-align: center; }
@@ -34,62 +33,61 @@
 <body>
 
 <div class="card">
-    <h1>VVStudios Sync Manager</h1>
+    <h1>Shopify Image Collector</h1>
     
     <div class="stat-grid">
         <div class="stat-box">
-            <div class="stat-label">Total Synced</div>
+            <div class="stat-label">Images Synced Session</div>
             <div class="stat-val" id="totalCount">0</div>
         </div>
         <div class="stat-box">
-            <div class="stat-label">Target</div>
-            <div class="stat-val">~930</div>
+            <div class="stat-label">Batch Size</div>
+            <div class="stat-val">50</div>
         </div>
     </div>
 
     <div class="controls">
-        <button id="startBtn" onclick="startSync()">INITIATE SYNC SEQUENCE</button>
+        <button id="startBtn" onclick="startSync()">START IMAGE SYNC</button>
     </div>
 
     <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
 
     <div class="status-box" id="console">
-        <div class="log-entry">> System Ready. Waiting for command...</div>
+        <div class="log-entry">> System Ready. Click START to fetch Shopify images...</div>
     </div>
 </div>
 
 <script>
-    // HARDCODED CONFIG
-    const FUNCTION_URL = "https://xgtnbxdxbbywvzrttixf.supabase.co/functions/v1/shopify-sync";
+    // --- CONFIGURATION ---
+    // Ensure this matches your actual function name in Supabase
+    const FUNCTION_URL = "https://xgtnbxdxbbywvzrttixf.supabase.co/functions/v1/shopify-sync"; 
     const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ";
     const BUSINESS_ID = "kisasacraft66";
-    const DELAY_MS = 1500; 
+    const DELAY_MS = 1000; // 1 second break between batches
 
-    // STATE
     let totalSynced = 0;
     let isRunning = false;
 
     async function startSync() {
         isRunning = true;
-        document.getElementById("startBtn").disabled = true;
-        document.getElementById("startBtn").innerText = "SYNC IN PROGRESS...";
-        log("🚀 Initializing connection to Supabase...", "info");
+        const btn = document.getElementById("startBtn");
+        btn.disabled = true;
+        btn.innerText = "SYNCING...";
+        
+        log("🚀 Connecting to Shopify API bridge...", "info");
 
         try {
             while (isRunning) {
-                const payload = { business_id: BUSINESS_ID }; 
-                
-                log(`Fetching next batch of 50 missing handles...`, "info");
+                log(`📥 Fetching next batch of products with missing images...`, "info");
 
                 const response = await fetch(FUNCTION_URL, {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${ANON_KEY}` },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({ business_id: BUSINESS_ID })
                 });
 
                 if (!response.ok) {
-                    const errText = await response.text();
-                    throw new Error(`Server Error (${response.status}): ${errText}`);
+                    throw new Error(`Server Error: ${response.status} ${await response.text()}`);
                 }
 
                 const data = await response.json();
@@ -99,22 +97,26 @@
                 updateUI(totalSynced);
                 
                 if (batchCount > 0) {
-                     log(`✅ ${data.message} (${batchCount} items)`, "success");
+                     log(`✅ Synced ${batchCount} products.`, "success");
+                } else {
+                     log(`⚠️ No updates in this batch.`, "info");
                 }
 
+                // CHECK IF WE SHOULD CONTINUE
                 if (data.hasMore) {
+                    log(`⏳ Waiting ${DELAY_MS}ms before next batch...`, "info");
                     await new Promise(r => setTimeout(r, DELAY_MS));
                 } else {
-                    log("🏁 MISSION COMPLETE. All products have handles.", "success");
-                    document.getElementById("startBtn").innerText = "SYNC COMPLETE";
+                    log("🏁 SYNC COMPLETE! All products have images.", "success");
+                    btn.innerText = "SYNC COMPLETE";
                     isRunning = false;
                     break;
                 }
             }
         } catch (err) {
-            log(`❌ CRITICAL FAILURE: ${err.message}`, "error");
-            document.getElementById("startBtn").innerText = "RETRY SYNC";
-            document.getElementById("startBtn").disabled = false;
+            log(`❌ ERROR: ${err.message}`, "error");
+            btn.innerText = "RETRY";
+            btn.disabled = false;
             isRunning = false;
         }
     }
@@ -130,8 +132,11 @@
 
     function updateUI(count) {
         document.getElementById("totalCount").innerText = count;
-        const percentage = Math.min((count / 930) * 100, 100);
-        document.getElementById("progressFill").style.width = `${percentage}%`;
+        // Simple visual progress (indefinite loading effect)
+        const fill = document.getElementById("progressFill");
+        let w = parseFloat(fill.style.width || 0) + 5;
+        if(w > 100) w = 0;
+        fill.style.width = `${w}%`;
     }
 </script>
 

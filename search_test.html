@@ -2,169 +2,163 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Visual Search Test - VVStudios</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base64 Visual Matcher</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        body { background: #0f1115; color: white; font-family: 'Inter', sans-serif; }
-        .result-card { background: #1a1d23; border: 1px solid #2b2f3a; transition: transform 0.2s; }
-        .result-card:hover { transform: translateY(-4px); border-color: #a855f7; }
-    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
-<body class="p-8 max-w-6xl mx-auto">
-    <div class="mb-10 text-center">
-        <h1 class="text-3xl font-bold mb-2">Visual Match Tester</h1>
-        <p class="text-gray-400">Upload a screenshot to find the closest match in your Supabase DB</p>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div class="md:col-span-1 space-y-4">
-            <div class="p-6 rounded-2xl bg-[#1a1d23] border border-[#2b2f3a]">
-                <label class="block text-sm font-medium mb-4">Search Image</label>
-                <input type="file" id="imageInput" accept="image/*" class="hidden">
-                <div onclick="document.getElementById('imageInput').click()" 
-                     class="border-2 border-dashed border-[#2b2f3a] rounded-xl p-8 text-center cursor-pointer hover:border-purple-500 transition-colors">
-                    <img id="preview" class="hidden mb-4 rounded-lg max-h-40 mx-auto">
-                    <p id="uploadText" class="text-gray-500 text-sm">Click to upload screenshot</p>
-                </div>
-
-                <div id="cropContainer" class="mt-6 hidden">
-                    <label class="block text-[10px] text-gray-500 uppercase mb-2 font-bold text-center">What the AI Sees (Center 70%)</label>
-                    <canvas id="cropPreview" class="w-full mx-auto max-w-[224px] rounded-lg border-2 border-purple-500/50 bg-black/20"></canvas>
-                </div>
-
-                <button id="searchBtn" class="w-full mt-6 py-3 bg-purple-600 hover:bg-purple-500 rounded-xl font-bold transition-all shadow-lg shadow-purple-900/20">
-                    Find Matches
-                </button>
-            </div>
-            <div id="status" class="text-center text-sm text-purple-400 font-medium"></div>
-        </div>
-
-        <div class="md:col-span-2">
-            <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                Top Matches <span id="matchCount" class="text-xs bg-[#2b2f3a] px-2 py-1 rounded">0</span>
-            </h2>
-            <div id="resultsGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                </div>
-        </div>
-    </div>
-
-    <script type="module">
-        import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
-        env.allowLocalModels = false;
-
-        const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
+<body class="bg-[#0f1115] text-white font-sans p-6 min-h-screen">
+    
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row gap-8">
         
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        let aiExtractor = null;
-
-        // --- IMAGE PREVIEW LOGIC ---
-        document.getElementById('imageInput').onchange = (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    const img = document.getElementById('preview');
-                    // Wait for image to fully load before allowing search
-                    img.onload = () => {
-                        img.classList.remove('hidden');
-                        document.getElementById('uploadText').classList.add('hidden');
-                        document.getElementById('cropContainer').classList.add('hidden'); // Hide old crop
-                    }
-                    img.src = ev.target.result;
-                }
-                reader.readAsDataURL(file);
-            }
-        };
-
-        // --- SMART CROP & COMPRESS LOGIC ---
-        async function prepareImageForAI(imgElement) {
-            const canvas = document.getElementById('cropPreview');
-            const ctx = canvas.getContext('2d');
+        <div class="w-full md:w-1/3 flex flex-col gap-4">
+            <h2 class="text-xl font-bold border-b border-gray-700 pb-2">1. Input (Base64)</h2>
             
-            // 1. Define the Crop Area (Center 70% of the image)
-            // This strips away Facebook Reel captions, Like buttons, and UI noise.
-            const cropPercent = 0.70; 
-            const sourceW = imgElement.naturalWidth;
-            const sourceH = imgElement.naturalHeight;
-            
-            const cropW = sourceW * cropPercent;
-            const cropH = sourceH * cropPercent;
-            const startX = (sourceW - cropW) / 2;
-            const startY = (sourceH - cropH) / 2;
+            <div class="border-2 border-dashed border-gray-600 rounded-xl p-8 text-center bg-[#1a1d23] hover:border-purple-500 transition-colors cursor-pointer" onclick="document.getElementById('fileInput').click()">
+                <i class="fa fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                <p class="text-sm text-gray-300">Click to upload screenshot</p>
+                <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleUpload(event)">
+            </div>
 
-            // 2. Set canvas to CLIP's native 224x224 size
-            canvas.width = 224;
-            canvas.height = 224;
+            <div id="previewContainer" class="hidden flex-col gap-2">
+                <span class="text-xs text-gray-400">Image Preview:</span>
+                <img id="imagePreview" class="w-full h-auto rounded-lg border border-gray-700 object-contain max-h-64" src="">
+            </div>
 
-            // 3. Draw the center-cropped portion to the canvas
-            ctx.drawImage(
-                imgElement, 
-                startX, startY, cropW, cropH, // Source coordinates (the crop)
-                0, 0, 224, 224                // Destination coordinates (the canvas)
-            );
+            <div class="bg-black/50 border border-gray-700 rounded-lg p-3 font-mono text-xs flex flex-col gap-1 h-48 overflow-y-auto" id="consoleLog">
+                <div class="text-gray-500">> System Ready. Waiting for image...</div>
+            </div>
+        </div>
 
-            // 4. Show the user what the AI is seeing
-            document.getElementById('cropContainer').classList.remove('hidden');
+        <div class="w-full md:w-2/3 flex flex-col gap-4">
+            <div class="flex justify-between items-end border-b border-gray-700 pb-2">
+                <h2 class="text-xl font-bold">2. Top Matches</h2>
+                <span id="statusBadge" class="text-xs px-2 py-1 rounded bg-gray-800 text-gray-400">Standby</span>
+            </div>
 
-            return canvas.toDataURL("image/jpeg", 0.9);
+            <div id="resultsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div class="col-span-3 text-center text-gray-600 py-10">Upload an image to see matches</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const FUNCTION_URL = "https://xgtnbxdxbbywvzrttixf.supabase.co/functions/v1/visual-matcher"; 
+    const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ";
+    
+        // Logging helper
+        function logMsg(msg, type = 'info') {
+            const logBox = document.getElementById('consoleLog');
+            const colors = { error: 'text-red-400', success: 'text-green-400', info: 'text-blue-300', warn: 'text-orange-400' };
+            logBox.innerHTML += `<div class="${colors[type]}">> ${msg}</div>`;
+            logBox.scrollTop = logBox.scrollHeight;
         }
 
-        // --- SEARCH EVENT LOGIC ---
-        document.getElementById('searchBtn').onclick = async () => {
-            const img = document.getElementById('preview');
-            const status = document.getElementById('status');
-            const resultsGrid = document.getElementById('resultsGrid');
-            if (!img.src) return alert("Select an image first");
+        async function handleUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
 
-            try {
-                status.innerText = "Loading AI Engine...";
-                if (!aiExtractor) {
-                    // CRITICAL: Using 'image-feature-extraction' task
-                    aiExtractor = await pipeline('image-feature-extraction', 'Xenova/clip-vit-base-patch32', { quantized: true });
+            document.getElementById('previewContainer').classList.remove('hidden');
+            const preview = document.getElementById('imagePreview');
+            const grid = document.getElementById('resultsGrid');
+            const badge = document.getElementById('statusBadge');
+            
+            grid.innerHTML = '';
+            document.getElementById('consoleLog').innerHTML = ''; // clear logs
+            
+            // 1. Convert to Base64 (simulating WhatsApp/Bot payload)
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const base64String = e.target.result;
+                preview.src = base64String;
+                
+                logMsg(`File loaded: ${file.name} (${Math.round(file.size/1024)}kb)`);
+                logMsg(`Converted to Base64. Sending payload to Edge Function...`, 'info');
+                
+                badge.className = "text-xs px-2 py-1 rounded bg-blue-900/50 text-blue-400 border border-blue-700 animate-pulse";
+                badge.innerText = "Analyzing Server-Side...";
+
+                try {
+                    // 2. Send JSON to Edge Function
+                    const response = await fetch(FUNCTION_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${ANON_KEY}`
+                        },
+                        body: JSON.stringify({ image: base64String })
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok || !data.success) {
+                        throw new Error(data.error || `HTTP ${response.status}: Failed to process`);
+                    }
+
+                    logMsg(`Success! Extracted Colors: ${data.colors_detected.join(', ')}`, 'success');
+                    logMsg(`Database returned ${data.matches.length} matches.`, 'success');
+                    
+                    badge.className = "text-xs px-2 py-1 rounded bg-green-900/50 text-green-400 border border-green-700";
+                    badge.innerText = "Analysis Complete";
+
+                    renderResults(data.matches);
+
+                } catch (err) {
+                    logMsg(err.message, 'error');
+                    badge.className = "text-xs px-2 py-1 rounded bg-red-900/50 text-red-400 border border-red-700";
+                    badge.innerText = "Error Occurred";
                 }
+            };
+            reader.readAsDataURL(file);
+        }
 
-                status.innerText = "Applying Smart Center Crop...";
-                const croppedDataUrl = await prepareImageForAI(img);
+        function renderResults(matches) {
+            const grid = document.getElementById('resultsGrid');
+            grid.innerHTML = '';
+            
+            // Limit to top 6
+            const topMatches = matches.slice(0, 6);
 
-                status.innerText = "Vectorizing Focused Image...";
-                const output = await aiExtractor(croppedDataUrl);
-                const embedding = Array.from(output.data);
+            topMatches.forEach((item) => {
+                // Parse image array
+                let imgs = item.shopify_images || [];
+                if (typeof imgs === 'string') {
+                    try { imgs = JSON.parse(imgs); } catch { imgs = [imgs]; }
+                }
+                const imgUrl = imgs[0] || 'https://via.placeholder.com/300';
+                
+                // Calculate percentages
+                const totalScore = Math.round((item.final_score || 0) * 100);
+                
+                // Trigger bonus UI if vector score is exceptionally high 
+                // (simulating a multi-view match from the SQL function)
+                const hasBonus = item.vector_score > 0.85;
 
-                status.innerText = "Querying Database...";
-                const { data, error } = await supabaseClient.rpc('match_images_v1', {
-                    query_embedding: embedding,
-                    match_threshold: 0.5, // High threshold for testing (allows looser matches)
-                    match_count: 6
-                });
-
-                if (error) throw error;
-
-                resultsGrid.innerHTML = '';
-                document.getElementById('matchCount').innerText = data.length;
-
-                data.forEach(item => {
-                    // Turn distance into a readable percentage
-                    const sim = (1 - item.cosine_distance) * 100; 
-                    resultsGrid.innerHTML += `
-                        <div class="result-card p-3 rounded-xl flex gap-4 items-center animate-fade-in">
-                            <img src="${item.images[0]}" class="w-20 h-20 object-cover rounded-lg bg-black/50">
-                            <div class="min-w-0">
-                                <div class="font-bold text-sm truncate">${item.title}</div>
-                                <div class="text-xs text-green-400 mt-1">${sim.toFixed(1)}% Match</div>
-                                <div class="text-[10px] text-gray-500 mt-1">Dist: ${item.cosine_distance.toFixed(4)}</div>
+                grid.innerHTML += `
+                    <div class="bg-[#1a1d23] rounded-lg border border-gray-700 overflow-hidden relative group">
+                        <div class="absolute top-2 right-2 flex flex-col items-end gap-1 z-10">
+                            <div class="bg-green-500/90 text-white text-[10px] font-bold px-2 py-1 rounded shadow">
+                                ${totalScore}% Match
                             </div>
+                            ${hasBonus ? `
+                            <div class="bg-orange-500/90 text-white text-[10px] font-bold px-2 py-1 rounded shadow flex items-center gap-1">
+                                <i class="fa fa-fire"></i> +5% Multi-Hit
+                            </div>` : ''}
                         </div>
-                    `;
-                });
-                status.innerText = "Search Complete.";
 
-            } catch (err) {
-                console.error(err);
-                status.innerText = "Search Failed.";
-            }
-        };
+                        <div class="h-48 bg-black/40 p-2 flex items-center justify-center">
+                            <img src="${imgUrl}" class="max-h-full max-w-full object-contain mix-blend-lighten group-hover:scale-105 transition-transform duration-300">
+                        </div>
+
+                        <div class="p-3 border-t border-gray-700">
+                            <div class="text-sm text-gray-200 line-clamp-1 font-medium" title="${item.title}">${item.title}</div>
+                            <div class="text-[10px] text-gray-500 mt-1 font-mono">ID: ${item.id.split('_').pop()}</div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
     </script>
 </body>
 </html>

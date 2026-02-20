@@ -126,10 +126,10 @@ const crm = {
                     if (!crmStore.messages.find(m => m.id === payload.new.id)) {
                         crmStore.messages.push(payload.new);
                         // If this conv is active, render; otherwise UI lists will be updated by loadConversations via conversation changes
-                        if (crmStore.activeChatId === convId) {
-                            if (platform === 'whatsapp') this.renderMessages(convId);
-                            else this.renderSocialMessages(convId, platform);
-                        }
+                                if (String(crmStore.activeChatId) === String(convId)) {
+                                    if (platform === 'whatsapp') this.renderMessages(convId);
+                                    else this.renderSocialMessages(convId, platform);
+                                }
                     }
                 })
                 .on('postgres_changes', {
@@ -138,7 +138,7 @@ const crm = {
                     const idx = crmStore.messages.findIndex(m => m.id === payload.new.id);
                     if (idx !== -1) {
                         crmStore.messages[idx] = payload.new;
-                        if (crmStore.activeChatId === convId) {
+                        if (String(crmStore.activeChatId) === String(convId)) {
                             if (platform === 'whatsapp') this.renderMessages(convId);
                             else this.renderSocialMessages(convId, platform);
                         }
@@ -350,7 +350,7 @@ const crm = {
             list.innerHTML = waChats.map(conv => {
                 const contact = conv.contacts;
                 const isActive = this.isWindowActive(conv.last_user_message_at);
-                const isSelected = conv.id === crmStore.activeChatId;
+                const isSelected = String(conv.id) === String(crmStore.activeChatId);
                 
                 return `
                     <div onclick="crm.openChat('${conv.id}')" class="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${isSelected ? 'bg-white/10 border-l-4 border-purple-500' : 'hover:bg-white/5'}">
@@ -466,53 +466,34 @@ const crm = {
 
     // Enhanced Message Renderer (Native Styles)
     renderMessages(convId) {
-        const container = document.getElementById('chat-messages');
-        const msgs = crmStore.messages.filter(m => m.conversation_id == convId); // Use loose equality for safety
-        
-        if (msgs.length === 0) {
-            container.innerHTML = `<div class="text-center text-white/20 mt-10">No messages yet.</div>`;
-            return;
+        try {
+            const container = document.getElementById('chat-messages');
+            
+            if (!container) {
+                return;
+            }
+            
+            const msgs = crmStore.messages.filter(m => m.conversation_id == convId);
+            
+            if (msgs.length === 0) {
+                container.innerHTML = `<div class="text-center text-white/20 mt-10">No messages yet.</div>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            msgs.forEach((msg, idx) => {
+                try {
+                    renderMessage(msg);
+                } catch (msgErr) {
+                    console.error(`Error rendering message ${idx + 1}:`, msgErr);
+                }
+            });
+        } catch (e) {
+            console.error('renderMessages() error:', e);
         }
-
-        // Identify current platform style
-        const isInsta = crmStore.activePlatform === 'instagram';
-        const isWhatsapp = crmStore.activePlatform === 'whatsapp';
-
-        container.innerHTML = msgs.map(msg => {
-            const isMe = msg.sender === 'ai' || msg.sender === 'admin';
-            
-            // Dynamic Styles based on Platform
-            let bubbleClass = isMe 
-                ? (isWhatsapp ? "bg-[#005c4b] text-white rounded-tr-none" : "bg-[#3797f0] text-white rounded-br-none") 
-                : (isWhatsapp ? "bg-[#202c33] text-white rounded-tl-none" : "bg-[#262626] text-white rounded-bl-none");
-            
-            // Alignment
-            let alignClass = isMe ? "justify-end" : "justify-start";
-
-            return `
-                <div class="flex w-full ${alignClass} mb-2 group">
-                    <div class="max-w-[70%] relative">
-                        <div class="${bubbleClass} px-3 py-2 rounded-xl text-sm shadow-sm leading-relaxed relative">
-                            ${msg.body}
-                            
-                            <div class="text-[10px] text-white/40 text-right mt-1 flex justify-end gap-1 items-center">
-                                ${new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                ${isMe && isWhatsapp ? '<i class="fa-solid fa-check-double text-blue-400"></i>' : ''}
-                            </div>
-                        </div>
-                        
-                        ${msg.sender === 'ai' ? `<div class="text-[9px] text-white/30 mt-1 text-right font-mono uppercase">🤖 AI Agent</div>` : ''}
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        // Auto Scroll to bottom
-        container.scrollTop = container.scrollHeight;
     },
 
     async loadConversation(contactId) {
-        console.log("Loading conversation for:", contactId);
         crmStore.activeChatId = contactId;
 
         // 1. Fetch Contact Basic Info
@@ -538,6 +519,13 @@ const crm = {
 
         // 3. Render Sidebar with new Context
         this.renderRightSidebar(contact, deals);
+
+        // NEW: Pro AI Features
+        checkEscalationStatus(contact);         // Check if AI is paused
+        // Load enrichment asynchronously without blocking conversation load
+        renderSmartSidebar(contact).catch(e => console.error('Enrichment load error:', e));
+        // Check for manual orders asynchronously
+        fetchPendingAIOrder(contact.id).catch(e => console.error('Order load error:', e));
     },
 
     async openChat(convId) {
@@ -563,6 +551,7 @@ const crm = {
 
         // 4. Update UI for the Chat Window
         const conv = crmStore.conversations.find(c => c.id === convId);
+        
         if (conv) {
             document.getElementById('chat-header-name').textContent = conv.contacts?.name || conv.contacts?.phone || 'Unknown';
             document.getElementById('chat-header-avatar').textContent = conv.contacts?.name?.[0] || '#';
@@ -577,10 +566,25 @@ const crm = {
             }
         }
 
-        // 5. Render Messages
+        // 5. Fetch Messages for WhatsApp
+        const { data: messages, error: msgError } = await getSupabase().from('messages')
+            .select('*')
+            .eq('conversation_id', convId)
+            .order('created_at', { ascending: true });
+        
+        if (msgError) {
+            console.error('Error fetching messages:', msgError);
+        }
+        
+        crmStore.messages = messages || [];
+
+        // 6. Render Messages
         this.renderMessages(convId);
         
-        // 6. Reveal Mobile View
+        // 7. Subscribe to Real-time Message Updates
+        this.subscribeToMessages(convId, 'whatsapp');
+        
+        // 8. Reveal Mobile View
         document.getElementById('crm-chat-window').classList.remove('hidden');
         document.getElementById('crm-chat-list-panel').classList.add('hidden', 'md:flex');
     },
@@ -591,7 +595,7 @@ const crm = {
             // allow explicit id or use active chat's contact
             let cid = contactId;
             if (!cid && crmStore.activeChatId) {
-                const conv = crmStore.conversations.find(c => c.id === crmStore.activeChatId);
+                const conv = crmStore.conversations.find(c => String(c.id) === String(crmStore.activeChatId));
                 cid = conv ? conv.contact_id : null;
             }
 
@@ -601,7 +605,7 @@ const crm = {
             let contact = null;
             // prefer embedded contact record
             if (crmStore.conversations && crmStore.activeChatId) {
-                const conv = crmStore.conversations.find(c => c.id === crmStore.activeChatId);
+                const conv = crmStore.conversations.find(c => String(c.id) === String(crmStore.activeChatId));
                 if (conv && conv.contacts) contact = conv.contacts;
             }
 
@@ -707,7 +711,7 @@ const crm = {
             if (emptyState) emptyState.classList.add('hidden');
             listContainer.innerHTML = chats.map(c => {
                 const name = c.contacts?.name || "Social User";
-                const isActive = c.id === crmStore.activeChatId;
+                const isActive = String(c.id) === String(crmStore.activeChatId);
                 const timeVal = c.last_user_message_at || c.updated_at || null;
                 const time = timeVal ? new Date(timeVal).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
                 const unreadBadge = (c.unread_count && Number(c.unread_count) > 0) ? `<span class="bg-green-500 text-[10px] px-1.5 rounded-full">${c.unread_count}</span>` : '';
@@ -743,7 +747,7 @@ const crm = {
         await getSupabase().from('messages').update({ is_read: true }).eq('conversation_id', convId).eq('is_read', false);
 
         // Update local store immediately to remove unread badge
-        const localConv = crmStore.conversations.find(c => c.id === convId);
+        const localConv = crmStore.conversations.find(c => String(c.id) === String(convId));
         if (localConv) {
             localConv.unread_count = 0;
         }
@@ -866,10 +870,14 @@ const crm = {
 
             // Content Extraction (Handle JSONB)
             let displayText = '';
+            let mediaUrl = '';
             if (m.content && typeof m.content === 'object') {
                 displayText = m.content.text || JSON.stringify(m.content);
+                // Check for media in content
+                mediaUrl = m.content.image_url || m.content.media_url || m.content.url;
             } else {
                 displayText = m.raw_payload?.text || 'Media/Attachment'; // Fallback
+                mediaUrl = m.media_url || m.raw_payload?.image_url;
             }
 
             // AI Badge / Admin Badge logic
@@ -884,12 +892,21 @@ const crm = {
                          </div>`;
             }
 
+            // Media rendering with lazy loading
+            let mediaHTML = '';
+            if (mediaUrl) {
+                const optimizedMediaUrl = getOptimizedImageUrl(mediaUrl);
+                const mediaPlaceholder = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect width=%22200%22 height=%22200%22 fill=%22%23333%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 font-size=%2212%22 fill=%22%23666%22 text-anchor=%22middle%22 dy=%22.3em%22%3ELoading...%3C/text%3E%3C/svg%3E';
+                mediaHTML = `<div class='mb-2 rounded overflow-hidden max-w-[200px]'><img src='${mediaPlaceholder}' data-src='${optimizedMediaUrl}' loading='lazy' class='w-full h-auto lazy-img' decoding='async' onload="this.classList.add('loaded')"></div>`;
+            }
+
             return `
             <div class="flex gap-2 max-w-[75%] ${align} mb-3 group">
                 ${!isMe ? `<div class="w-8 h-8 rounded-full bg-gray-600 flex-shrink-0 flex items-center justify-center text-xs text-white/50"><i class="fa-solid fa-user"></i></div>` : ''}
 
                 <div class="${bgClass} p-3 rounded-2xl ${bubbleShape} shadow-sm text-sm relative min-w-[100px]">
                     ${badge}
+                    ${mediaHTML}
                     <div class="whitespace-pre-wrap leading-relaxed">${displayText}</div>
 
                     <div class="text-[10px] text-white/50 text-right mt-1 flex justify-end items-center gap-1">
@@ -899,6 +916,9 @@ const crm = {
                 </div>
             </div>`;
         }).join('');
+        
+        // Initialize lazy loading for social messages
+        initLazyImages();
         
         area.scrollTop = area.scrollHeight;
     },
@@ -1151,7 +1171,7 @@ const crm = {
         if (!text || !crmStore.activeChatId) return;
 
         // 1. Get Contact & Conversation Details
-        const conv = crmStore.conversations.find(c => c.id === crmStore.activeChatId);
+        const conv = crmStore.conversations.find(c => String(c.id) === String(crmStore.activeChatId));
         if (!conv || !conv.contacts) {
             console.error("Conversation or contact not found for sending");
             alert("Error: Contact information not found.");
@@ -1210,7 +1230,7 @@ const crm = {
 
     async toggleAI() {
         if(!crmStore.activeChatId) return;
-        const conv = crmStore.conversations.find(c => c.id === crmStore.activeChatId);
+        const conv = crmStore.conversations.find(c => String(c.id) === String(crmStore.activeChatId));
         const newState = !conv.ai_enabled;
 
         const { error } = await getSupabase().from('conversations').update({ ai_enabled: newState }).eq('id', crmStore.activeChatId);
@@ -1253,40 +1273,6 @@ const crm = {
             inputContainer.classList.remove('hidden');
             disabledMsg.classList.add('hidden');
         }
-    },
-
-    // Standard WhatsApp Renderer
-    renderMessages(convId) {
-        const area = document.getElementById('crm-messages-area');
-        if (!area) return;
-
-        const msgs = crmStore.messages.filter(m => m.conversation_id === convId);
-
-        area.innerHTML = msgs.map(m => {
-            const isOutgoing = m.direction === 'out' || m.role === 'admin' || m.role === 'ai';
-            const isAI = m.role === 'ai';
-            const align = isOutgoing ? 'justify-end' : 'justify-start';
-            const bubbleClass = isOutgoing ? 'bg-[#005c4b] text-white rounded-tr-none' : 'bg-[#202c33] text-white rounded-tl-none';
-            
-            let statusIcon = '';
-            if (isOutgoing) {
-                if (m.status === 'read') statusIcon = '<i class="fa-solid fa-check-double text-[10px] text-[#53bdeb]"></i>';
-                else statusIcon = '<i class="fa-solid fa-check text-[10px] opacity-50"></i>';
-            }
-
-            return `
-                <div class="flex ${align} mb-2 px-4">
-                    <div class="${bubbleClass} max-w-[75%] p-2 px-3 shadow-sm rounded-xl relative min-w-[70px]">
-                        ${isAI ? `<div class="flex items-center gap-1 text-[10px] text-green-300 font-bold mb-1 uppercase tracking-tight"><i class="fa-solid fa-robot"></i> AI</div>` : ''}
-                        <span class="text-[14.5px] leading-relaxed whitespace-pre-wrap">${m.content?.text || m.text || ''}</span>
-                        <div class="flex items-center justify-end gap-1 mt-1 leading-none">
-                            <span class="text-[10px] opacity-50">${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
-                            ${statusIcon}
-                        </div>
-                    </div>
-                </div>`;
-        }).join('');
-        area.scrollTop = area.scrollHeight;
     },
 
     // --- LISTS & TEMPLATES ---
@@ -2437,6 +2423,220 @@ async function handleFileSelected(input) {
     }
 }
 
+// RENDER MESSAGE FUNCTION
+// Image Optimization Helper
+function getOptimizedImageUrl(originalUrl) {
+    if (!originalUrl) return originalUrl;
+    
+    // For URLs containing 'supabase' or 'cloudinary', add optimization params
+    if (originalUrl.includes('supabase')) {
+        // Supabase Storage - add width param for resizing
+        const separator = originalUrl.includes('?') ? '&' : '?';
+        return originalUrl + separator + 'width=300';
+    }
+    if (originalUrl.includes('cloudinary')) {
+        // Cloudinary - add transformation for compression and resize
+        return originalUrl.replace('/upload/', '/upload/w_300,q_60,f_auto/');
+    }
+    
+    // For generic URLs, return as-is (will use native lazy loading)
+    return originalUrl;
+}
+
+function renderMessage(msg) {
+    const chatContainer = document.getElementById('chat-messages');
+    if (!chatContainer) return;
+
+    // 1. Determine Sender & Style
+    const isMe = msg.role === 'agent' || msg.role === 'admin' || msg.direction === 'out';
+    const isSystem = msg.role === 'system' || msg.is_internal;
+
+    // 2. Handle System Messages (Center Pill)
+    if (isSystem) {
+        const sysDiv = document.createElement('div');
+        sysDiv.className = "flex justify-center my-4 opacity-80";
+        sysDiv.innerHTML = `
+            <div class="bg-[#1f2c34] text-[10px] px-3 py-1.5 rounded-lg text-yellow-500 shadow-sm border border-yellow-500/20 font-medium uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-lock"></i>
+                <span>${typeof msg.content === 'string' ? msg.content : (msg.content.text || "System Alert")}</span>
+            </div>
+        `;
+        chatContainer.appendChild(sysDiv);
+        scrollToBottom();
+        return;
+    }
+
+    // 3. Parse Content
+    let rawContent = msg.content;
+    if (typeof rawContent === 'string' && rawContent.startsWith('{')) {
+        try { rawContent = JSON.parse(rawContent); } catch(e) {}
+    }
+
+    // 4. Message Bubble Container
+    const wrapper = document.createElement('div');
+    wrapper.className = `flex w-full mb-2 ${isMe ? 'justify-end' : 'justify-start'} animate-fade-in group`;
+
+    // 5. Build Inner HTML based on Content Type
+    let bubbleContent = '';
+    
+    // --- TYPE A: IMAGE (WhatsApp Style) ---
+    // Checks for media_url in DB or inside the JSON content
+    const imgUrl = msg.media_url || rawContent?.image_url || rawContent?.url || rawContent?.media?.url;
+    
+    if (imgUrl) {
+        const optimizedUrl = getOptimizedImageUrl(imgUrl);
+        // Use a lighter placeholder while image loads
+        const placeholderUrl = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22260%22 height=%22300%22%3E%3Crect width=%22260%22 height=%22300%22 fill=%22%23222%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 font-size=%2216%22 fill=%22%23666%22 text-anchor=%22middle%22 dy=%22.3em%22%3ELoading...%3C/text%3E%3C/svg%3E';
+        bubbleContent += `
+            <div class="p-1 pb-0 rounded-lg mb-1 relative cursor-pointer" onclick="window.open('${imgUrl}', '_blank')">
+                <img 
+                    src="${placeholderUrl}"
+                    data-src="${optimizedUrl}" 
+                    loading="lazy"
+                    class="rounded-lg max-w-[260px] max-h-[300px] object-cover border border-white/5 lazy-img" 
+                    decoding="async"
+                    onload="this.classList.add('loaded')"
+                >
+            </div>
+        `;
+    }
+
+    // --- TYPE B: PRODUCT CARD (Carousel Style) ---
+    // If it's a single card or a list of cards
+    if (rawContent?.type === 'product_card' || (rawContent?.title && rawContent?.price)) {
+        const pImg = rawContent.image || rawContent.image_url || 'https://placehold.co/200';
+        const optimizedPImg = getOptimizedImageUrl(pImg);
+        const productPlaceholder = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22240%22 height=%22128%22%3E%3Crect width=%22240%22 height=%22128%22 fill=%22%23333%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 font-size=%2212%22 fill=%22%23666%22 text-anchor=%22middle%22 dy=%22.3em%22%3ELoading...%3C/text%3E%3C/svg%3E';
+        bubbleContent += `
+            <div class="bg-[#1f2c34] rounded-lg overflow-hidden max-w-[240px] border-b-4 border-[#00a884]">
+                <img 
+                    src="${productPlaceholder}"
+                    data-src="${optimizedPImg}" 
+                    loading="lazy"
+                    class="w-full h-32 object-cover lazy-img" 
+                    decoding="async"
+                    onload="this.classList.add('loaded')"
+                >
+                <div class="p-3">
+                    <h3 class="font-bold text-white text-sm truncate">${rawContent.title}</h3>
+                    <p class="text-xs text-gray-400 mb-2">${rawContent.price} ${rawContent.currency || ''}</p>
+                    <a href="${rawContent.link || '#'}" target="_blank" class="block w-full text-center bg-[#00a884] hover:bg-[#008f6f] text-[#111b21] font-bold text-xs py-2 rounded">
+                        VIEW ITEM
+                    </a>
+                </div>
+            </div>`;
+    }
+
+    // --- TYPE C: TEXT CONTENT ---
+    let text = "";
+    if (typeof rawContent === 'string') text = rawContent;
+    else if (rawContent?.text) text = rawContent.text;
+
+    // If there is text (caption or message)
+    if (text) {
+        // Format links
+        text = text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" class="text-[#53bdeb] hover:underline">$1</a>');
+        // Format newlines
+        text = text.replace(/\n/g, '<br>');
+        
+        // Add padding if it's a text-only bubble, less padding if it's a caption
+        const padding = (imgUrl || rawContent?.type === 'product_card') ? 'pt-1 px-2 pb-1' : 'px-3 py-1.5';
+        bubbleContent += `<div class="${padding} text-[14.2px] leading-[19px] text-[#e9edef] whitespace-pre-wrap">${text}</div>`;
+    }
+
+    // --- TYPE D: BUTTONS (Interactive Messages) ---
+    // If the message has quick replies or buttons
+    if (rawContent?.buttons && Array.isArray(rawContent.buttons)) {
+        const btnHtml = rawContent.buttons.map(btn => `
+            <button class="w-full bg-[#233138] hover:bg-[#2a3942] text-[#00a884] font-medium text-sm py-2.5 mb-1 rounded border border-[#233138] transition">
+                ${btn.title || btn.text}
+            </button>
+        `).join('');
+        bubbleContent += `<div class="mt-2 space-y-1">${btnHtml}</div>`;
+    }
+
+    // 6. Final Bubble Construction
+    // Green for Me (005c4b), Dark Gray for Them (202c33)
+    const bubbleClass = isMe 
+        ? 'bg-[#005c4b] rounded-lg rounded-tr-none' 
+        : 'bg-[#202c33] rounded-lg rounded-tl-none';
+
+    wrapper.innerHTML = `
+        <div class="${bubbleClass} relative shadow-sm max-w-[85%] min-w-[120px]">
+            ${bubbleContent}
+            
+            <div class="flex justify-end items-center gap-1 px-2 pb-1">
+                <span class="text-[11px] text-[hsla(0,0%,100%,0.6)]">
+                    ${new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+                ${isMe ? `
+                    <span class="text-[11px] ${msg.status === 'read' ? 'text-[#53bdeb]' : 'text-[hsla(0,0%,100%,0.6)]'}">
+                        <i class="fa-solid fa-check-double"></i>
+                    </span>
+                ` : ''}
+            </div>
+
+            ${isMe ? `
+                <svg viewBox="0 0 8 13" height="13" width="8" class="absolute top-0 -right-2 text-[#005c4b] fill-current">
+                    <path d="M5.188 1H0v11.193l6.467-8.625C7.526 2.156 6.958 1 5.188 1z"></path>
+                </svg>
+            ` : `
+                <svg viewBox="0 0 8 13" height="13" width="8" class="absolute top-0 -left-2 text-[#202c33] fill-current">
+                    <path d="M-2.288 1h5.187C5.457 1 6.832 2.156 5.271 3.568L-2.288 12.193V1z"></path>
+                </svg>
+            `}
+        </div>
+    `;
+
+    chatContainer.appendChild(wrapper);
+    scrollToBottom();
+    
+    // Initialize lazy loading for newly added images
+    initLazyImages();
+}
+
+// Lazy Image Loader with Intersection Observer
+function initLazyImages() {
+    const lazyImages = document.querySelectorAll('img.lazy-img[data-src]');
+    
+    if ('IntersectionObserver' in window) {
+        const imageObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    const dataSrc = img.getAttribute('data-src');
+                    if (dataSrc) {
+                        img.src = dataSrc;
+                        img.removeAttribute('data-src');
+                        observer.unobserve(img);
+                    }
+                }
+            });
+        }, {
+            rootMargin: '50px' // Start loading 50px before image comes into view
+        });
+        
+        lazyImages.forEach(img => imageObserver.observe(img));
+    } else {
+        // Fallback for browsers without IntersectionObserver
+        lazyImages.forEach(img => {
+            const dataSrc = img.getAttribute('data-src');
+            if (dataSrc) {
+                img.src = dataSrc;
+                img.removeAttribute('data-src');
+            }
+        });
+    }
+}
+
+// Helper function to scroll to bottom
+function scrollToBottom() {
+    const chatContainer = document.getElementById('chat-messages');
+    if (chatContainer) {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+}
+
 // 8. HELPER: Dispatcher (Refactored from your sendMessage)
 async function dispatchAgentMessage(payload) {
     if (!currentContactId) return;
@@ -2469,4 +2669,349 @@ async function dispatchAgentMessage(payload) {
             contactId: currentContactId
         }
     });
+}
+// ==========================================
+// --- PRO ACCOUNT FEATURES (AI & ORDERS) ---
+// ==========================================
+
+/**
+ * 1. CHECKS ESCALATION STATUS
+ * Shows the red banner if the AI is paused.
+ */
+function checkEscalationStatus(conversation) {
+    const banner = document.getElementById('escalation-banner');
+    if (conversation.status === 'escalated') {
+        banner.classList.remove('hidden');
+    } else {
+        banner.classList.add('hidden');
+    }
+}
+
+/**
+ * 2. RESUME AI (Admin Action)
+ * Sets status back to 'open' so the Brain can reply again.
+ */
+async function resumeAI() {
+    if (!currentConversationId) return;
+
+    // Optimistic UI
+    document.getElementById('escalation-banner').classList.add('hidden');
+
+    const { error } = await supabase
+        .from('conversations')
+        .update({ status: 'open' }) // Set back to open
+        .eq('id', currentConversationId);
+
+    if (error) {
+        alert("Error resuming AI");
+        console.error(error);
+    } else {
+        // Log system message
+        renderMessage({
+            id: 'sys-' + Date.now(),
+            role: 'system',
+            content: { text: "✅ AI Resumed by Admin." }
+        });
+    }
+}
+
+/**
+ * 3. RENDER SMART SIDEBAR
+ * Updates the right sidebar with AI-detected data.
+ */
+function renderSmartSidebar(contact) {
+    // A. Location & Currency Badge
+    const platformEl = document.getElementById('sidebar-platform'); // Reuse this or create new ID
+    if (platformEl) {
+        let locText = contact.location || "Unknown Location";
+        let currText = contact.currency_preference || "USD";
+        let langText = contact.language_preference || "En";
+        
+        // Update the UI (You can append this to your existing sidebar HTML)
+        // Ensure you have a container in HTML with id="ai-intelligence-card"
+        // If not, we inject it into the 'sidebar-notes' area for now.
+        
+        const notesArea = document.getElementById('sidebar-notes') || document.querySelector('.sidebar-right');
+        
+        // Remove old card if exists
+        const oldCard = document.getElementById('ai-intel-card');
+        if(oldCard) oldCard.remove();
+
+        const smartCard = `
+            <div id="ai-intel-card" class="bg-white/5 p-4 rounded-xl mb-4 border border-purple-500/30">
+                <h4 class="text-xs font-bold text-purple-400 uppercase mb-2 tracking-wider">🧠 AI Intelligence</h4>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between"><span class="text-gray-400">🌍 Loc:</span> <span>${locText}</span></div>
+                    <div class="flex justify-between"><span class="text-gray-400">💱 Curr:</span> <span>${currText}</span></div>
+                    <div class="flex justify-between"><span class="text-gray-400">🗣️ Lang:</span> <span>${langText}</span></div>
+                </div>
+            </div>
+        `;
+        
+        if(notesArea) notesArea.insertAdjacentHTML('afterbegin', smartCard);
+    }
+
+    // B. Permanent Notes
+    const notesEl = document.getElementById('sidebar-notes-content'); // Assuming you have this
+    if (notesEl && contact.notes) {
+        notesEl.innerHTML = contact.notes.replace(/\n/g, '<br>');
+    }
+}
+
+/**
+ * 4. FETCH PENDING AI ORDERS
+ * Checks if there is a 'pending' order for this chat.
+ */
+let currentPendingOrderId = null;
+
+async function fetchPendingAIOrder(conversationId) {
+    const { data: orders } = await supabase
+        .from('ai_orders')
+        .select('*')
+        .eq('conversation_id', conversationId)
+        .eq('status', 'pending');
+
+    const actionArea = document.querySelector('.chat-input-area'); // Or a notification area
+
+    // Remove old alerts
+    const oldAlert = document.getElementById('order-alert-pill');
+    if(oldAlert) oldAlert.remove();
+
+    if (orders && orders.length > 0) {
+        const order = orders[0]; // Grab the first pending one
+        currentPendingOrderId = order.id;
+        
+        // Inject a Floating Action Button in the chat header or input area
+        const alertHtml = `
+            <div id="order-alert-pill" onclick="openOrderModal('${order.id}')" 
+                 class="absolute bottom-20 left-1/2 transform -translate-x-1/2 cursor-pointer 
+                        bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-full shadow-xl 
+                        animate-bounce flex items-center gap-2 z-30">
+                <i class="fa-solid fa-receipt"></i>
+                <span class="font-bold">Review Order (${order.currency} ${order.total_amount})</span>
+            </div>
+        `;
+        
+        // Append to chat container
+        document.getElementById('chat-messages').parentElement.insertAdjacentHTML('beforeend', alertHtml);
+        
+        // Store order data globally for the modal to use
+        window.currentOrderData = order; 
+    }
+}
+
+/**
+ * 5. MODAL LOGIC
+ */
+function openOrderModal(orderId) {
+    const order = window.currentOrderData;
+    if(!order) return;
+
+    const modal = document.getElementById('order-modal');
+    document.getElementById('modal-order-id').innerText = `Order #${order.id.slice(0,8)}`;
+    document.getElementById('modal-total').innerText = `${order.currency} ${order.total_amount}`;
+    
+    // Render Items
+    const list = document.getElementById('modal-items-list');
+    list.innerHTML = order.items.map(item => `
+        <div class="flex justify-between items-center py-2 border-b border-white/5 last:border-0">
+            <div>
+                <p class="text-white font-medium">${item.product_name}</p>
+                <p class="text-xs text-gray-500">Qty: ${item.quantity}</p>
+            </div>
+            <p class="text-sm font-bold text-white">${item.price}</p>
+        </div>
+    `).join('');
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeOrderModal() {
+    document.getElementById('order-modal').classList.add('hidden');
+    document.getElementById('order-modal').classList.remove('flex');
+}
+
+async function approveOrder() {
+    if(!currentPendingOrderId) return;
+
+    // 1. Update DB
+    const { error } = await supabase
+        .from('ai_orders')
+        .update({ status: 'confirmed' })
+        .eq('id', currentPendingOrderId);
+
+    if (error) {
+        alert("Error confirming order");
+        return;
+    }
+
+    // 2. Notify User via Chat
+    await dispatchAgentMessage({
+        type: 'text',
+        text: `✅ Order #${currentPendingOrderId.slice(0,8)} Confirmed! We are processing it now.`
+    });
+
+    // 3. Cleanup UI
+    closeOrderModal();
+    const pill = document.getElementById('order-alert-pill');
+    if(pill) pill.remove();
+    
+    alert("Order confirmed and logged.");
+}
+
+// ========================================
+// PRO AI FUNCTIONS (Connected Features)
+// ========================================
+
+/**
+ * Check if AI is paused for this contact (escalation status)
+ * Shows/hides the escalation banner in the chat header
+ */
+async function checkEscalationStatus(contact) {
+    try {
+        const banner = document.getElementById('escalation-banner');
+        if (!banner) return;
+
+        // Check if contact has a flag indicating AI is paused
+        if (contact && contact.ai_paused) {
+            banner.classList.remove('hidden');
+            console.log(`AI paused for contact: ${contact.name || contact.phone}`);
+        } else {
+            banner.classList.add('hidden');
+        }
+    } catch (e) {
+        console.error('checkEscalationStatus error:', e);
+    }
+}
+
+/**
+ * Render enhanced sidebar with smart location/notes
+ * Integrates with the existing right-sidebar
+ * Non-blocking: continues even if enrichment data doesn't exist
+ */
+async function renderSmartSidebar(contact) {
+    try {
+        if (!contact || !contact.id) return;
+
+        const sidebar = document.getElementById('right-sidebar-content');
+        if (!sidebar) return;
+
+        // Fetch contact's location & enriched data if available
+        const contactId = parseInt(contact.id, 10);
+        const { data: enrichedContact, error } = await getSupabase()
+            .from('contact_enrichment')
+            .select('*')
+            .eq('contact_id', contactId)
+            .maybeSingle();
+
+        // Don't treat missing enrichment as an error - it's normal for older contacts
+        if (error && error.code !== 'PGRST116') {
+            // Only log actual errors, not "no rows" responses
+            console.warn('Error fetching contact enrichment:', error.message);
+        }
+
+        // Update sidebar notes section with enriched data if it exists
+        if (enrichedContact) {
+            const notesField = document.getElementById('sidebar-notes');
+            if (notesField) {
+                notesField.value = enrichedContact.notes || '';
+                
+                // Add location indicator if available
+                if (enrichedContact.location) {
+                    // Remove any existing location badge
+                    const oldBadge = notesField.parentElement?.querySelector('[data-location-badge]');
+                    if (oldBadge) oldBadge.remove();
+                    
+                    const locationBadge = document.createElement('div');
+                    locationBadge.setAttribute('data-location-badge', 'true');
+                    locationBadge.className = 'text-xs text-white/50 mt-1';
+                    locationBadge.innerHTML = `<i class="fa-solid fa-map-pin"></i> ${enrichedContact.location}`;
+                    notesField.parentElement.appendChild(locationBadge);
+                }
+            }
+        }
+        // If no enrichment data, that's fine - sidebar renders without it
+    } catch (e) {
+        // Silently log but don't break anything
+        console.debug('renderSmartSidebar non-critical error:', e);
+    }
+}
+
+/**
+ * Fetch pending AI-generated orders for this conversation
+ * Shows order alert pill if order is awaiting approval
+ */
+async function fetchPendingAIOrder(contactId) {
+    try {
+        if (!contactId) return;
+
+        const { data: orders } = await getSupabase()
+            .from('ai_orders')
+            .select('*')
+            .eq('contact_id', contactId)
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+        if (orders && orders.length > 0) {
+            const order = orders[0];
+            console.log('Pending AI order found:', order);
+
+            // Show alert pill in chat area
+            const chatMessages = document.getElementById('chat-messages');
+            if (chatMessages) {
+                const alertHtml = `
+                    <div id="order-alert-pill-${order.id}" 
+                         onclick="openOrderModal('${order.id}')" 
+                         class="sticky bottom-4 left-6 bg-amber-600 hover:bg-amber-500 text-white px-4 py-3 rounded-full
+                        animate-bounce flex items-center gap-2 z-30 cursor-pointer">
+                        <i class="fa-solid fa-receipt"></i>
+                        <span class="font-bold">Review Order (${order.currency} ${order.total_amount})</span>
+                    </div>
+                `;
+                chatMessages.insertAdjacentHTML('afterend', alertHtml);
+            }
+
+            // Store for modal
+            window.currentOrderData = order;
+            window.currentPendingOrderId = order.id;
+        }
+    } catch (e) {
+        console.error('fetchPendingAIOrder error:', e);
+    }
+}
+
+/**
+ * Resume AI after escalation
+ * Called from the escalation banner button
+ */
+async function resumeAI() {
+    try {
+        const contactId = crmStore.activeChatId;
+        if (!contactId) {
+            alert('No active contact.');
+            return;
+        }
+
+        // Update contact record
+        const { error } = await getSupabase()
+            .from('contacts')
+            .update({ ai_paused: false })
+            .eq('id', contactId);
+
+        if (error) {
+            console.error('Resume AI error:', error);
+            return;
+        }
+
+        // Hide banner
+        const banner = document.getElementById('escalation-banner');
+        if (banner) banner.classList.add('hidden');
+
+        console.log('AI resumed for contact:', contactId);
+        alert('AI resumed.');
+    } catch (e) {
+        console.error('resumeAI error:', e);
+    }
 }

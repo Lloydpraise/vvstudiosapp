@@ -3,294 +3,729 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Vectorizer - Browser AI Mode</title>
+    <title>Vector Lab - Visual Scanner</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0f1115; color: white; }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background-color: transparent; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background-color: #1a1d23; }
         ::-webkit-scrollbar-thumb { background-color: #374151; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background-color: #4b5563; }
         .glass-panel { background: #1a1d23; border: 1px solid #2b2f3a; }
         .input-dark { background: #0f1115; border: 1px solid #2b2f3a; color: white; }
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Cropper Customization */
+        .cropper-view-box, .cropper-face { border-radius: 2px; outline: 2px solid #f97316; }
+        .cropper-line { background-color: transparent; } 
+        .cropper-point { background-color: #f97316; width: 8px; height: 8px; }
+        .cropper-bg { background: #0f1115; }
+        .cropper-modal { background-color: #000; opacity: 0.8; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col p-6 gap-6 max-w-[1600px] mx-auto">
+<body class="h-screen flex flex-col p-4 gap-4 max-w-[1920px] mx-auto overflow-hidden">
 
-    <div id="header-section" class="flex items-center justify-between">
+    <div id="header-section" class="flex items-center justify-between shrink-0">
         <div>
-            <h1 class="text-2xl font-bold text-white flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg bg-purple-600 flex items-center justify-center shadow-lg">
-                    <i class="fa-solid fa-microchip text-white"></i>
+            <h1 class="text-xl font-bold text-white flex items-center gap-3">
+                <div class="w-8 h-8 rounded bg-orange-600 flex items-center justify-center shadow-lg">
+                    <i class="fa-solid fa-expand text-white text-sm"></i>
                 </div>
-                Browser-Side Image Vectorizer
+                Vector Scanner <span class="text-white/40 font-normal text-sm ml-2">Visual Inspection Mode</span>
             </h1>
-            <p class="text-white/40 text-sm mt-1 ml-14">Runs CLIP AI locally to save server memory.</p>
         </div>
         
-        <div class="flex gap-2 items-center">
-            <div class="flex flex-col items-end mr-4">
-                <label class="text-[10px] text-white/30 uppercase font-bold">Safe Delay</label>
-                <input type="number" id="rateLimitDelay" value="1" class="input-dark px-2 py-1 rounded text-center w-16 text-sm text-green-400 font-bold">
+        <div class="flex gap-3 items-center">
+            <div class="px-4 py-2 bg-[#1a1d23] rounded-lg border border-[#2b2f3a] flex gap-4">
+                <div class="text-center">
+                    <div class="text-[10px] text-white/30 uppercase font-bold">In Queue</div>
+                    <div id="pendingCount" class="text-lg font-bold text-white leading-none">0</div>
+                </div>
+                <div class="w-px bg-[#2b2f3a]"></div>
+                <div class="text-center">
+                    <div class="text-[10px] text-white/30 uppercase font-bold">Saved</div>
+                    <div id="savedCount" class="text-lg font-bold text-green-400 leading-none">0</div>
+                </div>
             </div>
-            <input type="text" id="businessId" value="kisasacraft66" placeholder="Business ID" class="input-dark px-3 py-2 rounded-lg text-sm w-40">
-            <button onclick="loadQueue()" class="bg-[#2b2f3a] hover:bg-white/10 text-white px-4 py-2 rounded-lg text-sm font-medium border border-white/5">
-                <i class="fa-solid fa-rotate mr-2"></i> Load Queue
+
+            <button onclick="saveAll()" id="saveAllBtn" disabled class="bg-green-600/20 text-green-400 border border-green-600/50 hover:bg-green-600 hover:text-white px-6 py-2 rounded-lg text-sm font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2">
+                <i class="fa-solid fa-cloud-arrow-up"></i> Save All Verified
+            </button>
+
+            <div class="h-8 w-px bg-[#2b2f3a] mx-2"></div>
+
+            <input type="text" id="businessId" value="kisasacraft66" placeholder="Business ID" class="input-dark px-3 py-2 rounded-lg text-sm w-32 text-center">
+            <button onclick="loadQueue()" class="bg-[#2b2f3a] hover:bg-white/10 text-white px-4 py-2 rounded-lg text-sm font-medium border border-white/5" title="Refresh Queue">
+                <i class="fa-solid fa-rotate"></i>
             </button>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
+    <div class="flex gap-6 flex-1 min-h-0">
         
-        <div class="lg:col-span-4 glass-panel rounded-2xl flex flex-col overflow-hidden">
-            <div class="p-4 border-b border-[#2b2f3a] bg-[#232730] flex justify-between items-center">
-                <h2 class="font-semibold text-sm text-white/80">Missing Vectors Queue</h2>
-                <span id="queueCount" class="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded text-xs">0</span>
+        <div class="w-64 glass-panel rounded-xl flex flex-col shrink-0">
+            <div class="p-3 border-b border-[#2b2f3a] bg-[#232730] flex justify-between items-center">
+                <h2 class="font-semibold text-xs text-white/80">Processing Queue</h2>
+                <span id="queueBadge" class="bg-[#2b2f3a] text-white/60 px-2 py-0.5 rounded text-[10px]">0</span>
             </div>
             
-            <div class="p-4 flex flex-col gap-4 flex-1 overflow-hidden">
-                <button onclick="startWorker()" id="processBtn" class="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold shadow-lg transition-all">
-                    <i class="fa-solid fa-play mr-2"></i> Start Vectorizing
+            <div class="p-3 flex flex-col gap-3 flex-1 overflow-hidden">
+                <button onclick="startWorker()" id="processBtn" class="w-full py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-bold shadow-lg transition-all">
+                    <i class="fa-solid fa-play mr-2"></i> Start Auto-Scan
                 </button>
-                <button onclick="stopWorker()" id="stopBtn" class="hidden w-full py-3 bg-red-600/20 text-red-400 border border-red-600/50 rounded-xl font-bold">
-                    <i class="fa-solid fa-stop mr-2"></i> Stop Worker
+                <button onclick="stopWorker()" id="stopBtn" class="hidden w-full py-2 bg-red-600/20 text-red-400 border border-red-600/50 rounded-lg text-sm font-bold">
+                    <i class="fa-solid fa-stop mr-2"></i> Stop
                 </button>
 
-                <div id="queueList" class="flex-1 overflow-y-auto space-y-2 pr-1">
-                    <div class="text-center text-white/20 text-xs py-10 italic" id="emptyQueueMsg">
-                        Load queue to begin
-                    </div>
+                <div id="queueList" class="flex-1 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+                    <div class="text-center text-white/20 text-xs py-10 italic">Queue empty</div>
                 </div>
             </div>
         </div>
 
-        <div class="lg:col-span-8 glass-panel rounded-2xl flex flex-col overflow-hidden">
-            <div class="p-4 border-b border-[#2b2f3a] bg-[#232730] flex justify-between items-center">
-                <div class="flex items-center gap-4">
-                    <h2 class="font-semibold text-sm text-white/80">Successfully Vectorized <span id="reviewCount" class="bg-[#2b2f3a] text-white/60 px-2 py-0.5 rounded text-xs ml-2">0</span></h2>
+        <div class="flex-1 glass-panel rounded-xl flex flex-col overflow-hidden relative">
+            <div class="p-3 border-b border-[#2b2f3a] bg-[#232730] flex justify-between items-center z-10 shrink-0">
+                <h2 class="font-semibold text-xs text-white/80">Visual Inspection <span class="text-white/30 font-normal ml-2">(Orange Box = What the AI Sees)</span></h2>
+                <div class="flex gap-2 text-[10px] text-white/40">
+                    <span class="flex items-center"><div class="w-2 h-2 bg-orange-500 mr-1 border border-white/20"></div> AI Crop Zone</span>
                 </div>
             </div>
             
-            <div id="reviewContainer" class="flex-1 overflow-y-auto p-4 grid grid-cols-1 xl:grid-cols-3 gap-4 content-start"></div>
+            <div id="reviewGrid" class="flex-1 overflow-y-auto p-4 grid gap-4 content-start" style="grid-template-columns: repeat(2, 1fr); grid-auto-rows: max-content;">
+                </div>
+            
+            <div id="editModal" class="absolute inset-0 bg-black/95 backdrop-blur-sm z-50 hidden flex items-center justify-center p-6">
+                <div class="bg-[#1a1d23] border border-[#2b2f3a] rounded-2xl w-full max-w-5xl h-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+                    
+                    <div class="p-4 border-b border-[#2b2f3a] flex justify-between items-center bg-[#232730]">
+                        <h3 class="font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-crop-simple text-orange-500"></i> Adjust Focus Area
+                        </h3>
+                        <div class="flex gap-2">
+                            <button onclick="toggleAspectRatio()" id="aspectBtn" class="text-xs bg-white/5 hover:bg-white/10 px-3 py-1 rounded border border-white/10">
+                                <i class="fa-regular fa-square mr-1"></i> Force Square
+                            </button>
+                            <button onclick="closeModal()" class="text-white/40 hover:text-white px-3"><i class="fa-solid fa-xmark text-xl"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 flex min-h-0">
+                        <div class="flex-1 bg-[#0f1115] relative p-4 flex items-center justify-center overflow-hidden">
+                            <div id="imageLoadingScreen" class="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30 hidden">
+                                <div class="flex flex-col items-center gap-3">
+                                    <i class="fa-solid fa-spinner fa-spin text-orange-500 text-3xl"></i>
+                                    <span class="text-white text-sm font-medium">Loading image...</span>
+                                </div>
+                            </div>
+                            <div class="max-w-full max-h-full">
+                                <img id="cropperImage" src="" class="max-w-full max-h-full block" onload="document.getElementById('imageLoadingScreen').classList.add('hidden')">
+                            </div>
+                        </div>
+
+                        <div class="w-64 bg-[#1a1d23] border-l border-[#2b2f3a] p-4 flex flex-col gap-4">
+                            <div class="p-3 bg-indigo-500/10 rounded-lg border border-indigo-500/20 text-xs text-indigo-200">
+                                <i class="fa-solid fa-hand-pointer mr-1"></i> 
+                                Drag the orange box to cover the shoe perfectly.
+                            </div>
+                            
+                            <div class="flex-1"></div> 
+                            <button id="applyFixBtn" onclick="applyCropperCrop()" class="w-full py-3 bg-white text-black hover:bg-gray-200 rounded-lg font-bold shadow-lg transition-colors">
+                                <i class="fa-solid fa-check mr-2"></i> Apply Fix
+                            </button>
+                            <button onclick="closeModal()" class="w-full py-2 text-white/40 hover:text-white text-xs">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
-    <canvas id="compressCanvas" style="display: none;"></canvas>
+    <canvas id="processCanvas" style="display: none;"></canvas>
 
     <script type="module">
         import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
-
         env.allowLocalModels = false;
 
-        // --- KEYS ---
+        // --- CONSTANTS ---
         const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
         const FUNCTION_URL = "https://xgtnbxdxbbywvzrttixf.supabase.co/functions/v1/image-vectorizer";
-
-        // FIX: Renamed variable to avoid collision with CDN global object
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        
+
         let queue = [];
+        let pendingResults = {}; 
         let isRunning = false;
-        let currentIndex = 0;
         let aiExtractor = null; 
+        let aiDetector = null; // DETR detector for salient object auto-crop
+        
+        // Editor State
+        let currentEditId = null;
+        let cropperInstance = null;
+        let isSquare = false;
 
-        // --- IMAGE COMPRESSOR ---
-        async function compressImage(imageUrl) {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                img.crossOrigin = "Anonymous"; 
-                img.src = imageUrl;
-                img.onload = () => {
-                    const canvas = document.getElementById('compressCanvas');
-                    const ctx = canvas.getContext('2d');
-                    
-                    const MAX_WIDTH = 300; 
-                    const scaleSize = MAX_WIDTH / img.width;
-                    const newWidth = (img.width > MAX_WIDTH) ? MAX_WIDTH : img.width;
-                    const newHeight = (img.width > MAX_WIDTH) ? (img.height * scaleSize) : img.height;
+        // --- 1. CORE LOGIC ---
 
-                    canvas.width = newWidth;
-                    canvas.height = newHeight;
-                    ctx.drawImage(img, 0, 0, newWidth, newHeight);
+        async function initAI() {
+            if (!aiExtractor || !aiDetector) {
+                console.log('initAI: Loading AI Models...');
+                try {
+                    // Feature Extractor (DINOv2 Base - 768 dim)
+                    aiExtractor = await pipeline('image-feature-extraction', 'Xenova/dinov2-base', { quantized: true });
                     
-                    resolve(canvas.toDataURL("image/jpeg", 0.8));
-                };
-                img.onerror = () => reject("Image Load Failed");
-            });
+                    // Object Detector (DETR ResNet-50) for Salient Object Detection
+                    aiDetector = await pipeline('object-detection', 'Xenova/detr-resnet-50', { quantized: true });
+                    
+                    console.log('initAI: All systems online.');
+                } catch (e) {
+                    console.error('initAI: Model loading failed', e);
+                    throw e;
+                }
+            }
         }
 
-        // --- 1. LOAD QUEUE ---
-        window.loadQueue = async () => {
-            const bid = document.getElementById('businessId').value;
-            const list = document.getElementById('queueList');
-            const countBadge = document.getElementById('queueCount');
-            
-            list.innerHTML = `<div class="text-center py-4 text-white/50">Fetching...</div>`;
-            
-            const { data, error } = await supabaseClient
-                .from('products')
-                .select('id, title, images')
-                .eq('business_id', bid)
-                .is('image_embedding', null)
-                .not('images', 'is', null)
-                .limit(50);
+        // --- 2. WORKER LOOP ---
 
-            if (error) return alert("Error: " + error.message);
-
-            queue = data || [];
-            currentIndex = 0;
-            countBadge.innerText = queue.length;
-            list.innerHTML = '';
-
-            if (queue.length === 0) {
-                list.innerHTML = `<div class="text-center text-green-400 text-xs py-10">All products have vectors! 🎉</div>`;
-                return;
-            }
-
-            queue.forEach((p, idx) => {
-                const el = document.createElement('div');
-                el.id = `q-${p.id}`;
-                el.className = "flex items-center gap-3 p-3 rounded-lg bg-[#0f1115] border border-[#2b2f3a] opacity-50"; 
-                el.innerHTML = `
-                    <div class="text-xs text-white/30 font-mono w-4">${idx + 1}</div>
-                    <div class="flex-1 min-w-0">
-                        <div class="text-sm font-medium truncate text-white/90">${p.title}</div>
-                        <div class="text-[10px] text-white/40" id="status-${p.id}">Queued</div>
-                    </div>
-                `;
-                list.appendChild(el);
-            });
-        };
-
-        // --- 2. WORKER LOGIC ---
-        window.startWorker = () => {
+        window.startWorker = async () => {
+            console.log('startWorker: called, queue length =', queue.length);
             if (queue.length === 0) return alert("Queue empty.");
             isRunning = true;
             document.getElementById('processBtn').classList.add('hidden');
             document.getElementById('stopBtn').classList.remove('hidden');
-            processNext(); 
+
+            console.log('startWorker: initializing AI');
+            try {
+                await initAI();
+                console.log('startWorker: AI initialized');
+            } catch (e) {
+                console.error('startWorker: initAI failed', e);
+                alert('AI initialization failed: ' + (e.message || e));
+                stopWorker();
+                return;
+            }
+
+            processNext();
         };
 
         window.stopWorker = () => {
+            console.log('stopWorker: called');
             isRunning = false;
             document.getElementById('processBtn').classList.remove('hidden');
             document.getElementById('stopBtn').classList.add('hidden');
         };
 
-        async function processNext() {
-            if (!isRunning) return;
-            if (currentIndex >= queue.length) {
-                alert("Batch Complete! Load Queue again to process the next 50.");
-                stopWorker();
-                return;
+        // --- ADD THIS NEW HELPER FUNCTION ---
+        function extractDominantColors(sourceCanvas) {
+            const ctx = sourceCanvas.getContext('2d');
+            const imageData = ctx.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height).data;
+            const colorCounts = {};
+            const quantization = 50; // Group similar colors
+
+            for (let i = 0; i < imageData.length; i += 4) {
+                const r = Math.floor(imageData[i] / quantization) * quantization;
+                const g = Math.floor(imageData[i + 1] / quantization) * quantization;
+                const b = Math.floor(imageData[i + 2] / quantization) * quantization;
+                const key = `${r},${g},${b}`;
+                colorCounts[key] = (colorCounts[key] || 0) + 1;
             }
 
-            const item = queue[currentIndex];
-            const statusEl = document.getElementById(`status-${item.id}`);
-            const row = document.getElementById(`q-${item.id}`);
+            // Sort by frequency and take top 3
+            const sorted = Object.entries(colorCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+            
+            return sorted.map(([key]) => {
+                const [r, g, b] = key.split(',').map(Number);
+                // Convert to Hex
+                const hex = "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+                return { r, g, b, hex };
+            });
+        }
 
-            row.classList.remove('opacity-50');
-            row.style.borderColor = "#a855f7";
-            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Alias for legacy code that expects `extractColors`
+        function extractColors(c) { return extractDominantColors(c); }
 
-           try {
-                // A. Load AI Model with the specific VISION task
-                if (!aiExtractor) {
-                    statusEl.innerText = "Downloading AI Model (~80MB)...";
-                    statusEl.className = "text-[10px] text-yellow-400 animate-pulse";
-                    
-                    // Changed 'feature-extraction' to 'image-feature-extraction'
-                    aiExtractor = await pipeline('image-feature-extraction', 'Xenova/clip-vit-base-patch32', { 
-                        quantized: true 
-                    });
-                }
+        // --- REPLACE 'processNext' AND 'processAutoCrop' ---
 
-                // B. Compress Image
-                statusEl.innerText = "Compressing...";
-                statusEl.className = "text-[10px] text-blue-400";
-                const dataUrl = await compressImage(item.images[0]);
+        async function processNext() {
+    if (!isRunning || queue.length === 0) {
+        stopWorker();
+        return;
+    }
 
-                // C. Generate Vector in Browser
-                statusEl.innerText = "Running Local AI...";
-                statusEl.className = "text-[10px] text-purple-400 animate-pulse";
-                
-                // Processing the image specifically for the vision encoder
-                const output = await aiExtractor(dataUrl);
-                const embeddingArray = Array.from(output.data);
+    const item = queue.shift();
+    updateQueueUI();
 
-                // D. Send Array to Simple Edge Function
-                statusEl.innerText = "Saving to DB...";
-                const apiRes = await fetch(FUNCTION_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        embedding: embeddingArray,  
-                        product_id: item.id,
-                        mode: 'process_queue' 
-                    })
-                });
+    try {
+        let images = item.shopify_images || item.images || [];
+        if (typeof images === 'string') {
+            try { images = JSON.parse(images); } catch { images = [images]; }
+        }
 
-                if (!apiRes.ok) throw new Error("API Error " + apiRes.status);
-                
-                statusEl.innerText = "Complete";
-                statusEl.className = "text-[10px] text-green-500";
-                row.style.borderColor = "#22c55e";
-                
-                addSuccessCard(item.id, item.title, item.images[0]);
-                currentIndex++;
+        if (!images[0]) {
+            setTimeout(processNext, 10);
+            return;
+        }
 
-                // E. Cooldown
-                const delay = parseInt(document.getElementById('rateLimitDelay').value);
-                for (let i = delay; i > 0; i--) {
-                    if (!isRunning) return;
-                    statusEl.innerText = `Waiting... ${i}s`;
-                    await new Promise(r => setTimeout(r, 1000));
-                }
-                
-                statusEl.innerText = "Done";
-                processNext();
+        // Only take the first 3 images to match your new database columns
+        const imagesToProcess = images.slice(0, 3);
+        let allVectors = [];
+        let mainCanvas = null;
+        let mainCropStats = null;
 
-            } catch (err) {
-                console.error(err);
-                statusEl.innerText = "Failed";
-                statusEl.className = "text-[10px] text-red-500";
-                row.style.borderColor = "#ef4444";
-                currentIndex++;
-                setTimeout(processNext, 2000); 
+        for (let i = 0; i < imagesToProcess.length; i++) {
+            // Yield to UI: allows the browser to paint and prevents freezing
+            await new Promise(r => requestAnimationFrame(r));
+            
+            const result = await processAutoCrop(imagesToProcess[i]);
+            
+            if (i === 0) {
+                mainCanvas = result.canvas;
+                mainCropStats = result.cropStats;
+            }
+
+            // AI Vector Extraction
+            const output = await aiExtractor(result.canvas.toDataURL('image/jpeg', 0.9));
+            
+            // FIX: Convert to array and slice to exactly 768 dimensions.
+            // This stops the "vector cannot have more than 16000 dimensions" error.
+            let vectorArray = Array.from(output.data);
+            if (vectorArray.length > 768) {
+                vectorArray = vectorArray.slice(0, 768);
             }
             
+            allVectors.push(vectorArray);
+            
+            // Give CPU a tiny break between images
+            await new Promise(r => setTimeout(r, 20));
         }
 
-        // --- 3. UI HELPERS ---
-        function addSuccessCard(id, title, imgUrl) {
-            const container = document.getElementById('reviewContainer');
-            const card = document.createElement('div');
-            card.className = "bg-[#0f1115] border border-green-500/30 rounded-xl p-3 fade-in flex gap-3 items-center";
+        pendingResults[item.id] = {
+            id: item.id,
+            title: item.title,
+            originalUrl: images[0],
+            vectors: allVectors, // Now contains 1-3 clean 768-dim vectors
+            colors: extractColors(mainCanvas),
+            cropStats: mainCropStats,
+            cropped: mainCanvas.toDataURL('image/jpeg', 0.8),
+            status: 'pending'
+        };
+
+        renderCard(item.id);
+        updateStats();
+        
+        // Move to next product after a small delay
+        setTimeout(processNext, 50);
+
+    } catch (err) {
+        console.error("Process failed for", item.id, err);
+        setTimeout(processNext, 50);
+    }
+}
+
+        async function processAutoCrop(imgUrl) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = "Anonymous";
+                img.src = imgUrl;
+                img.onload = async () => {
+                    let detections = [];
+                    try {
+                        // Look for specific items
+                        detections = await aiDetector(imgUrl, { threshold: 0.3 });
+                    } catch (e) { console.warn('Detector error:', e); }
+
+                    let targetBox = null;
+                    if (detections && detections.length > 0) {
+                        // Specific classes for bags
+                        const bagLabels = ['handbag', 'backpack', 'suitcase', 'bag'];
+                        const bagHits = detections.filter(d => bagLabels.includes(d.label?.toLowerCase()));
+                        
+                        // If we found a bag, use that. Otherwise use the biggest object (best for shoes).
+                        const searchPool = bagHits.length > 0 ? bagHits : detections;
+                        
+                        targetBox = searchPool.reduce((prev, curr) => {
+                            const prevArea = (prev.box.xmax - prev.box.xmin) * (prev.box.ymax - prev.box.ymin);
+                            const currArea = (curr.box.xmax - curr.box.xmin) * (curr.box.ymax - curr.box.ymin);
+                            return (currArea > prevArea) ? curr : prev;
+                        }).box;
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    let startX, startY, cropW, cropH;
+
+                    if (targetBox) {
+                        // Add 10% padding so we don't cut the item off
+                        const padW = (targetBox.xmax - targetBox.xmin) * 0.1;
+                        const padH = (targetBox.ymax - targetBox.ymin) * 0.1;
+                        startX = Math.max(0, targetBox.xmin - padW);
+                        startY = Math.max(0, targetBox.ymin - padH);
+                        cropW = Math.min(img.width, targetBox.xmax + padW) - startX;
+                        cropH = Math.min(img.height, targetBox.ymax + padH) - startY;
+                    } else {
+                        // Fallback to center crop
+                        cropW = img.width * 0.8;
+                        cropH = img.height * 0.8;
+                        startX = (img.width - cropW) / 2;
+                        startY = (img.height - cropH) / 2;
+                    }
+
+                    canvas.width = cropW;
+                    canvas.height = cropH;
+                    ctx.drawImage(img, startX, startY, cropW, cropH, 0, 0, cropW, cropH);
+
+                    resolve({
+                        canvas: canvas,
+                        cropStats: {
+                            x: (startX / img.width) * 100,
+                            y: (startY / img.height) * 100,
+                            w: (cropW / img.width) * 100,
+                            h: (cropH / img.height) * 100,
+                            auto: !!targetBox
+                        }
+                    });
+                };
+                img.onerror = reject;
+            });
+        }
+
+        // --- 3. UI RENDERING (THE ORANGE BOX) ---
+
+        function renderCard(id) {
+            const data = pendingResults[id];
+            const grid = document.getElementById('reviewGrid');
+            
+            let card = document.getElementById(`card-${id}`);
+            if (!card) {
+                card = document.createElement('div');
+                card.id = `card-${id}`;
+                card.className = "bg-[#1a1d23] border border-[#2b2f3a] rounded-xl overflow-hidden flex flex-col group fade-in hover:border-orange-500/50 transition-colors";
+                card.style.width = "100%";
+                grid.prepend(card); 
+            }
+
+            const isSaved = data.status === 'saved';
+            const isAdjusted = data.isAdjusted || false;
+            const { x, y, w, h } = data.cropStats;
+
             card.innerHTML = `
-                <div class="w-12 h-12 bg-[#1a1d23] rounded overflow-hidden shrink-0">
-                    <img src="${imgUrl}" class="w-full h-full object-cover">
+                <div class="relative aspect-square bg-[#0f1115] cursor-pointer border-b border-[#2b2f3a] group overflow-hidden" onclick="${isSaved ? '' : `openEditModal('${id}')`}">
+                    
+                    <img src="${data.originalUrl}" class="w-full h-full object-contain p-4 opacity-50 group-hover:opacity-100 transition-opacity">
+                    
+                    <div style="position: absolute; left: ${x}%; top: ${y}%; width: ${w}%; height: ${h}%;" 
+                         class="border-2 border-orange-500 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] pointer-events-none transition-all duration-200">
+                         
+                         <div class="absolute -top-5 left-0 bg-orange-500 text-black text-[9px] font-bold px-1 rounded-sm">
+                            AI ZONE
+                         </div>
+                         
+                         ${isAdjusted ? `<div class="absolute -top-5 right-0 bg-blue-500 text-white text-[9px] font-bold px-1 rounded-sm">ADJUSTED</div>` : ''}
+                    </div>
+
+                    ${isSaved ? 
+                        `<div class="absolute inset-0 bg-green-900/80 flex items-center justify-center backdrop-blur-[2px] z-20">
+                            <div class="text-green-400 font-bold flex flex-col items-center">
+                                <i class="fa-solid fa-check-circle text-3xl mb-2"></i>
+                                <span>SAVED</span>
+                            </div>
+                        </div>` 
+                        : 
+                        `<div class="absolute inset-0 z-10 opacity-0 group-hover:opacity-100 flex items-center justify-center pointer-events-none">
+                            <span class="bg-orange-600 text-white px-3 py-1 rounded shadow-lg text-xs font-bold transform translate-y-4 group-hover:translate-y-0 transition-transform">
+                                Click to Adjust
+                            </span>
+                        </div>`
+                    }
                 </div>
-                <div class="flex-1 min-w-0">
-                    <div class="text-xs text-white/80 font-medium truncate">${title}</div>
-                    <div class="text-[10px] text-green-400 mt-1"><i class="fa-solid fa-check-circle mr-1"></i>Vectorized</div>
+
+                <div class="p-3 flex items-center justify-between gap-2 bg-[#1a1d23]">
+                    <div class="min-w-0">
+                        <div class="text-xs text-white/90 font-medium truncate">${data.title}</div>
+                        <div class="text-[10px] text-white/40">ID: ${id}</div>
+                    </div>
+                    
+                    ${!isSaved ? `
+                    <button onclick="saveOne('${id}')" class="bg-[#2b2f3a] hover:bg-green-600 hover:text-white text-green-400 border border-green-600/30 w-8 h-8 rounded flex items-center justify-center transition-colors shadow-lg shrink-0" title="Save this vector">
+                        <i class="fa-solid fa-save"></i>
+                    </button>
+                    ` : ''}
                 </div>
             `;
-            container.prepend(card);
-            document.getElementById('reviewCount').innerText = container.children.length;
         }
-        
-        // Expose functions to window so the HTML buttons can call them from inside the module
+
+        // --- 4. CROPPER.JS INTEGRATION ---
+
+        window.openEditModal = (id) => {
+    currentEditId = id;
+    const data = pendingResults[id];
+    console.log('openEditModal: opening editor for', id);
+    
+    document.getElementById('editModal').classList.remove('hidden');
+    // PATCH: Reset UI states
+    const imageElement = document.getElementById('cropperImage');
+    const loading = document.getElementById('imageLoadingScreen');
+    const btn = document.querySelector('#editModal button[onclick="applyCropperCrop()"]'); // Select the apply button safely
+    
+    // Hide old image, show spinner
+    imageElement.src = '';
+    imageElement.classList.remove('opacity-100');
+    imageElement.classList.add('opacity-0');
+    loading.classList.remove('hidden');
+    
+    // Reset button text
+    if(btn) {
+        btn.innerHTML = `<i class="fa-solid fa-check mr-2"></i> Apply Fix`;
+        btn.disabled = false;
+        btn.classList.remove('bg-green-600'); // Reset success color if present
+    }
+
+    if (cropperInstance) {
+        cropperInstance.destroy();
+        cropperInstance = null;
+    }
+
+    // Load New Image
+    imageElement.src = data.originalUrl;
+    
+    imageElement.onload = () => {
+        console.log('openEditModal: image loaded for cropper', id);
+        // PATCH: Image ready -> Hide spinner, show image
+        loading.classList.add('hidden');
+        imageElement.classList.remove('opacity-0');
+        imageElement.classList.add('opacity-100');
+
+        // Init Cropper
+        cropperInstance = new Cropper(imageElement, {
+            viewMode: 1, 
+            dragMode: 'move', 
+            autoCropArea: 0.65,
+            data: null,
+            aspectRatio: NaN, 
+            background: false,
+            modal: true,
+            guides: true,
+            highlight: true,
+            cropBoxMovable: true,
+            cropBoxResizable: true,
+            toggleDragModeOnDblclick: false,
+        });
+    };
+};
+
+        window.closeModal = () => {
+            document.getElementById('editModal').classList.add('hidden');
+            if (cropperInstance) {
+                cropperInstance.destroy();
+                cropperInstance = null;
+            }
+            currentEditId = null;
+        };
+
+        window.toggleAspectRatio = () => {
+            if (!cropperInstance) return;
+            isSquare = !isSquare;
+            cropperInstance.setAspectRatio(isSquare ? 1 : NaN);
+            
+            const btn = document.getElementById('aspectBtn');
+            if(isSquare) {
+                btn.classList.add('bg-indigo-600', 'text-white', 'border-transparent');
+                btn.innerHTML = `<i class="fa-solid fa-check-square mr-1"></i> Square Locked`;
+            } else {
+                btn.classList.remove('bg-indigo-600', 'text-white', 'border-transparent');
+                btn.innerHTML = `<i class="fa-regular fa-square mr-1"></i> Force Square`;
+            }
+        };
+
+window.applyCropperCrop = async () => {
+    if (!currentEditId || !cropperInstance) return;
+    const id = currentEditId;
+    console.log('applyCropperCrop: starting for', id);
+
+    // PATCH: Better Button Selection & Feedback
+    const btn = document.querySelector('#editModal button[onclick="applyCropperCrop()"]');
+    if(btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Processing...`;
+    }
+
+    // Get high quality cropped canvas and hand off to shared updater
+    const canvas = cropperInstance.getCroppedCanvas({
+        fillColor: '#ffffff',
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: 'high',
+    });
+
+    try {
+        await updateManualCrop(id, canvas);
+        if(btn) {
+            btn.innerHTML = `<i class="fa-solid fa-check-circle mr-2"></i> Processed`;
+            btn.classList.add('bg-green-600', 'text-white');
+        }
+        setTimeout(() => { closeModal(); renderCard(id); }, 400);
+    } catch (e) {
+        console.error('applyCropperCrop: manual update failed', e);
+        if(btn) { btn.disabled = false; btn.innerHTML = `<i class="fa-solid fa-save"></i>`; }
+    }
+};
+
+// --- Manual Crop Rerun: Re-vectorize only the main image when user saves a manual crop ---
+window.updateManualCrop = async (id, croppedCanvas) => {
+    const data = pendingResults[id];
+    if (!data) throw new Error('No pending result for id ' + id);
+    const dataUrl = croppedCanvas.toDataURL('image/jpeg', 0.9);
+
+    // Rerun feature extraction on the manual crop
+    const output = await aiExtractor(dataUrl);
+
+    // Ensure vectors array exists
+    data.vectors = data.vectors || [];
+    // Convert to plain array and enforce 768-dim truncation (match auto-run behavior)
+    let manualVec = Array.from(output.data);
+    if (manualVec.length > 768) manualVec = manualVec.slice(0, 768);
+    data.vectors[0] = manualVec;
+    data.cropped = dataUrl;
+    data.colors = extractColors(croppedCanvas);
+    data.isAdjusted = true;
+
+    renderCard(id);
+    updateStats();
+    console.log('Manual update complete for', id);
+};
+
+
+        // --- 5. SAVE LOGIC ---
+
+window.saveOne = async (id) => {
+    const data = pendingResults[id];
+    if (!data) return;
+
+    const btn = document.querySelector(`#card-${id} button`);
+    if (btn) btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i>`;
+    
+    try {
+        // Map the collected vectors to the three specific database columns.
+        // If a product has fewer than 3 images, the remaining columns will be null.
+        const updateData = {
+            vectorized: true,
+            vector_1: (data.vectors && data.vectors[0]) ? data.vectors[0] : null,
+            vector_2: (data.vectors && data.vectors[1]) ? data.vectors[1] : null,
+            vector_3: (data.vectors && data.vectors[2]) ? data.vectors[2] : null,
+            color_palette: data.colors
+        };
+
+        const { error: dbError } = await supabaseClient
+            .from('products')
+            .update(updateData)
+            .eq('id', id);
+
+        if (dbError) throw dbError;
+
+        pendingResults[id].status = 'saved';
+        renderCard(id); 
+        updateStats();
+
+    } catch (e) {
+        console.error("Database Save Error:", e);
+        // This error is typically resolved by the .slice(0, 768) logic 
+        // added to the vector extraction process.
+        alert("Save failed: " + (e.message || "Unknown error"));
+        if (btn) btn.innerHTML = `<i class="fa-solid fa-save"></i>`;
+    }
+};
+
+window.saveAll = async () => {
+    const unsaved = Object.values(pendingResults).filter(p => p.status === 'pending');
+    if (unsaved.length === 0) return;
+
+    if (!confirm(`Overwrite ${unsaved.length} vectors in database?`)) return;
+
+    const btn = document.getElementById('saveAllBtn');
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Saving...`;
+
+    // Loop through the queue and call saveOne for each item
+    for (const item of unsaved) {
+        await window.saveOne(item.id);
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up mr-2"></i> Save All Verified`;
+};
+
+        // --- 6. DATA LOADING ---
+
+        window.loadQueue = async () => {
+            const bid = document.getElementById('businessId').value;
+            const list = document.getElementById('queueList');
+            
+            list.innerHTML = `<div class="text-center py-4 text-white/50">Fetching All...</div>`;
+            
+            // Only fetch products that have NOT been vectorized yet
+            const { data, error } = await supabaseClient
+                .from('products')
+                .select('id, title, images')
+                .eq('business_id', bid)
+                .eq('vectorized', false) // <--- Only fetch what hasn't been done
+                .not('images', 'is', null)
+                .limit(100); // Increased batch size
+
+            if (error) return alert("Error: " + error.message);
+
+            queue = (data || []).filter(p => !pendingResults[p.id]);
+            
+            updateQueueUI();
+        };
+
+        function updateQueueUI() {
+            const list = document.getElementById('queueList');
+            document.getElementById('queueBadge').innerText = queue.length;
+            list.innerHTML = '';
+            
+            if(queue.length === 0) {
+                 list.innerHTML = `<div class="text-center text-green-400 text-xs py-10">Queue cleared!</div>`;
+                 return;
+            }
+
+            queue.forEach((p, idx) => {
+                const el = document.createElement('div');
+                el.className = "text-xs text-white/50 truncate p-2 border-b border-white/5";
+                el.innerText = `${idx + 1}. ${p.title}`;
+                list.appendChild(el);
+            });
+        }
+
+        function updateStats() {
+            const all = Object.values(pendingResults);
+            const saved = all.filter(x => x.status === 'saved').length;
+            const pending = all.length - saved;
+
+            document.getElementById('pendingCount').innerText = pending;
+            document.getElementById('savedCount').innerText = saved;
+            
+            const saveAllBtn = document.getElementById('saveAllBtn');
+            saveAllBtn.disabled = pending === 0;
+            saveAllBtn.classList.toggle('opacity-30', pending === 0);
+        }
+
         window.loadQueue = loadQueue;
         window.startWorker = startWorker;
         window.stopWorker = stopWorker;
+        window.saveAll = saveAll;
+        window.saveOne = saveOne;
+        window.openEditModal = openEditModal;
+        window.closeModal = closeModal;
+        window.toggleAspectRatio = toggleAspectRatio;
+        window.applyCropperCrop = applyCropperCrop;
     </script>
 </body>
 </html>

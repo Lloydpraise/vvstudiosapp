@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VVStudios | DINOv2 3D Vector Lab</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module">
+        import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.16.0';
+        window.pipeline = pipeline;
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #09090b; color: #e4e4e7; }
+        .glass { background: rgba(24, 24, 27, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(39, 39, 42, 1); }
+        .ai-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid #27272a; }
+        .ai-card:hover { border-color: #3b82f6; transform: translateY(-2px); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        .bg-pending { background-color: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+        .bg-saved { background-color: #22c55e; box-shadow: 0 0 8px #22c55e; }
+    </style>
+</head>
+<body class="p-6">
+
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight text-white">Visual Scanner <span class="text-blue-500">v3.0</span></h1>
+            <p class="text-zinc-500 text-sm">DINOv2 Texture Engine + Salient Object Auto-Crop</p>
+        </div>
+
+        <div class="flex flex-wrap gap-3">
+            <button onclick="loadQueue()" class="bg-zinc-800 hover:bg-zinc-700 px-4 py-2 rounded-lg text-sm font-medium transition-all">
+                <i class="fa-solid fa-cloud-download mr-2"></i> Load Queue
+            </button>
+            <button id="startBtn" onclick="startWorker()" class="bg-blue-600 hover:bg-blue-500 px-6 py-2 rounded-lg text-sm font-bold transition-all shadow-lg shadow-blue-900/20">
+                <i class="fa-solid fa-play mr-2"></i> START SCANNER
+            </button>
+            <button onclick="stopWorker()" class="bg-zinc-800 hover:bg-red-900/30 px-4 py-2 rounded-lg text-sm font-medium border border-transparent hover:border-red-500/50">
+                <i class="fa-solid fa-stop mr-2"></i> STOP
+            </button>
+            <button id="saveAllBtn" onclick="saveAll()" class="bg-green-600 hover:bg-green-500 px-6 py-2 rounded-lg text-sm font-bold hidden">
+                <i class="fa-solid fa-check-double mr-2"></i> SAVE ALL
+            </button>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="glass p-4 rounded-xl">
+            <div class="text-zinc-500 text-xs uppercase font-bold tracking-widest mb-1">Queue</div>
+            <div id="queueCount" class="text-2xl font-mono">0</div>
+        </div>
+        <div class="glass p-4 rounded-xl">
+            <div class="text-zinc-500 text-xs uppercase font-bold tracking-widest mb-1">Pending</div>
+            <div id="pendingCount" class="text-2xl font-mono text-amber-500">0</div>
+        </div>
+        <div class="glass p-4 rounded-xl">
+            <div class="text-zinc-500 text-xs uppercase font-bold tracking-widest mb-1">Dimensions</div>
+            <div class="text-2xl font-mono text-blue-500">768</div>
+        </div>
+        <div class="glass p-4 rounded-xl">
+            <div class="text-zinc-500 text-xs uppercase font-bold tracking-widest mb-1">Engine</div>
+            <div class="text-sm font-bold text-white">DINOv2 + DETR</div>
+        </div>
+    </div>
+
+    <div id="resultsGrid" class="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        </div>
+
+    <div id="cropModal" class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-zinc-900 w-full max-w-4xl rounded-2xl overflow-hidden border border-zinc-800 shadow-2xl">
+            <div class="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900">
+                <h3 class="font-bold">Manual Overrule</h3>
+                <button onclick="closeModal()" class="text-zinc-500 hover:text-white"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+            <div class="p-6">
+                <div class="h-[500px] w-full bg-black rounded-lg overflow-hidden">
+                    <img id="cropperImage" src="" class="max-w-full">
+                </div>
+                <div class="mt-6 flex justify-end gap-3">
+                    <button onclick="closeModal()" class="px-6 py-2 text-zinc-400 hover:text-white">Cancel</button>
+                    <button id="applyCropBtn" class="bg-blue-600 hover:bg-blue-500 px-8 py-2 rounded-lg font-bold">Apply & Rerun AI</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const SUPABASE_URL = "https://xgtnbxdxbbywvzrttixf.supabase.co";
+        const SUPABASE_KEY = "your-anon-key";
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let aiExtractor = null;
+        let aiDetector = null;
+        let queue = [];
+        let isRunning = false;
+        let pendingResults = {};
+        let activeCropper = null;
+        let currentEditId = null;
+
+        // --- 1. INITIALIZE AI MODELS ---
+        async function initAI() {
+            if (!aiExtractor || !aiDetector) {
+                console.log("initAI: Loading Models...");
+                // DINOv2 Base: 768 Dimensions
+                aiExtractor = await pipeline('image-feature-extraction', 'Xenova/dinov2-base', { quantized: true });
+                // DETR: Object Detection for Auto-Cropping
+                aiDetector = await pipeline('object-detection', 'Xenova/detr-resnet-50', { quantized: true });
+                console.log("initAI: Models Ready.");
+            }
+        }
+
+        // --- 2. LOAD QUEUE FROM SUPABASE ---
+        async function loadQueue() {
+            console.log("Loading products...");
+            const { data, error } = await supabase
+                .from('products')
+                .select('id, title, images, shopify_images, business_id, price')
+                .eq('vectorized', false)
+                .limit(100);
+
+            if (error) return console.error(error);
+            queue = data;
+            document.getElementById('queueCount').innerText = queue.length;
+        }
+
+        // --- 3. AUTO-CROP (DETR AI) ---
+        async function processAutoCrop(imgUrl) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = "Anonymous";
+                img.src = imgUrl;
+                img.onload = async () => {
+                    const detections = await aiDetector(imgUrl, { threshold: 0.3 });
+                    let box = null;
+                    
+                    if (detections.length > 0) {
+                        box = detections.reduce((p, c) => {
+                            const pA = (p.box.xmax - p.box.xmin) * (p.box.ymax - p.box.ymin);
+                            const cA = (c.box.xmax - c.box.xmin) * (c.box.ymax - c.box.ymin);
+                            return cA > pA ? c : p;
+                        }).box;
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+
+                    let sX, sY, cW, cH;
+                    if (box) {
+                        const padW = (box.xmax - box.xmin) * 0.12;
+                        const padH = (box.ymax - box.ymin) * 0.12;
+                        sX = Math.max(0, box.xmin - padW);
+                        sY = Math.max(0, box.ymin - padH);
+                        cW = Math.min(img.width, box.xmax + padW) - sX;
+                        cH = Math.min(img.height, box.ymax + padH) - sY;
+                    } else {
+                        cW = img.width * 0.75; cH = img.height * 0.75;
+                        sX = (img.width - cW) / 2; sY = (img.height - cH) / 2;
+                    }
+
+                    canvas.width = cW; canvas.height = cH;
+                    ctx.drawImage(img, sX, sY, cW, cH, 0, 0, cW, cH);
+                    resolve({ canvas, stats: { x: sX, y: sY, w: cW, h: cH, auto: !!box } });
+                };
+                img.onerror = reject;
+            });
+        }
+
+        // --- 4. COLOR DNA EXTRACTION ---
+        function extractColors(canvas) {
+            const ctx = canvas.getContext('2d');
+            const data = ctx.getImageData(0,0, canvas.width, canvas.height).data;
+            const counts = {};
+            for (let i=0; i < data.length; i+=20) { // Sample every 5 pixels
+                const r = Math.floor(data[i]/40)*40, g = Math.floor(data[i+1]/40)*40, b = Math.floor(data[i+2]/40)*40;
+                const key = `${r},${g},${b}`;
+                counts[key] = (counts[key] || 0) + 1;
+            }
+            return Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0,3).map(([k]) => k);
+        }
+
+        // --- 5. MAIN WORKER ---
+        async function startWorker() {
+            if (isRunning) return;
+            await initAI();
+            isRunning = true;
+            document.getElementById('startBtn').disabled = true;
+            processNext();
+        }
+
+        async function processNext() {
+            if (!isRunning || queue.length === 0) { isRunning = false; return; }
+            const item = queue.shift();
+            document.getElementById('queueCount').innerText = queue.length;
+
+            try {
+                let images = item.shopify_images || item.images || [];
+                if (typeof images === 'string') images = [images];
+
+                let allVectors = [];
+                let mainCanvas = null;
+
+                for (let i = 0; i < images.length; i++) {
+                    const res = await processAutoCrop(images[i]);
+                    if (i === 0) mainCanvas = res.canvas;
+                    const output = await aiExtractor(res.canvas.toDataURL('image/jpeg', 0.9));
+                    allVectors.push(Array.from(output.data));
+                }
+
+                // Average Vector
+                const avg = allVectors[0].map((_, i) => allVectors.reduce((acc, v) => acc + v[i], 0) / allVectors.length);
+
+                pendingResults[item.id] = {
+                    id: item.id,
+                    title: item.title,
+                    img: images[0],
+                    vector: avg,
+                    colors: extractColors(mainCanvas),
+                    cropped: mainCanvas.toDataURL('image/jpeg', 0.8),
+                    status: 'pending'
+                };
+
+                renderCard(item.id);
+                updateStats();
+                setTimeout(processNext, 30);
+            } catch (e) { console.error(e); setTimeout(processNext, 10); }
+        }
+
+        // --- 6. UI: RENDER THE AI CARDS ---
+        function renderCard(id) {
+            const data = pendingResults[id];
+            let card = document.getElementById(`card-${id}`);
+            if (!card) {
+                card = document.createElement('div');
+                card.id = `card-${id}`;
+                card.className = "ai-card glass rounded-2xl overflow-hidden flex flex-col";
+                document.getElementById('resultsGrid').prepend(card);
+            }
+
+            card.innerHTML = `
+                <div class="relative group aspect-square bg-black">
+                    <img src="${data.cropped}" class="w-full h-full object-contain">
+                    <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                        <button onclick="openEditModal('${id}')" class="bg-white text-black px-4 py-2 rounded-full text-xs font-bold uppercase tracking-tighter">
+                            Manual Overrule
+                        </button>
+                    </div>
+                </div>
+                <div class="p-4 flex-1">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Product ID: ${id.slice(0,8)}</span>
+                        <div class="flex gap-1">${data.colors.map(c => `<div class="w-3 h-3 rounded-full" style="background:rgb(${c})"></div>`).join('')}</div>
+                    </div>
+                    <h3 class="text-white font-medium text-sm line-clamp-1 mb-4">${data.title}</h3>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center text-[11px]">
+                            <span class="status-dot ${data.status === 'saved' ? 'bg-saved' : 'bg-pending'}"></span>
+                            <span class="${data.status === 'saved' ? 'text-green-500' : 'text-amber-500'} font-bold">${data.status.toUpperCase()}</span>
+                        </div>
+                        <button onclick="saveOne('${id}')" class="bg-zinc-800 hover:bg-white hover:text-black p-2 rounded-lg transition-colors">
+                            <i class="fa-solid ${data.status === 'saved' ? 'fa-check' : 'fa-save'}"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- 7. MANUAL OVERRULE LOGIC ---
+        function openEditModal(id) {
+            currentEditId = id;
+            const data = pendingResults[id];
+            const modalImg = document.getElementById('cropperImage');
+            modalImg.src = data.img;
+            document.getElementById('cropModal').classList.remove('hidden');
+
+            if (activeCropper) activeCropper.destroy();
+            activeCropper = new Cropper(modalImg, { aspectRatio: NaN, viewMode: 1 });
+            
+            document.getElementById('applyCropBtn').onclick = async () => {
+                const canvas = activeCropper.getCroppedCanvas();
+                const output = await aiExtractor(canvas.toDataURL('image/jpeg', 0.9));
+                
+                pendingResults[id].vector = Array.from(output.data);
+                pendingResults[id].cropped = canvas.toDataURL('image/jpeg', 0.8);
+                pendingResults[id].colors = extractColors(canvas);
+                
+                renderCard(id);
+                closeModal();
+            };
+        }
+
+        function closeModal() { document.getElementById('cropModal').classList.add('hidden'); }
+
+        async function saveOne(id) {
+            const data = pendingResults[id];
+            const { error } = await supabase.from('products').update({
+                vectorized: true,
+                embedding: data.vector,
+                color_palette: data.colors
+            }).eq('id', id);
+
+            if (!error) {
+                pendingResults[id].status = 'saved';
+                renderCard(id);
+                updateStats();
+            }
+        }
+
+        function updateStats() {
+            const vals = Object.values(pendingResults);
+            document.getElementById('pendingCount').innerText = vals.filter(x => x.status === 'pending').length;
+            document.getElementById('savedCount').innerText = vals.filter(x => x.status === 'saved').length;
+        }
+
+        function stopWorker() { isRunning = false; document.getElementById('startBtn').disabled = false; }
+    </script>
+</body>
+</html>
