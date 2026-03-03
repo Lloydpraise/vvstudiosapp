@@ -821,98 +821,214 @@
                     </div>
                 </div>
 
-               <div id="view-ai-training" class="view-section hidden-force fade-in h-full flex flex-row overflow-hidden">
+<div id="view-ai-training" class="view-section hidden-force fade-in h-full flex flex-col overflow-hidden">
     
-    <div class="flex-1 flex flex-col h-full min-w-0 pr-6 border-r border-[#2b2f3a]">
-        
-        <div class="mb-6 flex-shrink-0 pt-1">
-            <h2 class="text-2xl font-bold mb-4 flex items-center gap-3">
-                <i class="fa-solid fa-brain text-purple-500"></i> AI Configuration Center
-            </h2>
-            <div class="flex gap-1 bg-[#1a1d23] p-1 rounded-xl border border-[#2b2f3a] w-fit">
-                 <button onclick="aiManager.switchTab('global')" id="tab-ai-global" class="px-6 py-2 rounded-lg text-sm font-medium transition-all bg-[#2b2f3a] text-white shadow-md">Global Rules</button>
-                 <button onclick="aiManager.switchTab('platform')" id="tab-ai-platform" class="px-6 py-2 rounded-lg text-sm font-medium transition-all text-white/60 hover:text-white hover:bg-white/5">Platform Rules</button>
-                 <button onclick="aiManager.switchTab('business')" id="tab-ai-business" class="px-6 py-2 rounded-lg text-sm font-medium transition-all text-white/60 hover:text-white hover:bg-white/5">Business Context</button>
-            </div>
+    <!-- Top Header Section with AI Command Center -->
+    <div class="flex-shrink-0 px-6 pt-4 pb-4 border-b border-[#2b2f3a] flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <i class="fa-solid fa-brain text-purple-500 text-2xl"></i>
+            <h2 class="text-2xl font-bold">AI Command Center</h2>
         </div>
-
-        <div id="ai-panel-global" class="ai-tab-content h-full flex flex-col pb-2">
-            <div class="bg-[#1a1d23] flex-1 rounded-2xl border border-[#2b2f3a] flex flex-col overflow-hidden">
-                <div class="p-4 border-b border-[#2b2f3a] flex justify-between items-center bg-[#232730]">
-                    <div>
-                        <h3 class="font-bold text-blue-400 text-sm uppercase tracking-wider">Layer 1: Master Instructions</h3>
-                        <p class="text-xs text-white/40 mt-1">Applies to ALL bots. Define tool usage here.</p>
-                    </div>
-                    <button onclick="aiManager.saveGlobal()" class="btn-save px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs font-bold transition-colors flex items-center gap-2"><i class="fa-solid fa-save"></i> Save Global</button>
-                </div>
-                <textarea id="global-system-prompt" class="flex-1 bg-[#0f1115] p-5 text-white font-mono text-sm leading-relaxed focus:outline-none resize-none m-0" placeholder="Loading..."></textarea>
-            </div>
-        </div>
-
-        <div id="ai-panel-platform" class="ai-tab-content hidden-force h-full flex flex-col pb-2">
-            <div class="flex h-full gap-4">
-                <div class="w-16 flex-shrink-0 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] p-2 flex flex-col gap-2 items-center">
-                    <div class="text-[10px] font-bold text-white/30 uppercase text-center mb-1">Chan</div>
-                    
-                    <button onclick="aiManager.loadPlatform('whatsapp')" id="btn-plat-whatsapp" title="WhatsApp" class="w-10 h-10 rounded-xl bg-[#2b2f3a] text-green-400 border border-green-500/30 flex items-center justify-center transition-all hover:bg-[#32363f] hover:scale-105">
-                        <i class="fa-brands fa-whatsapp text-xl"></i>
-                    </button>
-                    
-                    <button onclick="aiManager.loadPlatform('instagram')" id="btn-plat-instagram" title="Instagram" class="w-10 h-10 rounded-xl text-white/40 hover:text-pink-400 hover:bg-white/5 flex items-center justify-center transition-all">
-                        <i class="fa-brands fa-instagram text-xl"></i>
-                    </button>
-                    
-                    <button onclick="aiManager.loadPlatform('facebook')" id="btn-plat-facebook" title="Facebook" class="w-10 h-10 rounded-xl text-white/40 hover:text-blue-400 hover:bg-white/5 flex items-center justify-center transition-all">
-                        <i class="fa-brands fa-facebook text-xl"></i>
-                    </button>
-                    
-                    <button onclick="aiManager.loadPlatform('tiktok')" id="btn-plat-tiktok" title="TikTok" class="w-10 h-10 rounded-xl text-white/40 hover:text-white hover:bg-white/5 flex items-center justify-center transition-all">
-                        <i class="fa-brands fa-tiktok text-xl"></i>
-                    </button>
-                </div>
-
-                <div class="flex-1 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] flex flex-col overflow-hidden">
-                    <div class="p-4 border-b border-[#2b2f3a] flex justify-between items-center bg-[#232730]">
-                        <div>
-                            <h3 class="font-bold text-green-400 text-sm uppercase tracking-wider" id="lbl-plat-title">WhatsApp Rules</h3>
-                            <p class="text-xs text-white/40 mt-1">Layer 2: Formatting & Tone for this channel.</p>
-                        </div>
-                        <button onclick="aiManager.savePlatform()" class="btn-save px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg text-xs font-bold transition-colors flex items-center gap-2"><i class="fa-solid fa-save"></i> Save Rules</button>
-                    </div>
-                    <textarea id="platform-system-prompt" class="flex-1 bg-[#0f1115] p-5 text-white font-mono text-sm leading-relaxed focus:outline-none resize-none m-0" placeholder="Select a platform..."></textarea>
-                </div>
-            </div>
-        </div>
-
-        <div id="ai-panel-business" class="ai-tab-content hidden-force h-full flex flex-col pb-2">
-            <div class="bg-[#1a1d23] p-4 rounded-2xl border border-[#2b2f3a] mb-4 flex items-center justify-between">
-                <div class="flex items-center gap-4 flex-1">
-                    <div class="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400"><i class="fa-solid fa-store"></i></div>
-                    <div class="flex-1">
-                        <label class="text-xs text-white/40 font-bold uppercase tracking-wider block mb-1">Select Client Business</label>
-                        <select id="ai-business-selector" onchange="aiManager.loadBusinessContext()" class="w-full max-w-md bg-[#0f1115] border border-[#2b2f3a] text-white text-sm rounded-lg px-3 py-2 focus:border-purple-500 focus:outline-none cursor-pointer">
-                            <option value="">Loading businesses...</option>
-                        </select>
-                    </div>
-                </div>
-                <div id="biz-status-badge" class="hidden px-3 py-1 bg-green-500/10 text-green-400 text-xs rounded-full border border-green-500/20">Active</div>
-            </div>
-            <div id="ai-business-editor" class="flex-1 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] flex flex-col overflow-hidden opacity-50 pointer-events-none transition-opacity">
-                 <div class="p-4 border-b border-[#2b2f3a] flex justify-between items-center bg-[#232730]">
-                    <div>
-                        <h3 class="font-bold text-purple-400 text-sm uppercase tracking-wider">Layer 3: Business Context</h3>
-                        <p class="text-xs text-white/40 mt-1">Unique knowledge: Products, Services, & Brand Voice.</p>
-                    </div>
-                    <button onclick="aiManager.saveBusiness()" class="btn-save px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-bold transition-colors flex items-center gap-2"><i class="fa-solid fa-save"></i> Save Context</button>
-                </div>
-                <textarea id="business-system-prompt" class="flex-1 bg-[#0f1115] p-5 text-white font-mono text-sm leading-relaxed focus:outline-none resize-none m-0" placeholder="Please select a business above to edit instructions..."></textarea>
-            </div>
+        <div class="flex gap-1 bg-[#1a1d23] p-1 rounded-xl border border-[#2b2f3a] w-fit">
+            <button onclick="aiManager.switchMainMode('config')" id="mode-config" class="px-5 py-2 rounded-lg text-sm font-medium transition-all bg-[#2b2f3a] text-white shadow-md flex items-center">
+                <i class="fa-solid fa-sliders mr-2"></i>Manual Config
+            </button>
+            <button onclick="aiManager.switchMainMode('auto')" id="mode-auto" class="px-5 py-2 rounded-lg text-sm font-medium transition-all text-white/60 hover:text-white hover:bg-white/5 flex items-center">
+                <i class="fa-solid fa-bolt text-yellow-500 mr-2"></i>Auto Trainer 
+                <span id="pending-lessons-badge" class="bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[10px] ml-2 font-bold shadow-lg">3</span>
+            </button>
         </div>
     </div>
 
-    <div class="w-[420px] flex-shrink-0 flex flex-col h-full bg-[#15181e]">
+    <!-- Main content area with left and right panels -->
+    <div class="flex-1 flex flex-row overflow-hidden">
+    
+    <div class="flex-1 flex flex-col h-full min-w-0 overflow-y-auto pr-6 border-r border-[#2b2f3a]">
+        <div class="px-6 pt-4 pb-4">
+        <div id="ai-mode-config" class="flex flex-col">
+            <div class="mb-4 flex-shrink-0">
+                <div class="flex gap-1 bg-[#1a1d23] p-1 rounded-xl border border-[#2b2f3a] w-fit">
+                     <button onclick="aiManager.switchTab('global')" id="tab-ai-global" class="px-6 py-2 rounded-lg text-sm font-medium transition-all bg-[#2b2f3a] text-white shadow-md">Global Rules</button>
+                     <button onclick="aiManager.switchTab('platform')" id="tab-ai-platform" class="px-6 py-2 rounded-lg text-sm font-medium transition-all text-white/60 hover:text-white hover:bg-white/5">Platform Rules</button>
+                     <button onclick="aiManager.switchTab('business')" id="tab-ai-business" class="px-6 py-2 rounded-lg text-sm font-medium transition-all text-white/60 hover:text-white hover:bg-white/5">Business Context</button>
+                </div>
+            </div>
+
+            <div id="ai-panel-global" class="ai-tab-content flex flex-col pb-2">
+                <div class="bg-[#1a1d23] flex-1 rounded-2xl border border-[#2b2f3a] flex flex-col overflow-hidden">
+                    <div class="p-4 border-b border-[#2b2f3a] flex justify-between items-center bg-[#232730]">
+                        <div>
+                            <h3 class="font-bold text-blue-400 text-sm uppercase tracking-wider">Layer 1: Master Instructions</h3>
+                            <p class="text-xs text-white/40 mt-1">Applies to ALL bots. Define tool usage here.</p>
+                        </div>
+                        <button onclick="aiManager.saveGlobal()" class="btn-save px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs font-bold transition-colors flex items-center gap-2"><i class="fa-solid fa-save"></i> Save Global</button>
+                    </div>
+                    <textarea id="global-system-prompt" class="flex-1 bg-[#0f1115] p-5 text-white font-mono text-sm leading-relaxed focus:outline-none resize-none m-0" placeholder="Loading..."></textarea>
+                </div>
+            </div>
+
+            <div id="ai-panel-platform" class="ai-tab-content hidden-force flex flex-col pb-2">
+                <div class="flex gap-4">
+                    <div class="w-16 flex-shrink-0 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] p-2 flex flex-col gap-2 items-center">
+                        <div class="text-[10px] font-bold text-white/30 uppercase text-center mb-1">Chan</div>
+                        <button onclick="aiManager.loadPlatform('whatsapp')" id="btn-plat-whatsapp" title="WhatsApp" class="w-10 h-10 rounded-xl bg-[#2b2f3a] text-green-400 border border-green-500/30 flex items-center justify-center transition-all hover:bg-[#32363f] hover:scale-105">
+                            <i class="fa-brands fa-whatsapp text-xl"></i>
+                        </button>
+                        <button onclick="aiManager.loadPlatform('instagram')" id="btn-plat-instagram" title="Instagram" class="w-10 h-10 rounded-xl text-white/40 hover:text-pink-400 hover:bg-white/5 flex items-center justify-center transition-all">
+                            <i class="fa-brands fa-instagram text-xl"></i>
+                        </button>
+                        <button onclick="aiManager.loadPlatform('facebook')" id="btn-plat-facebook" title="Facebook" class="w-10 h-10 rounded-xl text-white/40 hover:text-blue-400 hover:bg-white/5 flex items-center justify-center transition-all">
+                            <i class="fa-brands fa-facebook text-xl"></i>
+                        </button>
+                        <button onclick="aiManager.loadPlatform('tiktok')" id="btn-plat-tiktok" title="TikTok" class="w-10 h-10 rounded-xl text-white/40 hover:text-white hover:bg-white/5 flex items-center justify-center transition-all">
+                            <i class="fa-brands fa-tiktok text-xl"></i>
+                        </button>
+                    </div>
+                    <div class="flex-1 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] flex flex-col overflow-hidden">
+                        <div class="p-4 border-b border-[#2b2f3a] flex justify-between items-center bg-[#232730]">
+                            <div>
+                                <h3 class="font-bold text-green-400 text-sm uppercase tracking-wider" id="lbl-plat-title">WhatsApp Rules</h3>
+                                <p class="text-xs text-white/40 mt-1">Layer 2: Formatting & Tone for this channel.</p>
+                            </div>
+                            <button onclick="aiManager.savePlatform()" class="btn-save px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg text-xs font-bold transition-colors flex items-center gap-2"><i class="fa-solid fa-save"></i> Save Rules</button>
+                        </div>
+                        <textarea id="platform-system-prompt" class="flex-1 bg-[#0f1115] p-5 text-white font-mono text-sm leading-relaxed focus:outline-none resize-none m-0" placeholder="Select a platform..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div id="ai-panel-business" class="ai-tab-content hidden-force flex flex-col pb-2">
+                <div class="bg-[#1a1d23] p-4 rounded-2xl border border-[#2b2f3a] mb-4 flex items-center justify-between">
+                    <div class="flex items-center gap-4 flex-1">
+                        <div class="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400"><i class="fa-solid fa-store"></i></div>
+                        <div class="flex-1">
+                            <label class="text-xs text-white/40 font-bold uppercase tracking-wider block mb-1">Select Client Business</label>
+                            <select id="ai-business-selector" onchange="aiManager.loadBusinessContext()" class="w-full max-w-md bg-[#0f1115] border border-[#2b2f3a] text-white text-sm rounded-lg px-3 py-2 focus:border-purple-500 focus:outline-none cursor-pointer">
+                                <option value="">Loading businesses...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="biz-status-badge" class="hidden px-3 py-1 bg-green-500/10 text-green-400 text-xs rounded-full border border-green-500/20">Active</div>
+                </div>
+                <div id="ai-business-editor" class="flex-1 bg-[#1a1d23] rounded-2xl border border-[#2b2f3a] flex flex-col overflow-hidden opacity-50 pointer-events-none transition-opacity">
+                     <div class="p-4 border-b border-[#2b2f3a] flex justify-between items-center bg-[#232730]">
+                        <div>
+                            <h3 class="font-bold text-purple-400 text-sm uppercase tracking-wider">Layer 3: Business Context</h3>
+                            <p class="text-xs text-white/40 mt-1">Unique knowledge: Products, Services, & Brand Voice.</p>
+                        </div>
+                        <button onclick="aiManager.saveBusiness()" class="btn-save px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-bold transition-colors flex items-center gap-2"><i class="fa-solid fa-save"></i> Save Context</button>
+                    </div>
+                    <textarea id="business-system-prompt" class="flex-1 bg-[#0f1115] p-5 text-white font-mono text-sm leading-relaxed focus:outline-none resize-none m-0" placeholder="Please select a business above to edit instructions..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div id="ai-mode-auto" class="hidden-force flex flex-col">
+            
+            <div class="mb-4 flex-shrink-0">
+                <div class="flex gap-1 bg-[#1a1d23] p-1 rounded-xl border border-[#2b2f3a] w-fit">
+                     <button onclick="aiManager.switchAutoTab('queue')" id="tab-auto-queue" class="px-6 py-2 rounded-lg text-sm font-medium transition-all bg-[#2b2f3a] text-white shadow-md">Approval Queue</button>
+                     <button onclick="aiManager.switchAutoTab('goldens')" id="tab-auto-goldens" class="px-6 py-2 rounded-lg text-sm font-medium transition-all text-white/60 hover:text-white hover:bg-white/5">Goldens Library</button>
+                     <button onclick="aiManager.switchAutoTab('anomalies')" id="tab-auto-anomalies" class="px-6 py-2 rounded-lg text-sm font-medium transition-all text-white/60 hover:text-white hover:bg-white/5">Anomalies & Radar</button>
+                </div>
+            </div>
+
+            <div id="ai-auto-queue" class="auto-tab-content h-full flex flex-col overflow-y-auto pr-2 pb-4">
+                <div class="mb-4">
+                    <h3 class="font-bold text-white text-lg">Pending Lessons</h3>
+                    <p class="text-xs text-white/50">Suggested improvements from the Nightly Judge and Strategist. Approve to inject into the Brain.</p>
+                </div>
+                
+                <div id="pending-lessons-container" class="space-y-4">
+                    <div class="bg-[#1a1d23] border border-[#2b2f3a] rounded-xl p-4 shadow-lg relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-1 h-full bg-yellow-500"></div>
+                        <div class="flex justify-between items-start mb-3 pl-2">
+                            <div>
+                                <span class="text-[10px] font-bold text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded uppercase tracking-wider border border-yellow-500/20">Awaiting Approval</span>
+                                <p class="text-xs text-white/50 mt-2"><i class="fa-solid fa-robot mr-1"></i> Suggested by: Daily Judge</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button class="px-3 py-1.5 bg-green-600/20 text-green-400 hover:bg-green-600 hover:text-white rounded border border-green-500/30 transition-all text-xs font-bold flex items-center gap-1 shadow"><i class="fa-solid fa-check"></i> Approve</button>
+                                <button onclick="aiManager.inlineEditHandler(this)" class="px-3 py-1.5 bg-[#2b2f3a] text-white/80 hover:bg-[#373c47] rounded border border-white/10 transition-all text-xs flex items-center gap-1"><i class="fa-solid fa-pen"></i> Edit</button>
+                                <button class="px-3 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded border border-red-500/20 transition-all text-xs"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </div>
+                        <div class="bg-[#0f1115] p-3 rounded-lg border border-[#2b2f3a] mt-2 pl-3">
+                            <p class="text-xs text-white/60 font-mono mb-2">OBSERVATION: Failed to mention the wholesale minimum order quantity.</p>
+                            <p class="text-sm text-green-400 font-mono">NEW INSTRUCTION: Always state that wholesale requires a minimum of 50 pieces and escalate to human.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="ai-auto-goldens" class="auto-tab-content hidden-force h-full flex flex-col overflow-y-auto pr-2 pb-4">
+                <div class="flex justify-between items-end mb-4">
+                    <div>
+                        <h3 class="font-bold text-white text-lg">Evaluation Rubric</h3>
+                        <p class="text-xs text-white/50">The benchmark intents harvested from real customer conversations.</p>
+                    </div>
+                    <button onclick="aiManager.addGolden()" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-bold transition-colors shadow-lg"><i class="fa-solid fa-plus mr-1"></i> Add Golden</button>
+                </div>
+                
+                <div id="goldens-container" class="grid grid-cols-1 gap-3">
+                    <div class="bg-[#1a1d23] border border-[#2b2f3a] rounded-xl p-4 flex items-center justify-between hover:border-purple-500/50 transition-colors">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <h4 class="text-sm font-bold text-white">Intent: <span class="text-purple-400">refund_policy</span></h4>
+                            </div>
+                            <p class="text-xs text-white/50 mb-3 block"><i class="fa-solid fa-message text-white/20 mr-1"></i> Trigger: "I want my money back"</p>
+                            <p class="text-xs text-blue-300 font-mono bg-[#0f1115] p-2 rounded border border-[#2b2f3a]">Must strictly check the 14-day window constraint before offering options.</p>
+                        </div>
+                        <div class="flex flex-col items-end gap-2 ml-4 pl-4 border-l border-[#2b2f3a]">
+                            <label class="relative inline-flex items-center cursor-pointer" title="Toggle Blessing">
+                                <input type="checkbox" checked class="sr-only peer">
+                                <div class="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                                <span class="ml-2 text-xs font-medium text-white/80">Blessed</span>
+                            </label>
+                            <button onclick="aiManager.inlineEditHandler(this)" class="text-xs text-white/30 hover:text-white transition-colors mt-2"><i class="fa-solid fa-pen"></i> Edit</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="ai-auto-anomalies" class="auto-tab-content hidden-force h-full flex flex-col gap-4 pb-4">
+                <div class="bg-[#1a1d23] rounded-xl border border-[#2b2f3a] p-4 flex-shrink-0">
+                    <h3 class="font-bold text-white text-sm mb-3 flex items-center gap-2"><i class="fa-solid fa-satellite-dish text-blue-400"></i> Harvester Radar</h3>
+                    <div class="flex items-center gap-4 text-xs">
+                        <div class="bg-[#0f1115] px-3 py-2 rounded border border-[#2b2f3a] flex-1">
+                            <span class="text-white/40 block mb-1">Last Scan Date</span>
+                            <span class="font-mono text-blue-300">2026-02-22</span>
+                        </div>
+                        <div class="bg-[#0f1115] px-3 py-2 rounded border border-[#2b2f3a] flex-1">
+                            <span class="text-white/40 block mb-1">Status</span>
+                            <span class="text-green-400 font-bold"><i class="fa-solid fa-circle-check"></i> Analyzed</span>
+                        </div>
+                        <button onclick="aiManager.forceScan()" class="px-4 py-2 bg-[#2b2f3a] hover:bg-[#373c47] text-white rounded transition-colors"><i class="fa-solid fa-rotate-right mr-1"></i> Force Scan</button>
+                    </div>
+                </div>
+
+                <div class="flex-1 bg-[#1a1d23] rounded-xl border border-[#2b2f3a] flex flex-col overflow-hidden">
+                    <div class="p-4 border-b border-[#2b2f3a] bg-[#232730]">
+                        <h3 class="font-bold text-white text-sm flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation text-yellow-500"></i> Real-Time Anomalies</h3>
+                        <p class="text-[10px] text-white/40 mt-1">Unknown requests captured by the seek_guidance tool.</p>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-4 space-y-3">
+                        <div class="bg-[#0f1115] p-3 rounded-lg border border-[#2b2f3a]">
+                            <span class="text-[10px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded uppercase tracking-wider border border-red-500/20">Low Similarity: 0.21</span>
+                            <p class="text-sm text-white/80 mt-2">"Do you guys offer wholesale discounts for non-profits in Uganda?"</p>
+                            <div class="mt-3 flex gap-2">
+                                <button onclick="aiManager.convertAnomalyToGolden('demo', document.getElementById('ai-business-selector')?.value || '', 'Do you guys offer wholesale discounts for non-profits in Uganda?')" class="text-[10px] px-2 py-1 bg-[#2b2f3a] hover:bg-[#373c47] rounded text-white transition-colors">Convert to Golden</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div> 
+        </div>
+        </div> <div class="w-[420px] flex-shrink-0 flex flex-col h-full bg-[#15181e]">
         
-        <div class="mb-4 pb-4 border-b border-[#2b2f3a] flex justify-between items-end pt-1">
+        <div class="mb-4 pb-4 border-b border-[#2b2f3a] flex justify-between items-center pt-4 px-4">
             <div>
                 <h3 class="font-bold text-lg flex items-center gap-2">
                     <i class="fa-solid fa-vial text-green-400"></i> Simulator
@@ -963,8 +1079,7 @@
                 </div>
             </div>
         </div>
-
-        <div id="pg-view-suggestions" class="flex-1 hidden-force flex-col min-h-0 bg-[#1a1d23] rounded-xl border border-[#2b2f3a] overflow-hidden">
+        <div id="pg-view-suggestions" class="flex-1 hidden-force flex flex-col min-h-0 bg-[#1a1d23] rounded-xl border border-[#2b2f3a] overflow-hidden">
             <div class="p-3 bg-[#232730] border-b border-[#2b2f3a] flex justify-between items-center">
                 <span class="text-xs font-bold text-white/50">CLIENT REQUESTS</span>
                 <button onclick="aiPlayground.fetchSuggestions()" class="text-xs text-blue-400 hover:text-white"><i class="fa-solid fa-sync"></i></button>
@@ -973,7 +1088,7 @@
                 <div class="p-8 text-center text-white/20 text-xs">No pending suggestions.</div>
             </div>
         </div>
-
+    </div>
     </div>
 </div>
 <div id="view-tech-logs" class="view-section hidden-force fade-in h-full flex flex-col pb-6">
@@ -1584,173 +1699,7 @@
 
         })();
     </script>
-    <script>
-    // --- AI TRAINING LOGIC CONTROLLER ---
-const aiManager = {
-    currentBizId: null,
-    currentPlatform: 'whatsapp', // Default view
-
-    // 1. TABS: Handles switching between Global, Platform, and Business views
-    switchTab: function(tabName) {
-        // Hide all panels
-        ['global', 'platform', 'business'].forEach(t => {
-            document.getElementById(`ai-panel-${t}`).classList.add('hidden-force');
-            // Reset button style
-            const btn = document.getElementById(`tab-ai-${t}`);
-            btn.className = "px-6 py-2 rounded-lg text-sm font-medium transition-all text-white/60 hover:text-white hover:bg-white/5 border border-transparent";
-        });
-
-        // Show active panel
-        document.getElementById(`ai-panel-${tabName}`).classList.remove('hidden-force');
-        const activeBtn = document.getElementById(`tab-ai-${tabName}`);
-        activeBtn.className = "px-6 py-2 rounded-lg text-sm font-medium transition-all bg-[#2b2f3a] text-white shadow-md border border-white/5";
-
-        // Trigger Data Load
-        if(tabName === 'global') this.loadGlobal();
-        if(tabName === 'platform') this.loadPlatform(this.currentPlatform);
-        if(tabName === 'business') this.initBusinessSelector();
-    },
-
-    // 2. GLOBAL: 'global_config' table
-    loadGlobal: async function() {
-        const field = document.getElementById('global-system-prompt');
-        field.parentElement.classList.add('opacity-50');
-        const { data } = await supabase.from('global_config').select('master_system_prompt').eq('id', 1).maybeSingle();
-        field.value = data?.master_system_prompt || "";
-        field.parentElement.classList.remove('opacity-50');
-    },
-    saveGlobal: async function() {
-        const val = document.getElementById('global-system-prompt').value;
-        await aiManager.performSave('global_config', { id: 1, master_system_prompt: val }, 'global');
-    },
-
-    // 3. PLATFORM: 'platform_rules' table
-    loadPlatform: async function(plat) {
-        this.currentPlatform = plat;
-
-        // Update Sidebar Styles
-        ['whatsapp', 'instagram', 'facebook', 'tiktok'].forEach(p => {
-            const btn = document.getElementById(`btn-plat-${p}`);
-            if(p === plat) {
-                // Active State
-                btn.className = "w-full text-left px-4 py-3 rounded-xl bg-[#2b2f3a] text-white border border-white/10 flex items-center gap-3 shadow-lg transform scale-[1.02] transition-all";
-                if(p === 'whatsapp') btn.classList.add('border-green-500/30');
-                if(p === 'instagram') btn.classList.add('border-pink-500/30');
-                if(p === 'facebook') btn.classList.add('border-blue-500/30');
-            } else {
-                // Inactive State
-                btn.className = "w-full text-left px-4 py-3 rounded-xl text-white/60 hover:bg-white/5 flex items-center gap-3 transition-all border border-transparent";
-            }
-        });
-
-        // Update Header
-        const titles = { whatsapp: 'WhatsApp Rules', instagram: 'Instagram Rules', facebook: 'Facebook Rules', tiktok: 'TikTok Rules' };
-        document.getElementById('lbl-plat-title').innerText = titles[plat] || 'Platform Rules';
-
-        // Load Data
-        const field = document.getElementById('platform-system-prompt');
-        field.value = "Loading...";
-        const { data } = await supabase.from('platform_rules').select('instruction').eq('platform', plat).maybeSingle();
-        field.value = data?.instruction || "";
-    },
-    savePlatform: async function() {
-        const val = document.getElementById('platform-system-prompt').value;
-        // Upsert based on Platform Name (PK)
-        await aiManager.performSave('platform_rules', { platform: this.currentPlatform, instruction: val }, 'platform');
-    },
-
-    // 4. BUSINESS: 'businesses' table
-    initBusinessSelector: async function() {
-        const selector = document.getElementById('ai-business-selector');
-        if(selector.options.length > 1) return; // Don't reload if already loaded
-
-        const { data } = await supabase.from('businesses').select('business_id, name').eq('subscription_active', true);
-        if(data) {
-            selector.innerHTML = '<option value="">-- Select a Client Business --</option>';
-            data.forEach(b => {
-                const opt = document.createElement('option');
-                opt.value = b.business_id; // Using text ID as per your schema
-                opt.innerText = b.name;
-                selector.appendChild(opt);
-            });
-        }
-    },
-    loadBusinessContext: async function() {
-        const bizId = document.getElementById('ai-business-selector').value;
-        const editor = document.getElementById('ai-business-editor');
-        const field = document.getElementById('business-system-prompt');
-
-        if(!bizId) {
-            this.currentBizId = null;
-            editor.classList.add('opacity-50', 'pointer-events-none');
-            field.value = "";
-            field.placeholder = "Please select a business above to edit instructions...";
-            return;
-        }
-
-        this.currentBizId = bizId;
-        editor.classList.remove('opacity-50', 'pointer-events-none');
-        field.value = "Loading business instructions...";
-
-        const { data } = await supabase.from('businesses').select('system_prompt').eq('business_id', bizId).maybeSingle();
-        const businessName = document.querySelector(`#ai-business-selector option[value="${bizId}"]`).textContent;
-        const promptValue = data?.system_prompt || "";
-        field.value = promptValue;
-        field.placeholder = promptValue ? "" : `Add instructions for ${businessName} AI Chatbots.`;
-    },
-    saveBusiness: async function() {
-        if(!this.currentBizId) return;
-        const val = document.getElementById('business-system-prompt').value;
-        // Update businesses table
-        await aiManager.performSave('businesses', { system_prompt: val }, 'business', 'business_id', this.currentBizId);
-    },
-
-    // 5. GENERIC SAVE HELPER
-    performSave: async function(table, payload, section, matchCol = null, matchVal = null) {
-        const sectionDiv = document.getElementById(`ai-panel-${section}`);
-        const btn = sectionDiv.querySelector('.btn-save');
-        const originalContent = btn.innerHTML;
-
-        // Loading State
-        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Saving...';
-        btn.disabled = true;
-
-        let query = supabase.from(table);
-        let error;
-
-        // Execute Update or Upsert
-        if (matchCol) {
-            const { error: err } = await query.update(payload).eq(matchCol, matchVal);
-            error = err;
-        } else {
-            const { error: err } = await query.upsert(payload);
-            error = err;
-        }
-
-        if (error) {
-            console.error(error);
-            alert('Save failed: ' + error.message);
-            btn.innerHTML = originalContent;
-        } else {
-            // Success State
-            setTimeout(() => {
-                btn.innerHTML = '<i class="fa-solid fa-check"></i> Saved!';
-                btn.classList.remove('bg-blue-600', 'bg-green-600', 'bg-purple-600');
-                btn.classList.add('bg-emerald-500');
-
-                setTimeout(() => {
-                    btn.innerHTML = originalContent;
-                    btn.disabled = false;
-                    // Restore original colors
-                    btn.classList.remove('bg-emerald-500');
-                    if(section === 'global') btn.classList.add('bg-blue-600');
-                    if(section === 'platform') btn.classList.add('bg-green-600');
-                    if(section === 'business') btn.classList.add('bg-purple-600');
-                }, 1500);
-            }, 500);
-        }
-    }
-};
+    <!-- Inline AI training controller removed — using `admin.js` canonical implementation -->
 
 // --- LOG VIEWER (REALTIME UPGRADE) --
 // --- LOG VIEWER (FIXED) ---

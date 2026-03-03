@@ -906,6 +906,367 @@ const explorer = {
     }
 };
 
+// --- 5b. AI AUTO-TRAINER UI MANAGER ---
+window.aiManager = window.aiManager || {};
+Object.assign(window.aiManager, {
+    init() {
+        // placeholder init logic if needed later
+    },
+
+    // 1. Tab & Mode Switchers
+    switchMainMode: function(mode) {
+        const configBtn = document.getElementById('mode-config');
+        const autoBtn = document.getElementById('mode-auto');
+        const configPanel = document.getElementById('ai-mode-config');
+        const autoPanel = document.getElementById('ai-mode-auto');
+
+        if (mode === 'config') {
+            configBtn.className = "px-5 py-2 rounded-lg text-sm font-medium transition-all bg-[#2b2f3a] text-white shadow-md flex items-center";
+            autoBtn.className = "px-5 py-2 rounded-lg text-sm font-medium transition-all text-white/60 hover:text-white hover:bg-white/5 flex items-center";
+            configPanel.classList.remove('hidden-force');
+            autoPanel.classList.add('hidden-force');
+        } else {
+            autoBtn.className = "px-5 py-2 rounded-lg text-sm font-medium transition-all bg-[#2b2f3a] text-white shadow-md flex items-center";
+            configBtn.className = "px-5 py-2 rounded-lg text-sm font-medium transition-all text-white/60 hover:text-white hover:bg-white/5 flex items-center";
+            autoPanel.classList.remove('hidden-force');
+            configPanel.classList.add('hidden-force');
+            this.loadAutoTrainerData();
+        }
+    },
+
+    switchAutoTab: function(tab) {
+        ['queue', 'goldens', 'anomalies'].forEach(t => {
+            document.getElementById(`tab-auto-${t}`).className = "px-6 py-2 rounded-lg text-sm font-medium transition-all text-white/60 hover:text-white hover:bg-white/5";
+            document.getElementById(`ai-auto-${t}`).classList.add('hidden-force');
+        });
+        document.getElementById(`tab-auto-${tab}`).className = "px-6 py-2 rounded-lg text-sm font-medium transition-all bg-[#2b2f3a] text-white shadow-md";
+        document.getElementById(`ai-auto-${tab}`).classList.remove('hidden-force');
+    },
+
+    // 2. Data Loader
+    loadAutoTrainerData: async function() {
+        const bizId = document.getElementById('ai-business-selector').value;
+        if (!bizId) return;
+
+        // Fetch all related data in parallel
+        const [goldens, lessons, anomalies] = await Promise.all([
+            supabase.from('eval_goldens').select('*').eq('business_id', bizId).order('created_at', { ascending: false }),
+            supabase.from('business_lessons').select('*').eq('business_id', bizId).eq('status', 'pending_approval'),
+            supabase.from('ai_anomalies').select('*').eq('business_id', bizId).order('created_at', { ascending: false })
+        ]);
+
+        this.renderGoldens(goldens.data || []);
+        this.renderLessons(lessons.data || []);
+        this.renderAnomalies(anomalies.data || []);
+    },
+
+    // 3. Renderer: Goldens Library (Deduplicated Intents)
+    renderGoldens: function(goldens) {
+        const container = document.getElementById('goldens-container');
+        if (!goldens.length) {
+            container.innerHTML = `<p class="text-xs text-white/20 text-center py-10">No intents identified for this business yet.</p>`;
+            return;
+        }
+
+        container.innerHTML = goldens.map(g => {
+            // Parse the complex logic JSON into a readable list
+            let logicHtml = "";
+            try {
+                const logic = JSON.parse(g.perfect_answer_logic);
+                if (logic.response_structure) {
+                    logicHtml = logic.response_structure.map(s => `<li>${s.step || s}</li>`).join('');
+                } else if (logic.steps) {
+                    logicHtml = logic.steps.map(s => `<li>${s.description}</li>`).join('');
+                } else {
+                    logicHtml = `<li>${g.perfect_answer_logic.substring(0, 100)}...</li>`;
+                }
+            } catch(e) { logicHtml = `<li>${g.perfect_answer_logic}</li>`; }
+
+            return `
+                <div class="bg-[#1a1d23] border ${g.is_human_blessed ? 'border-purple-500/30' : 'border-[#2b2f3a]'} rounded-xl p-4 hover:bg-[#232730] transition-all">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                                <span class="text-purple-400">#${g.intent_name}</span>
+                                ${g.is_human_blessed ? '<span class="text-[9px] bg-purple-500/20 text-purple-400 px-2 rounded-full border border-purple-500/30">BLESSED</span>' : ''}
+                            </h4>
+                            <p class="text-[10px] text-white/40 mt-1">ID: ${g.id.split('-')[0]}</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" ${g.is_human_blessed ? 'checked' : ''} onchange="aiManager.toggleBlessing('${g.id}', this.checked)" class="sr-only peer">
+                                <div class="w-8 h-4 bg-gray-700 rounded-full peer peer-checked:bg-purple-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:after:translate-x-full"></div>
+                            </label>
+                            <button onclick="aiManager.editGolden('${g.id}', ${JSON.stringify(g.perfect_answer_logic)})" class="text-white/30 hover:text-white transition-colors"><i class="fa-solid fa-pen text-xs"></i></button>
+                            <button onclick="aiManager.deleteGolden('${g.id}')" class="text-white/20 hover:text-red-400 transition-colors"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-[#0f1115] p-3 rounded-lg border border-[#2b2f3a]">
+                            <label class="text-[9px] font-bold text-white/30 uppercase mb-2 block">Example Queries</label>
+                            <div class="text-[11px] text-white/70 italic leading-relaxed">
+                                ${g.user_prompt_template.replace(/[\[\]"]/g, '').split(',').slice(0,2).join('<br>')}...
+                            </div>
+                        </div>
+                        <div class="bg-[#0f1115] p-3 rounded-lg border border-[#2b2f3a]">
+                            <label class="text-[9px] font-bold text-white/30 uppercase mb-2 block">Perfect Logic Steps</label>
+                            <ul class="text-[11px] text-blue-300 list-disc list-inside space-y-1">
+                                ${logicHtml}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    },
+
+    // 3b. Renderer: Pending Lessons (Approval Queue)
+    renderLessons: function(lessons) {
+        const container = document.getElementById('pending-lessons-container');
+        const badge = document.getElementById('pending-lessons-badge');
+        if (!container) return;
+
+        // Update badge
+        if (badge) {
+            if (lessons.length > 0) { badge.innerText = lessons.length; badge.classList.remove('hidden'); }
+            else { badge.classList.add('hidden'); }
+        }
+
+        if (!lessons || lessons.length === 0) {
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-20 opacity-20">
+                    <i class="fa-solid fa-circle-check text-5xl mb-4"></i>
+                    <p class="text-sm">Your queue is clear. The AI is fully trained.</p>
+                </div>`;
+            return;
+        }
+
+        container.innerHTML = lessons.map(lesson => {
+            const parts = (lesson.lesson_text || '').split('\n');
+            const observation = parts[0]?.replace('OBSERVATION:', '').trim() || 'Automated refinement suggested.';
+            const instruction = parts[1]?.replace('NEW INSTRUCTION:', '').trim() || lesson.lesson_text || '';
+
+            return `
+                <div id="lesson-card-${lesson.id}" class="bg-[#1a1d23] border border-[#2b2f3a] rounded-xl p-4 shadow-lg relative overflow-hidden group">
+                    <div class="absolute top-0 left-0 w-1 h-full ${lesson.priority >= 3 ? 'bg-red-500' : 'bg-yellow-500'}"></div>
+                    <div class="flex justify-between items-start mb-3 pl-2">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] font-bold ${lesson.priority >= 3 ? 'text-red-400 bg-red-500/10 border-red-500/20' : 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20'} px-2 py-1 rounded uppercase tracking-wider border">${lesson.priority >= 3 ? 'Urgent Fix' : 'Optimization'}</span>
+                                <span class="text-[10px] text-white/30">${new Date(lesson.created_at).toLocaleDateString()}</span>
+                            </div>
+                            <p class="text-[11px] text-white/50 mt-2 italic"><i class="fa-solid fa-magnifying-glass-chart mr-1"></i> Root Cause: ${observation}</p>
+                        </div>
+                        <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="aiManager.approveLesson('${lesson.id}', '${lesson.business_id}')" class="px-3 py-1.5 bg-green-600/20 text-green-400 hover:bg-green-600 hover:text-white rounded border border-green-500/30 transition-all text-xs font-bold flex items-center gap-1 shadow"><i class="fa-solid fa-check"></i> Approve</button>
+                            <button onclick="aiManager.editLesson('${lesson.id}', ${JSON.stringify(lesson.lesson_text)})" class="px-3 py-1.5 bg-[#2b2f3a] text-white/80 hover:bg-[#373c47] rounded border border-white/10 transition-all text-xs flex items-center gap-1"><i class="fa-solid fa-pen"></i> Edit</button>
+                            <button onclick="aiManager.discardLesson('${lesson.id}')" class="px-3 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded border border-red-500/20 transition-all text-xs"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    </div>
+                    <div class="bg-[#0f1115] p-3 rounded-lg border border-[#2b2f3a] mt-2 ml-2">
+                        <label class="text-[9px] font-bold text-blue-400 uppercase mb-1 block">New Behavioral Instruction</label>
+                        <p class="text-sm text-white/90 font-mono leading-relaxed">${instruction}</p>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    },
+
+    // 4. Rendering the Anomalies (The Radar)
+    renderAnomalies: function(anomalies) {
+        const container = document.querySelector('#ai-auto-anomalies .overflow-y-auto');
+        if (!container) return;
+        if (!anomalies || anomalies.length === 0) {
+            container.innerHTML = `<p class="text-xs text-white/20 text-center py-10">No anomalies detected yet.</p>`;
+            return;
+        }
+
+        container.innerHTML = anomalies.map(a => `
+            <div class="bg-[#0f1115] p-3 rounded-lg border border-[#2b2f3a] group">
+                <div class="flex justify-between items-start">
+                    <span class="text-[10px] ${a.similarity_score < 0.3 ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-500'} px-2 py-0.5 rounded uppercase tracking-wider border border-current opacity-70">
+                        Similarity Score: ${a.similarity_score != null ? a.similarity_score.toFixed(2) : '-'}
+                    </span>
+                    <span class="text-[9px] text-white/20">${a.created_at ? new Date(a.created_at).toLocaleTimeString() : ''}</span>
+                </div>
+                <p class="text-xs text-white/80 mt-2 font-medium">"${(a.message_text||'').replace(/"/g,'\"')}"</p>
+                <div class="mt-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onclick="aiManager.createGoldenFromAnomaly('${a.id}')" class="text-[10px] px-2 py-1 bg-[#2b2f3a] hover:bg-purple-600 rounded text-white transition-colors">
+                        <i class="fa-solid fa-star mr-1"></i> Make Golden
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    },
+
+    // Inline/demo edit handler for static placeholder cards
+    inlineEditHandler: function(btn) {
+        try {
+            // If inside a lesson card, trigger real edit flow
+            const lessonCard = btn.closest('[id^="lesson-card-"]');
+            if (lessonCard) {
+                const id = lessonCard.id.split('-').pop();
+                const textEl = lessonCard.querySelector('.text-sm') || lessonCard.querySelector('p');
+                const current = textEl ? textEl.innerText : '';
+                return this.editLesson(id, current);
+            }
+
+            // Otherwise, perform a harmless inline demo edit on the nearest paragraph
+            const p = btn.closest('div') && btn.closest('div').querySelector('p');
+            const current = p ? p.innerText : '';
+            const updated = prompt('Edit content (demo):', current);
+            if (updated !== null && p) p.innerText = updated;
+        } catch (e) {
+            console.error('inlineEditHandler error', e);
+        }
+    },
+
+    // 4. Data Actions
+    toggleBlessing: async function(id, isBlessed) {
+        const { error } = await supabase.from('eval_goldens').update({ is_human_blessed: isBlessed }).eq('id', id);
+        if (!error) showToast(isBlessed ? "Intent Blessed" : "Blessing Removed");
+    },
+
+    deleteGolden: async function(id) {
+        if (!confirm("Delete this benchmark? This will affect AI training quality.")) return;
+        await supabase.from('eval_goldens').delete().eq('id', id);
+        this.loadAutoTrainerData();
+    },
+
+    // --- APPROVAL QUEUE BUTTONS ---
+    approveLesson: async function(lessonId, businessId) {
+        if(!confirm("Approve this lesson and inject it into the AI's Brain?")) return;
+        try {
+            const { data: lesson } = await supabase.from('business_lessons').select('lesson_text').eq('id', lessonId).single();
+            const { data: biz } = await supabase.from('businesses').select('active_ai_lessons').eq('business_id', businessId).single();
+            const rawInstruction = lesson.lesson_text.split('NEW INSTRUCTION:')[1] || lesson.lesson_text;
+            const updatedLessons = (biz.active_ai_lessons || "") + "\n- " + rawInstruction.trim();
+            await supabase.from('businesses').update({ active_ai_lessons: updatedLessons }).eq('business_id', businessId);
+            await supabase.from('business_lessons').delete().eq('id', lessonId);
+            showToast("Lesson Approved! AI has been updated.");
+            this.loadAutoTrainerData();
+            fetch(`${SUPABASE_URL}/functions/v1/eval-runner`, { method: 'POST', body: JSON.stringify({ businessId }) });
+        } catch (err) {
+            console.error("Approval Error:", err);
+            alert("Failed to approve lesson.");
+        }
+    },
+
+    editLesson: async function(lessonId, currentText) {
+        const newText = prompt("Edit the new AI instruction:", currentText.split('NEW INSTRUCTION:')[1]?.trim() || currentText);
+        if (!newText) return;
+        const formattedText = `OBSERVATION: Manually Edited\nNEW INSTRUCTION: ${newText}`;
+        const { error } = await supabase.from('business_lessons').update({ lesson_text: formattedText }).eq('id', lessonId);
+        if (error) alert("Failed to update lesson");
+        else {
+            showToast("Lesson updated");
+            this.loadAutoTrainerData();
+        }
+    },
+
+    discardLesson: async function(lessonId) {
+        if(!confirm("Discard this suggested lesson?")) return;
+        const { error } = await supabase.from('business_lessons').delete().eq('id', lessonId);
+        if (!error) this.loadAutoTrainerData();
+    },
+
+    // --- GOLDENS LIBRARY BUTTONS ---
+    addGolden: async function() {
+        const businessId = document.getElementById('ai-business-selector').value;
+        if (!businessId) return alert("Select a business first.");
+        const intentName = prompt("Enter a unique Intent Name (e.g., 'refund_policy'):");
+        if (!intentName) return;
+        const trigger = prompt("Enter an example user trigger (e.g., 'I want my money back'):");
+        const logic = prompt("Enter the Perfect Logic the AI should follow:");
+        if (intentName && logic) {
+            const { error } = await supabase.from('eval_goldens').insert({
+                business_id: businessId,
+                intent_name: intentName.toLowerCase().replace(/\s+/g, '_'),
+                user_prompt_template: `["${trigger}"]`,
+                perfect_answer_logic: logic,
+                is_human_blessed: true
+            });
+            if (error) alert("Error adding golden: " + error.message);
+            else {
+                showToast("Golden Rule Added");
+                this.loadAutoTrainerData();
+            }
+        }
+    },
+
+    editGolden: async function(goldenId, currentLogic) {
+        const newLogic = prompt("Update the Perfect Logic for this Intent:", currentLogic);
+        if (!newLogic) return;
+        const { error } = await supabase.from('eval_goldens').update({ perfect_answer_logic: newLogic }).eq('id', goldenId);
+        if (!error) {
+            showToast("Golden Rule Updated");
+            this.loadAutoTrainerData();
+        }
+    },
+
+    // --- ANOMALIES & RADAR BUTTONS ---
+    forceScan: async function() {
+        const businessId = document.getElementById('ai-business-selector').value || "all";
+        const btn = document.querySelector('button[onclick="aiManager.forceScan()"]');
+        const originalText = btn ? btn.innerHTML : '';
+        if (btn) { btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i> Scanning...`; btn.disabled = true; }
+        try {
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/daily-harvester`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ businessId: businessId, targetDate: new Date().toISOString().split('T')[0] })
+            });
+            if (!response.ok) throw new Error("Harvester failed");
+            showToast("Harvester scan complete!");
+            this.loadAutoTrainerData();
+        } catch (err) {
+            console.error(err);
+            alert("Scan failed. Check Edge Function logs.");
+        } finally {
+            if (btn) { btn.innerHTML = originalText; btn.disabled = false; }
+        }
+    },
+
+    convertAnomalyToGolden: async function(anomalyId, businessId, messageText) {
+        const intentName = prompt("Convert this anomaly to a Golden Rule.\nEnter an Intent Name for this query:", "custom_intent");
+        if (!intentName) return;
+        const logic = prompt("How should the AI perfectly respond to this?", "Consult the admin.");
+        if (!logic) return;
+        const { error: insertErr } = await supabase.from('eval_goldens').insert({
+            business_id: businessId,
+            intent_name: intentName.toLowerCase().replace(/\s+/g, '_'),
+            user_prompt_template: `["${messageText}"]`,
+            perfect_answer_logic: logic,
+            is_human_blessed: true
+        });
+        if (insertErr) {
+            alert("Failed to create Golden.");
+            return;
+        }
+        await supabase.from('ai_anomalies').delete().eq('id', anomalyId);
+        showToast("Anomaly converted to Golden Rule!");
+        this.loadAutoTrainerData();
+    },
+
+    // Wrapper: fetch anomaly details then delegate to convertAnomalyToGolden
+    createGoldenFromAnomaly: async function(anomalyId) {
+        try {
+            const { data, error } = await supabase.from('ai_anomalies').select('business_id, message_text').eq('id', anomalyId).single();
+            if (error || !data) {
+                console.error('Failed to load anomaly', error);
+                return alert('Failed to fetch anomaly details.');
+            }
+            return this.convertAnomalyToGolden(anomalyId, data.business_id, data.message_text);
+        } catch (e) {
+            console.error(e);
+            alert('Error converting anomaly to golden.');
+        }
+    }
+});
+
+// access the shared `window.aiManager` directly (no top-level alias)
+
 // --- 6. ROUTER ---
 const router = {
     navigate(target) {
@@ -930,7 +1291,15 @@ const router = {
             'ai-importer': 'AI Product Importer',
             'messaging': 'Messaging (CRM)' // Added Messaging Title
         };
-        document.getElementById('page-title').textContent = titles[target] || 'Portal';
+        const pageTitle = document.getElementById('page-title');
+        pageTitle.textContent = titles[target] || 'Portal';
+        
+        // Hide page title for AI training (has its own header)
+        if (target === 'ai-training') {
+            pageTitle.classList.add('hidden-force');
+        } else {
+            pageTitle.classList.remove('hidden-force');
+        }
 
         if(target === 'users') userManager.loadUsers();
         if(target === 'dashboard') dataManager.loadDashboard();
@@ -1495,3 +1864,200 @@ function closeMeetingDetails() {
         modal.classList.add('hidden');
     }, 300);
 }
+
+// --- AI PLAYGROUND / SIMULATOR ---
+
+window.aiPlayground = window.aiPlayground || {};
+Object.assign(window.aiPlayground, {
+    chatHistory: [],
+
+    switchView: function(view) {
+        document.getElementById('btn-pg-lab').className = `px-3 py-1 text-xs rounded font-medium ${view === 'lab' ? 'bg-[#2b2f3a] text-white shadow' : 'text-white/50 hover:text-white'}`;
+        document.getElementById('btn-pg-suggestions').className = `px-3 py-1 text-xs rounded font-medium ${view === 'suggestions' ? 'bg-[#2b2f3a] text-white shadow' : 'text-white/50 hover:text-white'}`;
+        // The inbox queue is handled by the left panel now, so we keep the simulator focused on the chat.
+    },
+
+    clearChat: function() {
+        this.chatHistory = [];
+        document.getElementById('playground-chat-feed').innerHTML = `
+            <div class="text-center mt-10 opacity-30">
+                <i class="fa-solid fa-flask text-4xl mb-3"></i>
+                <p class="text-xs">Type to test the AI.<br>No real messages are sent.</p>
+            </div>
+        `;
+    },
+
+    // --- RENDERING COMPONENTS ---
+    
+    appendUserMessage: function(text) {
+        const feed = document.getElementById('playground-chat-feed');
+        // Remove the placeholder if it exists
+        if (feed.querySelector('.fa-flask')) feed.innerHTML = '';
+        
+        feed.innerHTML += `
+            <div class="flex justify-end mb-3 fade-in">
+                <div class="bg-green-600 text-white text-sm py-2 px-3 rounded-l-xl rounded-tr-xl max-w-[85%] shadow">
+                    ${text}
+                </div>
+            </div>
+        `;
+        this.scrollToBottom();
+    },
+
+    appendSystemLog: function(icon, text, isTool = false) {
+        const feed = document.getElementById('playground-chat-feed');
+        feed.innerHTML += `
+            <div class="flex justify-center mb-2 fade-in">
+                <div class="bg-[#2b2f3a] text-white/70 text-[10px] py-1 px-3 rounded-full font-mono flex items-center gap-2 border border-[#373c47]">
+                    <i class="fa-solid ${icon} ${isTool ? 'text-purple-400 animate-pulse' : 'text-blue-400'}"></i> ${text}
+                </div>
+            </div>
+        `;
+        this.scrollToBottom();
+    },
+
+    appendAiMessage: function(text) {
+        const feed = document.getElementById('playground-chat-feed');
+        feed.innerHTML += `
+            <div class="flex justify-start mb-3 fade-in">
+                <div class="bg-[#232730] border border-[#2b2f3a] text-white text-sm py-2 px-3 rounded-r-xl rounded-tl-xl max-w-[85%] shadow">
+                    ${text.replace(/\n/g, '<br>')}
+                </div>
+            </div>
+        `;
+        this.scrollToBottom();
+    },
+
+    appendProductCard: function(product) {
+        const feed = document.getElementById('playground-chat-feed');
+        feed.innerHTML += `
+            <div class="flex justify-start mb-3 fade-in w-full">
+                <div class="bg-[#1a1d23] border border-[#2b2f3a] rounded-xl overflow-hidden shadow-lg w-[240px]">
+                    <div class="h-32 bg-[#0f1115] relative">
+                        <img src="${product.image || product.image_url}" class="w-full h-full object-cover opacity-90" onerror="this.src='https://via.placeholder.com/240x150?text=No+Image'">
+                        <div class="absolute top-2 right-2 bg-black/60 backdrop-blur text-white text-[10px] px-2 py-0.5 rounded font-bold">
+                            ${product.price}
+                        </div>
+                    </div>
+                    <div class="p-3">
+                        <h4 class="text-xs font-bold text-white truncate">${product.title}</h4>
+                        <div class="mt-3 flex gap-2">
+                            <button class="flex-1 bg-green-600 hover:bg-green-500 text-white text-[10px] py-1.5 rounded font-bold transition-colors">Buy Now</button>
+                            <button class="flex-1 bg-[#2b2f3a] hover:bg-[#373c47] text-white/80 text-[10px] py-1.5 rounded transition-colors">Details</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        this.scrollToBottom();
+    },
+
+    scrollToBottom: function() {
+        const feed = document.getElementById('playground-chat-feed');
+        feed.scrollTop = feed.scrollHeight;
+    },
+
+    showTyping: function() {
+        const feed = document.getElementById('playground-chat-feed');
+        feed.innerHTML += `
+            <div id="typing-indicator" class="flex justify-start mb-3 fade-in">
+                <div class="bg-[#232730] border border-[#2b2f3a] text-white/50 text-xs py-2 px-4 rounded-r-xl rounded-tl-xl flex gap-1 items-center shadow">
+                    <div class="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce"></div>
+                    <div class="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                    <div class="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                </div>
+            </div>
+        `;
+        this.scrollToBottom();
+    },
+
+    removeTyping: function() {
+        const indicator = document.getElementById('typing-indicator');
+        if (indicator) indicator.remove();
+    },
+
+    // --- CORE LOGIC ---
+
+    send: async function() {
+        const inputEl = document.getElementById('pg-input');
+        const text = inputEl.value.trim();
+        if (!text) return;
+
+        inputEl.value = '';
+        this.appendUserMessage(text);
+        this.chatHistory.push({ role: 'user', content: text });
+        
+        const businessId = document.getElementById('ai-business-selector')?.value || 'test_business';
+        const useUnsaved = document.getElementById('pg-use-unsaved')?.checked;
+
+        // Collect unsaved overrides if toggle is ON
+        let overrides = null;
+        if (useUnsaved) {
+            overrides = {
+                global: document.getElementById('global-system-prompt')?.value,
+                platform: document.getElementById('platform-system-prompt')?.value,
+                business: document.getElementById('business-system-prompt')?.value
+            };
+            this.appendSystemLog('fa-flask', 'Running with unsaved local overrides');
+        }
+
+        this.showTyping();
+
+        try {
+            // Hit the Brain Edge Function with SIMULATION flags
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/brain`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SUPABASE_KEY}` // Required if brain is protected
+                },
+                body: JSON.stringify({
+                    userId: "simulator_user",
+                    businessId: businessId,
+                    platform: "whatsapp",
+                    conversationId: "sim_" + Date.now(),
+                    text: text,
+                    // --- SIMULATION FLAGS ---
+                    is_simulation: true, 
+                    overrides: overrides,
+                    history: this.chatHistory // Pass short history to keep context
+                })
+            });
+
+            this.removeTyping();
+
+            if (!response.ok) throw new Error(`Server error: ${response.status}`);
+            
+            // The simulation backend should return an array of "events" that happened
+            const result = await response.json();
+
+            if (result.events && Array.isArray(result.events)) {
+                for (const event of result.events) {
+                    if (event.type === 'tool_call') {
+                        this.appendSystemLog('fa-microchip', `Calling Tool: ${event.name}`, true);
+                    } 
+                    else if (event.type === 'product_card') {
+                        this.appendProductCard(event.data);
+                    } 
+                    else if (event.type === 'text') {
+                        this.appendAiMessage(event.text);
+                        this.chatHistory.push({ role: 'assistant', content: event.text });
+                    }
+                }
+            } else if (result.reply) {
+                // Fallback for simple text response
+                this.appendAiMessage(result.reply);
+                this.chatHistory.push({ role: 'assistant', content: result.reply });
+            } else {
+                this.appendSystemLog('fa-triangle-exclamation', 'Simulation returned unknown format');
+            }
+
+        } catch (err) {
+            this.removeTyping();
+            console.error("Simulation Error:", err);
+            this.appendSystemLog('fa-triangle-exclamation', `Error: ${err.message}`);
+        }
+    }
+});
+
+// access the shared `window.aiPlayground` directly (no top-level alias)

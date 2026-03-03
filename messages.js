@@ -42,6 +42,35 @@ function resolveBusinessId() {
     return DEFAULT_BIZ;
 }
 
+    // Global wrapper so HTML can call `closeMobileChat()` directly
+    function closeMobileChat() {
+        try {
+            if (window.crm && typeof window.crm.closeMobileChat === 'function') {
+                window.crm.closeMobileChat();
+                return;
+            }
+            const win = document.getElementById('crm-chat-window');
+            const list = document.getElementById('crm-chat-list-panel');
+            if (win) win.classList.add('hidden');
+            if (list) list.classList.remove('hidden');
+            crmStore.activeChatId = null;
+        } catch (e) { console.warn('closeMobileChat global error', e); }
+    }
+
+    // Ensure native back button closes the chat when a chat state was pushed
+    window.addEventListener('popstate', function (e) {
+        try {
+            const state = history.state;
+            if (!state || !state.chatOpen) {
+                const win = document.getElementById('crm-chat-window');
+                const list = document.getElementById('crm-chat-list-panel');
+                if (win) win.classList.add('hidden');
+                if (list) list.classList.remove('hidden');
+                crmStore.activeChatId = null;
+            }
+        } catch (err) { console.warn('popstate handler error', err); }
+    });
+
 const bizId = resolveBusinessId();
 
 // Safety check: Ensure the script waits for Supabase to be initialized from index.html
@@ -385,73 +414,93 @@ const crm = {
 
     // Render the Right Sidebar with contact info, deals, and notes
     renderRightSidebar(contact, deals = []) {
-        // 1. Basic Info
-        document.getElementById('sidebar-name').innerText = contact.name || contact.phone || "Unknown";
-        document.getElementById('sidebar-phone').innerText = contact.phone || "--";
-        
-        // Initials
-        const name = contact.name || "U";
-        document.getElementById('sidebar-avatar').innerText = name.substring(0, 2).toUpperCase();
+        try {
+            // 1. Basic Info
+            document.getElementById('sidebar-name').innerText = contact.name || contact.phone || "Unknown";
+            document.getElementById('sidebar-phone').innerText = contact.phone || "--";
+            
+            // Initials
+            const name = contact.name || "U";
+            document.getElementById('sidebar-avatar').innerText = name.substring(0, 2).toUpperCase();
 
-        // Platform Badge (Show if it's WhatsApp)
-        const platformBadge = document.getElementById('sidebar-platform');
-        if (contact.platform === 'whatsapp') {
-            platformBadge.classList.remove('hidden');
-            platformBadge.innerText = 'WHATSAPP';
-            platformBadge.className = "mt-2 px-2 py-0.5 rounded text-[10px] font-bold bg-green-500/20 text-green-400 uppercase tracking-wider";
-        } else {
-            platformBadge.classList.add('hidden');
-        }
+            // Platform Badge (Show if it's WhatsApp)
+            const platformBadge = document.getElementById('sidebar-platform');
+            if (contact.platform === 'whatsapp') {
+                platformBadge.classList.remove('hidden');
+                platformBadge.innerText = 'WHATSAPP';
+                platformBadge.className = "mt-2 px-2 py-0.5 rounded text-[10px] font-bold bg-green-500/20 text-green-400 uppercase tracking-wider";
+            } else {
+                platformBadge.classList.add('hidden');
+            }
 
-        // 2. AI NOTES (Populate from DB)
-        // Assuming contact has a column 'ai_summary' or 'notes'
-        const notesField = document.getElementById('sidebar-notes');
-        notesField.value = contact.notes || contact.ai_summary || ""; 
-        // Store contact ID on the element for saving later
-        notesField.dataset.contactId = contact.id; 
+            // 2. BRAIN SUMMARY (The "Current Narrative")
+            const summaryContainer = document.getElementById('sidebar-ai-summary');
+            if (summaryContainer) {
+                const summary = contact?.ai_summary || contact?.last_summary || contact?.summary;
+                summaryContainer.innerHTML = summary ? 
+                    `<div class="bg-[#1a1d23] border border-[#2b2f3a] rounded-xl p-3 mb-4">
+                        <div class="flex items-center gap-1 mb-2 font-bold uppercase text-[10px] text-blue-400">
+                            <i class="fas fa-brain"></i> Brain Summary
+                        </div>
+                        <p class="text-xs text-white/70 leading-relaxed">${summary}</p>
+                    </div>` : '';
+            }
 
-        // 3. RENDER CART / DEALS (The New Logic)
-        const cartContainer = document.getElementById('sidebar-cart-container');
-        cartContainer.innerHTML = ''; // Clear previous
+            // 3. PERMANENT NOTES (From existing notes field)
+            const notesField = document.getElementById('sidebar-notes');
+            if (notesField) {
+                notesField.value = contact.notes || contact.ai_summary || ""; 
+                notesField.dataset.contactId = contact.id; 
+            }
 
-        if (deals && deals.length > 0) {
-            deals.forEach(deal => {
-                const dealEl = document.createElement('div');
-                dealEl.className = "flex items-start gap-3 mb-3 pb-3 border-b border-white/5 last:border-0 last:mb-0 last:pb-0";
-                
-                // Format currency
-                const price = deal.amount ? parseFloat(deal.amount).toFixed(2) : '0.00';
-                
-                dealEl.innerHTML = `
-                    <div class="mt-1 w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
-                    <div>
-                        <p class="text-sm font-medium text-white">${deal.deal_name || 'Interested Product'}</p>
-                        <p class="text-xs text-white/50 capitalize">
-                            ${deal.stage.replace('_', ' ') || 'New Lead'} • KES ${price}
-                        </p>
-                    </div>
-                `;
-                cartContainer.appendChild(dealEl);
-            });
-        } else {
-            // Empty State - AI Suggestion Placeholder
-            cartContainer.innerHTML = `
-                <div class="text-center py-2">
-                    <i class="fa-solid fa-cart-shopping text-white/10 text-xl mb-2"></i>
-                    <p class="text-white/30 text-xs">No active deals.</p>
-                    <p class="text-white/20 text-[10px] mt-1">AI will auto-add items here based on chat.</p>
-                </div>
-            `;
-        }
+            // 4. RENDER CART / DEALS
+            const cartContainer = document.getElementById('sidebar-cart-container');
+            if (cartContainer) {
+                cartContainer.innerHTML = ''; // Clear previous
 
-        // 4. Tags (render empty for now - can be populated from contact.tags)
-        const tagsContainer = document.getElementById('sidebar-tags');
-        if (contact.tags && contact.tags.length > 0) {
-            tagsContainer.innerHTML = contact.tags.map(tag => 
-                `<span class="bg-white/5 border border-white/10 px-2 py-1 rounded text-xs text-white/70">${tag}</span>`
-            ).join('');
-        } else {
-            tagsContainer.innerHTML = '<p class="text-white/30 text-xs">No tags yet</p>';
+                if (deals && deals.length > 0) {
+                    deals.forEach(deal => {
+                        const dealEl = document.createElement('div');
+                        dealEl.className = "flex items-start gap-3 mb-3 pb-3 border-b border-white/5 last:border-0 last:mb-0 last:pb-0";
+                        
+                        // Format currency
+                        const price = deal.amount ? parseFloat(deal.amount).toFixed(2) : '0.00';
+                        
+                        dealEl.innerHTML = `
+                            <div class="mt-1 w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
+                            <div class="flex-1">
+                                <p class="text-sm font-medium text-white">${deal.deal_name || 'Interested Product'}</p>
+                                <p class="text-xs text-white/50 capitalize">
+                                    <span class="inline-block px-1.5 py-0.5 rounded bg-green-500/10 text-green-400 text-[10px]">${deal.stage?.replace('_', ' ') || 'New Lead'}</span>
+                                    <span class="ml-1">KES ${price}</span>
+                                </p>
+                            </div>
+                        `;
+                        cartContainer.appendChild(dealEl);
+                    });
+                } else {
+                    cartContainer.innerHTML = `
+                        <div class="text-center py-4">
+                            <i class="fa-solid fa-cart-shopping text-white/10 text-xl mb-2"></i>
+                            <p class="text-white/30 text-xs">No active deals.</p>
+                        </div>
+                    `;
+                }
+            }
+
+            // 5. Tags
+            const tagsContainer = document.getElementById('sidebar-tags');
+            if (tagsContainer) {
+                if (contact.tags && contact.tags.length > 0) {
+                    tagsContainer.innerHTML = contact.tags.map(tag => 
+                        `<span class="bg-white/5 border border-white/10 px-2 py-1 rounded text-xs text-white/70">${tag}</span>`
+                    ).join('');
+                } else {
+                    tagsContainer.innerHTML = '<p class="text-white/30 text-xs">No tags yet</p>';
+                }
+            }
+        } catch (e) {
+            console.error("Error rendering right sidebar:", e);
         }
     },
 
@@ -479,6 +528,18 @@ const crm = {
                 container.innerHTML = `<div class="text-center text-white/20 mt-10">No messages yet.</div>`;
                 return;
             }
+
+            // Sort messages by created_at timestamp in ascending order (oldest first)
+            msgs.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+            // DEBUG: Log all messages to see their roles
+            console.log('Messages to render:', msgs.map(m => ({ 
+                id: m.id, 
+                role: m.role, 
+                direction: m.direction, 
+                content: typeof m.content === 'string' ? m.content.substring(0, 30) : m.content?.text?.substring(0, 30),
+                created_at: m.created_at
+            })));
 
             container.innerHTML = '';
             msgs.forEach((msg, idx) => {
@@ -587,6 +648,12 @@ const crm = {
         // 8. Reveal Mobile View
         document.getElementById('crm-chat-window').classList.remove('hidden');
         document.getElementById('crm-chat-list-panel').classList.add('hidden', 'md:flex');
+        // Push history state so the native back button can close the chat on mobile
+        try {
+            if (!history.state || !history.state.chatOpen) {
+                history.pushState({ chatOpen: true, convId: convId }, '');
+            }
+        } catch (e) { /* ignore */ }
     },
 
     // Open contact details modal and allow editing notes
@@ -733,6 +800,17 @@ const crm = {
                     </div>`;
             }).join('');
         }
+    },
+
+    // Close mobile chat UI and reveal chat list
+    closeMobileChat() {
+        try {
+            const win = document.getElementById('crm-chat-window');
+            const list = document.getElementById('crm-chat-list-panel');
+            if (win) win.classList.add('hidden');
+            if (list) list.classList.remove('hidden');
+            crmStore.activeChatId = null;
+        } catch (e) { console.warn('closeMobileChat error', e); }
     },
 
     // Handles clicking a Facebook/Instagram DM
@@ -1447,6 +1525,43 @@ window.addEventListener('popstate', () => {
     }
 });
 
+// Adjust typing bar when virtual keyboard appears (mobile)
+(function setupKeyboardHandling(){
+    try {
+        const typingBar = document.querySelector('#crm-chat-window .chat-typing-bar');
+        const messagesEl = document.getElementById('chat-messages');
+        if (!typingBar) return;
+
+        function resetBottom() {
+            typingBar.style.bottom = 'env(safe-area-inset-bottom)';
+        }
+
+        if (window.visualViewport) {
+            let lastKV = 0;
+            window.visualViewport.addEventListener('resize', () => {
+                try {
+                    const kv = Math.max(0, window.innerHeight - window.visualViewport.height);
+                    if (kv !== lastKV) {
+                        lastKV = kv;
+                        typingBar.style.bottom = (kv > 0 ? (kv + 8) + 'px' : 'env(safe-area-inset-bottom)');
+                        // ensure messages area has enough padding
+                        if (messagesEl) messagesEl.style.paddingBottom = (kv > 0 ? (kv + 96) + 'px' : '84px');
+                    }
+                } catch (e) { /* ignore */ }
+            });
+        } else {
+            // Fallback: reset on window resize
+            window.addEventListener('resize', resetBottom);
+        }
+
+        // When the input gains focus, scroll messages to bottom
+        const input = document.getElementById('message-input');
+        if (input && messagesEl) {
+            input.addEventListener('focus', () => { try { messagesEl.scrollTop = messagesEl.scrollHeight; } catch(e){} });
+        }
+    } catch (e) { console.warn('keyboard handling setup error', e); }
+})();
+
 // Fallback for Android physical back button (hardware back)
 document.addEventListener('backbutton', () => {
     if (crmStore.activeChatId && window.innerWidth < 768) {
@@ -1476,7 +1591,8 @@ if (profileIconPlaceholder) {
    AI MANAGER & PLAYGROUND 
    ========================================================================== */
 
-window.aiManager = {
+window.aiManager = window.aiManager || {};
+Object.assign(window.aiManager, {
     currentTab: 'global',
     currentPlatform: 'whatsapp', // Default
 
@@ -1658,9 +1774,10 @@ window.aiManager = {
         btn.innerHTML = '<i class="fa-solid fa-check"></i> Saved';
         setTimeout(() => { btn.innerHTML = originalHtml; }, 2000);
     }
-};
+});
 
-window.aiPlayground = {
+window.aiPlayground = window.aiPlayground || {};
+Object.assign(window.aiPlayground, {
     currentView: 'lab',
     activeSubscription: null, // Tracks the realtime listener
     selectedPlatform: 'whatsapp', // Default platform
@@ -1963,7 +2080,7 @@ window.aiPlayground = {
             }
         }
     }
-};
+});
 
 // Global function for Save Notes button in right sidebar
 async function saveContactNotes() {
@@ -2448,7 +2565,7 @@ function renderMessage(msg) {
     if (!chatContainer) return;
 
     // 1. Determine Sender & Style
-    const isMe = msg.role === 'agent' || msg.role === 'admin' || msg.direction === 'out';
+    const isMe = msg.role === 'agent' || msg.role === 'admin' || msg.role === 'ai' || msg.direction === 'out';
     const isSystem = msg.role === 'system' || msg.is_internal;
 
     // 2. Handle System Messages (Center Pill)
@@ -3014,4 +3131,10 @@ async function resumeAI() {
     } catch (e) {
         console.error('resumeAI error:', e);
     }
+}
+// Add this anywhere in your <script> tags
+function closeMobileChat() {
+    document.getElementById('crm-chat-window').classList.add('hidden');
+    document.getElementById('crm-chat-list-panel').classList.remove('hidden');
+    document.getElementById('crm-chat-list-panel').classList.add('flex', 'w-full');
 }
