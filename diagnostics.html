@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <style>
         :root {
@@ -252,6 +253,25 @@
         }
 
     </style>
+
+<script>
+
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '1565468637846581');
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=1565468637846581&ev=PageView&noscript=1"
+/></noscript>
+<!-- End Meta Pixel Code -->
+
 </head>
 <body>
 
@@ -416,6 +436,11 @@
             }
         };
 
+        const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const sessionId = crypto.randomUUID();
+
         let currentStep = 0;
         let scores = { 1: 0, 2: 0, 3: 0, 4: 0 };
 
@@ -446,8 +471,26 @@
             });
         }
 
-        function selectOption(level) {
+        async function selectOption(level) {
             scores[level]++;
+
+            const currentQuestion = questions[currentStep];
+            const questionText = currentQuestion?.q || '';
+            const selectedOption = currentQuestion?.options?.find(o => o.level === level)?.text || '';
+
+            try {
+                await supabaseClient.from('diagnostics_results').insert([{
+                    session_id: sessionId,
+                    question_index: currentStep,
+                    question_text: questionText,
+                    selected_answer: selectedOption,
+                    maturity_level: level,
+                    created_at: new Date().toISOString()
+                }]);
+            } catch (error) {
+                console.error('Error saving progress:', error);
+            }
+
             currentStep++;
             if (currentStep < questions.length) {
                 renderQuestion();
@@ -476,14 +519,29 @@
             document.getElementById('screen-result').classList.add('active');
             window.scrollTo(0,0);
         }
-        function submitLead() {
-    // You can add your Supabase/Backend logic here later
-    
-    // Switch to the thank you screen
-    document.getElementById('screen-result').classList.remove('active');
-    document.getElementById('screen-thanks').classList.add('active');
-    window.scrollTo(0,0);
-}
+
+        async function submitLead() {
+            const name = document.querySelector('input[placeholder="Your Name"]').value.trim();
+            const phone = document.querySelector('input[placeholder="WhatsApp Number"]').value.trim();
+
+            if (!name || !phone) {
+                alert('Please provide your details so we can send your roadmap.');
+                return;
+            }
+
+            try {
+                await supabaseClient
+                    .from('diagnostics_results')
+                    .update({ user_name: name, phone_number: phone })
+                    .eq('session_id', sessionId);
+            } catch (error) {
+                console.error('Error updating lead info:', error);
+            }
+
+            document.getElementById('screen-result').classList.remove('active');
+            document.getElementById('screen-thanks').classList.add('active');
+            window.scrollTo(0,0);
+        }
     </script>
 </body>
 </html>
