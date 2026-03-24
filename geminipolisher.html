@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0f1115; color: white; }
@@ -38,7 +38,7 @@
         <div class="flex gap-2 items-center">
             <div class="flex flex-col items-end mr-4">
                 <label class="text-[10px] text-white/30 uppercase font-bold">Safe Delay</label>
-                <input type="number" id="rateLimitDelay" value="10" class="input-dark px-2 py-1 rounded text-center w-16 text-sm text-green-400 font-bold">
+                <input type="number" id="rateLimitDelay" value="1" class="input-dark px-2 py-1 rounded text-center w-16 text-sm text-green-400 font-bold">
             </div>
             <input type="text" id="businessId" value="kisasacraft66" placeholder="Business ID" class="input-dark px-3 py-2 rounded-lg text-sm w-40">
             <button onclick="loadQueue()" class="bg-[#2b2f3a] hover:bg-white/10 text-white px-4 py-2 rounded-lg text-sm font-medium border border-white/5">
@@ -91,9 +91,52 @@
         // --- KEYS ---
         const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
-        const FUNCTION_URL = "https://xgtnbxdxbbywvzrttixf.supabase.co/functions/v1/enrich-products";
+        const EDGE_FUNCTION_BASE = "https://xgtnbxdxbbywvzrttixf.supabase.co/functions/v1/enrich-products";
 
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // --- EDGE FUNCTION HELPERS ---
+        async function analyzeImage(imageBase64) {
+            try {
+                const res = await fetch(`${EDGE_FUNCTION_BASE}/analyze-image`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ image_base64: imageBase64 })
+                });
+
+                if (!res.ok) throw new Error(`API Error ${res.status}`);
+
+                const data = await res.json();
+                console.log("🟢 Image Analysis Result:", data.new_data);
+                return data.new_data;
+            } catch (err) {
+                console.error("❌ analyzeImage error:", err);
+                return null;
+            }
+        }
+
+        async function saveAndEmbedProduct(productId, metadata) {
+            try {
+                const res = await fetch(`${EDGE_FUNCTION_BASE}/save-and-embed`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ 
+                        product_id: productId, 
+                        business_id: document.getElementById('businessId').value,
+                        metadata 
+                    })
+                });
+
+                if (!res.ok) throw new Error(`API Error ${res.status}`);
+
+                const data = await res.json();
+                console.log("🟢 Product Save + Embedding Result:", data);
+                return data;
+            } catch (err) {
+                console.error("❌ saveAndEmbedProduct error:", err);
+                return null;
+            }
+        }
         
         let queue = [];
         let isRunning = false;
@@ -186,7 +229,17 @@
         async function processNext() {
             if (!isRunning) return;
             if (currentIndex >= queue.length) {
-                alert("Batch Complete!");
+                // Check if there might be more products to process
+                if (queue.length === 50) {
+                    console.log("Reloading queue for more products...");
+                    await loadQueue();
+                    if (queue.length > 0) {
+                        currentIndex = 0;
+                        processNext();
+                        return;
+                    }
+                }
+                alert("All products polished! 🎉");
                 stopWorker();
                 return;
             }
@@ -208,39 +261,23 @@
                 statusEl.innerText = "AI Processing...";
                 statusEl.className = "text-[10px] text-purple-400 animate-pulse";
 
-                // B. Send to API
-                const apiRes = await fetch(FUNCTION_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image_base64: base64Data })
-                });
-
-                // C. Handle Rate Limit (429) - THE FIX
-                if (apiRes.status === 429) {
-                    statusEl.innerText = "Rate Limited (429)";
-                    statusEl.className = "text-[10px] text-yellow-500 font-bold";
-                    
-                    // COUNTDOWN TIMER (60 Seconds)
-                    for (let i = 60; i > 0; i--) {
-                        if (!isRunning) return;
-                        statusEl.innerText = `Cooling down... ${i}s`;
-                        await new Promise(r => setTimeout(r, 1000));
-                    }
-                    
-                    statusEl.innerText = "Retrying...";
-                    processNext(); // Retry same item
-                    return;
+                // B. Send to /analyze-image endpoint
+                const metadata = await analyzeImage(base64Data);
+                if (!metadata) {
+                    throw new Error("Image analysis returned no data");
                 }
 
-                if (!apiRes.ok) throw new Error("API Error " + apiRes.status);
-
-                const data = await apiRes.json();
-                
+                // C. Display results
                 statusEl.innerText = "Done";
                 statusEl.className = "text-[10px] text-green-500";
                 row.style.borderColor = "#22c55e";
                 
-                addReviewCard(item.id, item.title, data.new_data, item.images[0]);
+                console.log("[POLISHER] Metadata for product", item.id, metadata);
+                addReviewCard(item.id, item.title, metadata, item.images[0]);
+                
+                // Auto-save the product
+                await saveProduct(item.id);
+                
                 currentIndex++;
 
                 // D. STANDARD COOLDOWN
@@ -270,6 +307,8 @@
             const card = document.createElement('div');
             card.id = `card-${id}`;
             card.className = "bg-[#0f1115] border border-[#2b2f3a] rounded-xl p-4 fade-in flex gap-4";
+            // Store original AI data for saving
+            card.dataset.originalMetadata = JSON.stringify(aiData);
             card.innerHTML = `
                 <div class="w-20 h-20 bg-[#1a1d23] rounded overflow-hidden shrink-0">
                     <img src="${imgUrl}" class="w-full h-full object-cover">
@@ -281,10 +320,18 @@
                             Save
                         </button>
                     </div>
-                    <input type="text" id="title-${id}" value="${aiData.title.replace(/"/g, '&quot;')}" class="w-full bg-transparent border-b border-[#2b2f3a] focus:border-green-500 text-white text-xs font-bold py-1 outline-none">
-                    <div class="grid grid-cols-2 gap-2">
-                        <textarea id="short-${id}" class="bg-[#1a1d23] rounded p-1 text-[10px] text-white/70 h-16 resize-none outline-none border border-transparent focus:border-green-500">${aiData.short_desc}</textarea>
-                        <textarea id="long-${id}" class="bg-[#1a1d23] rounded p-1 text-[10px] text-white/70 h-16 resize-none outline-none border border-transparent focus:border-green-500">${aiData.long_desc}</textarea>
+                    <input type="text" id="title-${id}" value="${(aiData?.title || '(no title)').replace(/"/g, '&quot;')}" class="w-full bg-transparent border-b border-[#2b2f3a] focus:border-green-500 text-white text-xs font-bold py-1 outline-none">
+                    <div class="text-[10px] text-white/50 space-y-1">
+                        <div><strong>Colors:</strong> ${(aiData?.text_colors || []).join(', ') || 'N/A'}</div>
+                        <div><strong>Materials:</strong> ${(aiData?.materials || []).join(', ') || 'N/A'}</div>
+                        <div><strong>Patterns:</strong> ${(aiData?.patterns || []).join(', ') || 'N/A'}</div>
+                        <div><strong>Type:</strong> ${aiData?.product_type || 'N/A'}</div>
+                        <div><strong>Style:</strong> ${aiData?.style || 'N/A'}</div>
+                        <div><strong>Occasion:</strong> ${(aiData?.occasion || []).join(', ') || 'N/A'}</div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mt-2">
+                        <textarea id="short-${id}" class="bg-[#1a1d23] rounded p-1 text-[10px] text-white/70 h-16 resize-none outline-none border border-transparent focus:border-green-500">${aiData?.short_desc || '(no short description)'}</textarea>
+                        <textarea id="long-${id}" class="bg-[#1a1d23] rounded p-1 text-[10px] text-white/70 h-16 resize-none outline-none border border-transparent focus:border-green-500">${aiData?.long_desc || '(no long description)'}</textarea>
                     </div>
                 </div>
             `;
@@ -295,18 +342,44 @@
         window.saveProduct = async (id) => {
             const btn = document.getElementById(`btn-${id}`);
             btn.innerText = "...";
-            const { error } = await supabase.from('products').update({
+            
+            // Gather ALL metadata from form fields (including AI-extracted data)
+            const metadata = {
                 title: document.getElementById(`title-${id}`).value,
-                description_short: document.getElementById(`short-${id}`).value,
-                description_long: document.getElementById(`long-${id}`).value,
-                needs_polish: false,
-                updated_at: new Date().toISOString()
-            }).eq('id', id);
+                short_desc: document.getElementById(`short-${id}`).value,
+                long_desc: document.getElementById(`long-${id}`).value,
+                // Include AI-extracted fields (these should be preserved from the original analysis)
+                text_colors: [], // Will be populated from original data
+                materials: [],
+                patterns: [],
+                product_type: '',
+                style: '',
+                occasion: []
+            };
 
-            if (!error) {
+            // Try to get original AI data from the card's data attribute or global storage
+            // For now, we'll need to store the original metadata when creating the card
+            const card = document.getElementById(`card-${id}`);
+            if (card && card.dataset.originalMetadata) {
+                const original = JSON.parse(card.dataset.originalMetadata);
+                metadata.text_colors = original.text_colors || [];
+                metadata.materials = original.materials || [];
+                metadata.patterns = original.patterns || [];
+                metadata.product_type = original.product_type || '';
+                metadata.style = original.style || '';
+                metadata.occasion = original.occasion || [];
+            }
+
+            // Call /save-and-embed endpoint
+            const result = await saveAndEmbedProduct(id, metadata);
+
+            if (result) {
                 btn.className = "px-3 py-1 bg-green-600 text-white text-xs rounded cursor-default";
                 btn.innerText = "Saved";
                 btn.onclick = null;
+            } else {
+                btn.innerText = "Failed";
+                btn.className = "px-3 py-1 bg-red-600 text-white text-xs rounded";
             }
         };
 
@@ -316,9 +389,10 @@
                 if (btn.onclick) {
                     const id = btn.id.replace('btn-', '');
                     await window.saveProduct(id);
-                    await new Promise(r => setTimeout(r, 200));
+                    await new Promise(r => setTimeout(r, 500)); // Spacing between saves
                 }
             }
+            alert("All products saved with embeddings!");
         };
     </script>
 </body>

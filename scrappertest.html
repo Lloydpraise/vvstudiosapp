@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <title>VVStudios Scraper Test</title>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-6">
+    <div class="max-w-md w-full bg-gray-800 rounded-xl p-8 shadow-2xl border border-gray-700">
+        <h2 class="text-2xl font-bold mb-2">Plug & Play Onboarding</h2>
+        <p class="text-gray-400 mb-6 text-sm">Input a link to auto-generate your catalog.</p>
+
+        <div class="space-y-4">
+            <input id="urlInput" type="text" placeholder="https://jiji.co.ke/shop/example" 
+                class="w-full p-3 rounded bg-gray-700 border border-gray-600 focus:border-blue-500 outline-none">
+            
+            <button onclick="startScrape()" id="btn"
+                class="w-full bg-blue-600 hover:bg-blue-700 p-3 rounded font-bold transition-all">
+                Start 3-Min Onboarding
+            </button>
+        </div>
+
+        <div id="statusBox" class="mt-6 p-4 rounded bg-gray-900 border border-gray-700 hidden">
+            <p id="statusMsg" class="text-sm font-medium text-blue-400"></p>
+            <div id="loader" class="mt-2 h-1 w-full bg-gray-800 overflow-hidden rounded">
+                <div class="h-full bg-blue-500 animate-pulse w-1/2"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. CONFIGURATION ---
+        const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
+
+        const scrappersupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function startScrape() {
+            const url = document.getElementById('urlInput').value;
+            const btn = document.getElementById('btn');
+            const statusBox = document.getElementById('statusBox');
+            const statusMsg = document.getElementById('statusMsg');
+
+            if (!url) return alert("Please enter a URL");
+
+            // --- 2. UI FEEDBACK ---
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            statusBox.classList.remove('hidden');
+            statusMsg.innerText = "🚀 Sending request to router...";
+
+            try {
+                // --- 3. CALL DISPATCHER ---
+                const res = await fetch(`${SUPABASE_URL}/functions/v1/onboarding_dispatch_router`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        url, 
+                        business_id: 'kisasacraft66', 
+                        phone_number: '254...' // Replace with test phone number
+                    })
+                });
+
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || "Failed to start job");
+
+                const job_id = data.job_id;
+                statusMsg.innerText = "⏳ Scraper is running... checking page content...";
+
+                // --- 4. POLLING LOGIC ---
+                const checkStatus = setInterval(async () => {
+                    const { data: job, error } = await scrappersupabase
+                        .from('onboarding_jobs')
+                        .select('status, error_message')
+                        .eq('id', job_id)
+                        .single();
+
+                    if (error) {
+                        console.error("Polling error:", error);
+                        return;
+                    }
+
+                    if (job.status === 'raw_data_captured') {
+                        clearInterval(checkStatus);
+                        statusMsg.innerText = "✅ Scrape verified! AI is now extracting products...";
+                        statusMsg.classList.add('text-green-400');
+                        document.getElementById('loader').classList.add('hidden');
+                    } else if (job.status === 'failed') {
+                        clearInterval(checkStatus);
+                        statusMsg.innerText = "❌ Failed: " + (job.error_message || "Unknown error");
+                        statusMsg.classList.add('text-red-400');
+                        btn.disabled = false;
+                        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    }
+                }, 3000); // Check every 3 seconds
+
+            } catch (err) {
+                console.error(err);
+                statusMsg.innerText = "❌ Error: " + err.message;
+                statusMsg.classList.add('text-red-400');
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+    </script>
+</body>
+</html>

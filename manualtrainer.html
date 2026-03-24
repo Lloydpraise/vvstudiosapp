@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Training Dashboard | Kisasa Craft</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* Dark Theme Reset & Basics */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { display: flex; height: 100vh; background-color: #0b141a; overflow: hidden; color: #e9edef; }
+
+        /* 3-Pane Layout */
+        .left-pane { width: 350px; background: #111b21; border-right: 1px solid #222d34; display: flex; flex-direction: column; z-index: 10; }
+        .center-pane { flex: 1; display: flex; flex-direction: column; background: #0b141a; position: relative; }
+        .right-pane { width: 350px; background: #111b21; border-left: 1px solid #222d34; display: flex; flex-direction: column; padding: 20px; overflow-y: auto; z-index: 10; }
+
+        /* Left Pane: Conversations */
+        .pane-header { padding: 15px 20px; background: #202c33; font-weight: bold; border-bottom: 1px solid #222d34; color: #e9edef; }
+        .conv-list { flex: 1; overflow-y: auto; }
+        .conv-item { padding: 15px 20px; border-bottom: 1px solid #222d34; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .conv-item:hover { background: #202c33; }
+        .conv-active { background: #2a3942; }
+        .conv-details { display: flex; flex-direction: column; overflow: hidden; }
+        .conv-phone { font-weight: 500; color: #e9edef; }
+        .conv-preview { font-size: 0.85em; color: #8696a0; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px; }
+        .tick { color: #00a884; font-size: 1.2em; }
+
+        /* Center Pane: Messages */
+        .chat-area { flex: 1; padding: 40px 10%; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+
+        /* User Message */
+        .msg-user { align-self: flex-start; background: #202c33; padding: 12px 16px; border-radius: 8px; max-width: 65%; color: #e9edef; }
+        .msg-meta { font-size: 0.7em; color: #8696a0; text-align: right; margin-top: 5px; }
+
+        /* AI Training Group */
+        .msg-ai-group { align-self: flex-end; max-width: 75%; display: flex; flex-direction: column; gap: 8px; width: 100%; align-items: flex-end; }
+        .msg-ai-original { background: #005c4b; padding: 8px 12px; border-radius: 8px; font-size: 0.85em; color: #e9edef; opacity: 0.9; width: fit-content; }
+        .msg-ai-input { width: 100%; min-height: 100px; padding: 12px; border: 2px solid #00a884; border-radius: 8px; resize: vertical; font-size: 1em; outline: none; background: #2a3942; color: #e9edef; }
+        .msg-ai-input:focus { border-color: #00a884; background: #202c33; }
+        .msg-ai-input::placeholder { color: #8696a0; }
+
+        /* Bottom Save Button Area */
+        .save-area { padding: 20px; background: #202c33; display: flex; justify-content: center; border-top: 1px solid #222d34; }
+        .btn-save { background: #00a884; color: #111b21; border: none; padding: 15px 40px; font-size: 1.2em; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; max-width: 500px; transition: background 0.2s; }
+        .btn-save:hover { background: #008f6f; }
+        .btn-save:disabled { background: #3e4a50; color: #8696a0; cursor: not-allowed; }
+
+        /* Right Pane Details */
+        .info-section { margin-bottom: 25px; }
+        .info-section h3 { font-size: 0.85em; color: #00a884; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .data-row { margin-bottom: 8px; font-size: 0.9em; color: #e9edef; }
+        .json-box { background: #0b141a; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 0.85em; white-space: pre-wrap; word-wrap: break-word; color: #56b6c2; border: 1px solid #222d34; max-height: 300px; overflow-y: auto; }
+        
+        /* Loading state */
+        .loading { text-align: center; color: #8696a0; padding: 20px; font-style: italic; }
+    </style>
+</head>
+<body>
+
+    <div class="left-pane">
+        <div class="pane-header">Conversations</div>
+        <div class="conv-list" id="convList">
+            <div class="loading">Loading conversations...</div>
+        </div>
+    </div>
+
+    <div class="center-pane">
+        <div class="pane-header" id="activeChatHeader">Select a conversation</div>
+        <div class="chat-area" id="chatArea">
+            <div class="loading">Messages will appear here</div>
+        </div>
+        <div class="save-area">
+            <button class="btn-save" id="saveTrainingBtn" disabled>SAVE TRAINING</button>
+        </div>
+    </div>
+
+    <div class="right-pane">
+        <div class="pane-header" style="margin: -20px -20px 20px -20px;">Context</div>
+        <div class="info-section">
+            <h3>Contact Info</h3>
+            <div id="rightContactInfo" class="data-row">No active chat</div>
+        </div>
+        <div class="info-section">
+            <h3>Cart State</h3>
+            <div class="json-box" id="cartStateDisplay">[]</div>
+        </div>
+        <div class="info-section">
+            <h3>AI Notes</h3>
+            <div class="json-box" id="aiNotesDisplay"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. SETUP SUPABASE ---
+        // REPLACE THESE WITH YOUR ACTUAL SUPABASE CREDENTIALS
+        const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
+
+        let supabasetrainer = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // State variables
+        let activeConversationId = null;
+        let conversationsData = [];
+        let contactsData = {};  // Map of contact_id -> contact data
+        let trainedConvIds = new Set();
+
+        // --- 2. FETCH CONVERSATIONS (LEFT PANE) ---
+        async function fetchConversations() {
+            // Get trained conversations first to show the tick
+            const { data: trained } = await supabasetrainer.from('manual_trainings').select('conversation_id');
+            if (trained) {
+                trainedConvIds = new Set(trained.map(t => t.conversation_id));
+            }
+
+            // Fetch all contacts first
+            const { data: contacts, error: contactsError } = await supabasetrainer
+                .from('contacts')
+                .select('*');
+            
+            if (contacts) {
+                contacts.forEach(c => {
+                    contactsData[c.id] = c;
+                });
+            }
+
+            // Get all conversations
+            const { data: convs, error } = await supabasetrainer
+                .from('conversations')
+                .select('*')
+                .order('updated_at', { ascending: false })
+                .limit(50);
+
+            if (error) {
+                console.error("Error fetching conversations:", error);
+                return;
+            }
+
+            conversationsData = convs;
+            renderConversationList();
+        }
+
+        function renderConversationList() {
+            const listEl = document.getElementById('convList');
+            listEl.innerHTML = '';
+
+            conversationsData.forEach(conv => {
+                const contact = contactsData[conv.contact_id];
+                const displayName = contact ? `${contact.name} (${contact.phone})` : `Contact #${conv.contact_id}`;
+                const hasBeenTrained = trainedConvIds.has(conv.id);
+                
+                const item = document.createElement('div');
+                item.className = `conv-item ${conv.id === activeConversationId ? 'conv-active' : ''}`;
+                item.onclick = () => loadConversation(conv.id);
+
+                item.innerHTML = `
+                    <div class="conv-details">
+                        <span class="conv-phone">${displayName}</span>
+                        <span class="conv-preview">${conv.last_message_preview || 'No messages yet'}</span>
+                    </div>
+                    ${hasBeenTrained ? '<div class="tick">✅</div>' : ''}
+                `;
+                listEl.appendChild(item);
+            });
+        }
+
+        // --- 3. LOAD MESSAGES & CONTEXT (CENTER & RIGHT PANE) ---
+        async function loadConversation(convId) {
+            activeConversationId = convId;
+            renderConversationList(); // Update active styling
+            
+            const conv = conversationsData.find(c => c.id === convId);
+            const contact = contactsData[conv.contact_id];
+            const contactName = contact ? contact.name : 'Unknown';
+            const contactPhone = contact ? contact.phone : 'N/A';
+            const contactNotes = contact ? contact.notes : '';
+            
+            document.getElementById('activeChatHeader').innerText = `${contactName} (${contactPhone})`;
+            
+            // Populate Right Pane Context
+            document.getElementById('rightContactInfo').innerHTML = `
+                <strong>Name:</strong> ${contactName}<br>
+                <strong>Phone:</strong> ${contactPhone}<br>
+                <strong>Stage:</strong> ${conv.stage || 'N/A'}<br>
+                <strong>Status:</strong> ${conv.status}
+            `;
+            document.getElementById('cartStateDisplay').innerText = JSON.stringify(conv.cart_state, null, 2);
+            document.getElementById('aiNotesDisplay').innerText = contactNotes || 'No notes on file';
+
+            // Fetch messages for this conversation
+            const chatArea = document.getElementById('chatArea');
+            chatArea.innerHTML = '<div class="loading">Loading messages...</div>';
+            document.getElementById('saveTrainingBtn').disabled = true;
+
+            const { data: messages, error } = await supabasetrainer
+                .from('messages')
+                .select('*')
+                .eq('conversation_id', convId)
+                .order('created_at', { ascending: true });
+
+            if (error) {
+                console.error("Error fetching messages:", error);
+                chatArea.innerHTML = '<div class="loading">Error loading messages.</div>';
+                return;
+            }
+
+            // Also fetch existing trainings to pre-fill if you want to edit them
+            const { data: existingTrainings } = await supabasetrainer
+                .from('manual_trainings')
+                .select('*')
+                .eq('conversation_id', convId);
+            
+            const trainingMap = {};
+            if (existingTrainings) {
+                existingTrainings.forEach(t => {
+                    trainingMap[t.message_id] = {
+                        message: t.my_message || "",
+                        notes: t.my_notes || ""
+                    };
+                });
+            }
+
+            renderMessages(messages, trainingMap);
+        }
+
+        function renderMessages(messages, trainingMap) {
+            const chatArea = document.getElementById('chatArea');
+            chatArea.innerHTML = '';
+            let lastUserMessageText = "";
+
+            messages.forEach(msg => {
+                const timeStr = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const textContent = typeof msg.content === 'object' && msg.content !== null ? (msg.content.text || JSON.stringify(msg.content)) : msg.content;
+
+                if (msg.role === 'user') {
+                    lastUserMessageText = textContent;
+                    chatArea.innerHTML += `<div class="msg-user"><div>${textContent}</div><div class="msg-meta">${timeStr}</div></div>`;
+                } else if (msg.role === 'ai') {
+                    // Check if we have existing training data for this message
+                    const existing = trainingMap[msg.id] || { message: "", notes: "" };
+                    
+                    chatArea.innerHTML += `
+                        <div class="msg-ai-group">
+                            <div class="msg-ai-original">Original AI: ${textContent}</div>
+                            <textarea class="msg-ai-input" 
+                                data-msg-id="${msg.id}" 
+                                data-orig-ai="${textContent}" 
+                                data-last-user="${lastUserMessageText}" 
+                                placeholder="What should the AI have said?">${existing.message}</textarea>
+                            
+                            <textarea class="msg-notes-input" 
+                                style="width: 100%; min-height: 60px; margin-top: 5px; background: #1c2a33; border: 1px solid #8696a0; border-radius: 8px; color: #8696a0; padding: 10px; font-size: 0.85em;"
+                                placeholder="Notes: Why this response? (e.g. 'Push to checkout because size was confirmed')">${existing.notes}</textarea>
+                        </div>
+                    `;
+                }
+            });
+            chatArea.scrollTop = chatArea.scrollHeight;
+            document.getElementById('saveTrainingBtn').disabled = false;
+        }
+
+        // --- 4. SAVE TRAINING DATA ---
+        async function saveTrainingData() {
+            if (!activeConversationId) return;
+            
+            const btn = document.getElementById('saveTrainingBtn');
+            btn.innerText = "SAVING...";
+            btn.disabled = true;
+
+            const inputs = document.querySelectorAll('.msg-ai-input');
+            const recordsToUpsert = [];
+
+            inputs.forEach(input => {
+                const myMessage = input.value.trim();
+                // Find the specific notes textarea associated with this message
+                const myNotes = input.parentElement.querySelector('.msg-notes-input').value.trim();
+
+                if (myMessage !== "") {
+                    recordsToUpsert.push({
+                        conversation_id: activeConversationId,
+                        message_id: input.getAttribute('data-msg-id'),
+                        user_message: input.getAttribute('data-last-user'),
+                        ai_message: input.getAttribute('data-orig-ai'),
+                        my_message: myMessage,
+                        my_notes: myNotes,
+                        scouted: true
+                    });
+                }
+            });
+
+            if (recordsToUpsert.length > 0) {
+                const { error } = await supabasetrainer
+                    .from('manual_trainings')
+                    .upsert(recordsToUpsert, { onConflict: 'message_id' });
+
+                if (error) {
+                    console.error("Error saving training:", error);
+                    alert("Failed to save. Check console for errors.");
+                } else {
+                    trainedConvIds.add(activeConversationId);
+                    renderConversationList();
+                }
+            }
+            
+            btn.innerText = "SAVE TRAINING";
+            btn.disabled = false;
+        }
+
+        // Event Listeners
+        document.getElementById('saveTrainingBtn').addEventListener('click', saveTrainingData);
+
+        // Init
+        fetchConversations();
+    </script>
+</body>
+</html>

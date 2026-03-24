@@ -768,8 +768,8 @@ const crm = {
         const emptyState = document.getElementById(emptyStateId);
         if (!listContainer) return;
 
-        // Filter: Channel = platform AND Type = dm
-        const chats = crmStore.conversations.filter(c => c.channel === platform && c.type === 'dm');
+        // Filter: Channel = platform
+        const chats = crmStore.conversations.filter(c => c.channel === platform);
         
         if (chats.length === 0) {
             listContainer.innerHTML = '';

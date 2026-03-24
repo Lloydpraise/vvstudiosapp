@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Smart Matcher Pro V2</title>
+    <title>VVStudios | Smart Matcher Pro V2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -44,6 +44,7 @@
     <div class="fixed top-0 inset-x-0 bg-[#0f1115]/95 backdrop-blur-xl z-50 border-b border-[#2b2f3a] px-6 py-4 flex justify-between items-center">
         <div class="flex items-center gap-4">
             <h1 class="font-bold text-2xl tracking-tight"><span class="text-purple-500">Smart</span>Matcher <span class="text-xs text-gray-500 font-normal">V2</span></h1>
+            <p class="text-zinc-500 text-sm">DINOv2 Texture Engine + Salient Object Auto-Crop</p>
             <span class="bg-purple-500/10 text-purple-300 text-xs px-3 py-1.5 rounded-full font-medium" id="queue-count">Loading...</span>
         </div>
         <div>
@@ -90,9 +91,10 @@
     // --- STATE ---
     let pendingItems = [];
     let aiExtractor = null;
+    let aiDetector = null;
     let selections = {}; // { queueId: { productId, message, productData } }
-    // REVERTED MODEL AS REQUESTED (use patch-14 for finer details)
-    const AI_MODEL_ID = 'Xenova/clip-vit-base-patch32';
+    // Changed to DinoV2 like dinovector.html
+    const AI_MODEL_ID = 'Xenova/dinov2-base';
 
     // --- INIT ---
     async function init() {
@@ -121,14 +123,15 @@
 
         // Preload AI in background
         setTimeout(async () => {
-            if(!aiExtractor) {
-                console.log(`🚀 Preloading AI Model: ${AI_MODEL_ID}...`);
+            if(!aiExtractor || !aiDetector) {
+                console.log(`🚀 Preloading AI Models: ${AI_MODEL_ID} and DETR...`);
                 try {
                     aiExtractor = await pipeline('image-feature-extraction', AI_MODEL_ID, { quantized: true });
+                    aiDetector = await pipeline('object-detection', 'Xenova/detr-resnet-50', { quantized: true });
                     console.log("✅ AI Ready");
                 } catch (e) {
                     console.error("AI Load Failed:", e);
-                    alert("Failed to load AI model. Check console.");
+                    alert("Failed to load AI models. Check console.");
                 }
             }
         }, 500);
@@ -221,38 +224,69 @@
 
     // --- CORE LOGIC ---
 
-    // 1. Image Pre-processor (Center 70% Crop) - Unchanged
-    async function getCroppedEmbedding(imgElement) {
-        const canvas = document.getElementById('cropCanvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = 224; canvas.height = 224;
+    // 1. Auto-Crop (DETR AI) - Like dinovector.html
+    async function processAutoCrop(imgUrl) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = "Anonymous";
+            img.src = imgUrl;
+            img.onload = async () => {
+                const detections = await aiDetector(imgUrl, { threshold: 0.3 });
+                let box = null;
+                
+                if (detections.length > 0) {
+                    box = detections.reduce((p, c) => {
+                        const pA = (p.box.xmax - p.box.xmin) * (p.box.ymax - p.box.ymin);
+                        const cA = (c.box.xmax - c.box.xmin) * (c.box.ymax - c.box.ymin);
+                        return cA > pA ? c : p;
+                    }).box;
+                }
 
-        const sw = imgElement.naturalWidth, sh = imgElement.naturalHeight;
-        const cropW = sw * 0.70, cropH = sh * 0.70;
-        const cropX = (sw - cropW) / 2, cropY = (sh - cropH) / 2;
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
 
-        ctx.fillStyle = "#000"; ctx.fillRect(0,0,224,224);
-        ctx.drawImage(imgElement, cropX, cropY, cropW, cropH, 0, 0, 224, 224);
-        
+                let sX, sY, cW, cH;
+                if (box) {
+                    const padW = (box.xmax - box.xmin) * 0.12;
+                    const padH = (box.ymax - box.ymin) * 0.12;
+                    sX = Math.max(0, box.xmin - padW);
+                    sY = Math.max(0, box.ymin - padH);
+                    cW = Math.min(img.width, box.xmax + padW) - sX;
+                    cH = Math.min(img.height, box.ymax + padH) - sY;
+                } else {
+                    cW = img.width * 0.75; cH = img.height * 0.75;
+                    sX = (img.width - cW) / 2; sY = (img.height - cH) / 2;
+                }
+
+                canvas.width = 224; canvas.height = 224;
+                ctx.fillStyle = "#000"; ctx.fillRect(0,0,224,224);
+                ctx.drawImage(img, sX, sY, cW, cH, 0, 0, 224, 224);
+                resolve(canvas);
+            };
+            img.onerror = reject;
+        });
+    }
+
+    // 2. Image Pre-processor with Auto-Crop
+    async function getCroppedEmbedding(imgUrl) {
+        const canvas = await processAutoCrop(imgUrl);
         const output = await aiExtractor(canvas.toDataURL('image/jpeg', 0.9));
         return Array.from(output.data);
     }
 
-    // 2. AI Match Function (Vector Search)
+    // 3. AI Match Function (Vector Search)
     window.processItem = async (itemId) => {
-        if(!aiExtractor) return alert("AI model still loading. Please wait.");
+        if(!aiExtractor || !aiDetector) return alert("AI models still loading. Please wait.");
         setLoading(itemId, true, "AI Analyzing Image...");
 
         try {
-            const img = document.getElementById(`img-${itemId}`);
-            if(!img.complete) await new Promise(r => img.onload = r);
-
-            const embedding = await getCroppedEmbedding(img);
+            const item = pendingItems.find(i => i.id === itemId);
+            const embedding = await getCroppedEmbedding(item.image_url);
 
             // Using existing image match RPC
             const { data: products, error } = await supabase.rpc('match_image_products_v1', {
                 query_embedding: embedding,
-                match_threshold: 0.35, // Lowered slightly for patch32
+                match_threshold: 0.35, // Adjusted for DinoV2
                 match_count: 12, // Fetch more for the grid view
                 filter_business_id: businessId
             });
@@ -275,7 +309,7 @@
             // Your RPC requires 5 arguments. 
             // We send a zero-vector for embedding so it relies on the ILIKE text match.
             const { data: products, error } = await supabase.rpc('match_products_v5', {
-                query_embedding: new Array(1536).fill(0), // Dummy vector (match RPC expected dims)
+                query_embedding: new Array(768).fill(0), // Dummy vector for DinoV2 (768 dims)
                 match_threshold: 0,                      // Set to 0 to prioritize text matches
                 match_count: 15,
                 filter_business_id: businessId,
@@ -382,7 +416,10 @@
         btn.innerHTML = `<div class="loader w-4 h-4 border-2 border-t-black"></div> Processing Batch...`;
 
         // Ensure AI is ready
-        if(!aiExtractor) aiExtractor = await pipeline('image-feature-extraction', AI_MODEL_ID, { quantized: true });
+        if(!aiExtractor || !aiDetector) {
+            aiExtractor = await pipeline('image-feature-extraction', AI_MODEL_ID, { quantized: true });
+            aiDetector = await pipeline('object-detection', 'Xenova/detr-resnet-50', { quantized: true });
+        }
 
         // Process serially to avoid choking browser
         for (const item of pendingItems) {

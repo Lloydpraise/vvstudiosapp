@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marketing Maturity Audit | VVStudios</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-text: #111827;
+            --secondary-text: #4b5563;
+            --accent-blue: #4f46e5;
+            --accent-orange: #f97316;
+            --accent-green: #10b981;
+            --bg-color: #f1f5f9; 
+            --grid-line: rgba(0, 0, 0, 0.05);
+            --font-main: 'Inter', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-color);
+            color: var(--primary-text);
+            background-image: linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+                              linear-gradient(var(--grid-line) 1px, transparent 1px);
+            background-size: 40px 40px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- UI Elements from your Style --- */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 1);
+            border-radius: 24px;
+            padding: 40px 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.03);
+            width: 100%;
+            max-width: 550px;
+            margin: 0 auto;
+        }
+
+        .btn-orange {
+            background-color: var(--accent-orange);
+            color: white;
+            padding: 18px 32px;
+            border-radius: 50px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: none;
+            width: 100%;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-orange:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(249, 115, 22, 0.3);
+        }
+
+        /* --- Layout --- */
+        main {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 10;
+        }
+
+        .screen {
+            display: none;
+            width: 100%;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        .screen.active { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- Hero Hook --- */
+        .hero-title {
+            font-size: 2.8rem;
+            font-weight: 800;
+            line-height: 1.1;
+            color: var(--primary-text);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .hero-subtitle {
+            font-size: 1.1rem;
+            color: var(--secondary-text);
+            text-align: center;
+            margin-bottom: 35px;
+            line-height: 1.6;
+        }
+
+        /* --- Quiz Elements --- */
+        .progress-container {
+            margin-bottom: 30px;
+        }
+        
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--secondary-text);
+            margin-bottom: 8px;
+        }
+
+        .progress-track {
+            background: #e2e8f0;
+            height: 10px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: var(--accent-green);
+            height: 100%;
+            width: 20%; /* Starts 1/4th full for first question */
+            transition: width 0.4s ease;
+        }
+
+        .question-box h2 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            margin-bottom: 25px;
+            line-height: 1.4;
+        }
+
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option-item {
+            padding: 16px 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-weight: 500;
+            background: white;
+            color: var(--secondary-text);
+        }
+
+        .option-item:hover {
+            border-color: var(--accent-blue);
+            color: var(--primary-text);
+            background: #f8fafc;
+        }
+
+        .option-num {
+            width: 28px;
+            height: 28px;
+            background: #f1f5f9;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        /* --- Results UI --- */
+        .result-badge {
+            display: inline-block;
+            background: #fdf2f2;
+            color: var(--accent-orange);
+            padding: 6px 14px;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        .result-title {
+            font-size: 2.2rem;
+            font-weight: 800;
+            margin-bottom: 25px;
+        }
+
+        .report-card {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--accent-blue);
+            text-align: left;
+        }
+
+        .report-card.wins { border-left-color: var(--accent-green); }
+        .report-card.next { border-left-color: var(--accent-orange); }
+
+        .report-card h4 {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            color: var(--primary-text);
+        }
+
+        .report-card p {
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: var(--secondary-text);
+        }
+
+        .final-cta {
+            margin-top: 30px;
+            padding: 25px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 15px;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            font-family: inherit;
+            font-size: 1rem;
+        }
+
+    </style>
+</head>
+<body>
+
+    <main>
+        <div id="screen-home" class="screen active">
+            <div class="glass-card" style="text-align: center;">
+                <h1 class="hero-title">Stop Guessing.<br>Start Scaling.</h1>
+                <p class="hero-subtitle">Most businesses lose 70% of their revenue by fixing the wrong problems. Discover your growth stage in 60 seconds.</p>
+                <button class="btn-orange" onclick="startQuiz()">
+                    Show me where I am on the map <i class="fa-solid fa-arrow-right" style="margin-left: 10px;"></i>
+                </button>
+            </div>
+        </div>
+
+        <div id="screen-quiz" class="screen">
+            <div class="glass-card">
+                <div class="progress-container">
+                    <div class="progress-label">
+                        <span id="qCountDisplay">Question 1 of 5</span>
+                        <span id="percentDisplay">20%</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill" id="progressBar"></div>
+                    </div>
+                </div>
+                
+                <div class="question-box">
+                    <h2 id="questionText">Question loading...</h2>
+                    <div class="options-list" id="optionsContainer">
+                        </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="screen-result" class="screen">
+            <div class="glass-card" style="text-align: center; max-width: 600px;">
+                <div class="result-badge">Audit Complete</div>
+                <h1 class="result-title" id="resultTitle">Level Title</h1>
+
+                <div class="report-card wins">
+                    <h4><i class="fa-solid fa-circle-check"></i> The Wins</h4>
+                    <p id="resultWins"></p>
+                </div>
+
+                <div class="report-card">
+                    <h4><i class="fa-solid fa-location-crosshairs"></i> Current Reality</h4>
+                    <p id="resultCurrent"></p>
+                </div>
+
+                <div class="report-card next">
+                    <h4><i class="fa-solid fa-rocket"></i> Your Next Evolution</h4>
+                    <p id="resultNext"></p>
+                </div>
+
+                <div class="final-cta">
+    <h3 style="margin-bottom: 15px;">Ready for the next step?</h3>
+    <input type="text" class="input-field" placeholder="Your Name" style="margin-bottom: 12px;">
+    <input type="tel" class="input-field" placeholder="WhatsApp Number" style="margin-bottom: 12px;">
+    <button class="btn-orange" onclick="submitLead()">Claim Free Strategy Session</button>
+</div>
+            </div>
+        </div>
+        <div id="screen-thanks" class="screen">
+    <div class="glass-card" style="text-align: center;">
+        <div style="font-size: 4rem; color: var(--accent-green); margin-bottom: 20px;">
+            <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <h1 class="result-title">We've got your back!</h1>
+        <p class="hero-subtitle">
+            You’ve already built something incredible, and most people don't realize how hard that "hustle" phase is. 
+            <br><br>
+            Check your WhatsApp. We are going to reach out shortly to schedule your <strong>Free 30-Minute Strategy Session</strong>.
+        </p>
+        
+        <div class="report-card" style="border-left-color: var(--accent-blue); background: #f0f9ff; text-align: left;">
+            <h4 style="color: var(--accent-blue);">What to expect on the call:</h4>
+            <p style="color: var(--secondary-text); font-size: 0.9rem;">
+                This isn't a sales pitch. Think of it like a Doctors appointment. We're going to look at your current systems and find exactly <strong>what you are already doing well</strong>, and then show you a few things you can do that will unlock your next level of growth.
+            </p>
+        </div>
+
+        <button class="btn-orange" style="margin-top: 20px;" onclick="window.location.reload()">
+            Back to Home
+        </button>
+    </div>
+</div>
+    </main>
+
+    <script>
+        const questions = [
+            {
+                q: "What happens when you turn on paid Ads?",
+                options: [
+                    { text: "I don't run ads yet; I just post on my page.", level: 1 },
+                    { text: "I get likes and 'how much?' comments, but few sales.", level: 2 },
+                    { text: "I get leads, but spend all day on my phone to close them.", level: 3 },
+                    { text: "Ads feed directly into an automated system.", level: 4 }
+                ]
+            },
+            {
+                q: "The Vacation Test: If you couldn't touch your phone for a week, what happens to sales?",
+                options: [
+                    { text: "Nothing changes; sales are offline anyway.", level: 1 },
+                    { text: "People see my page, but nobody buys.", level: 2 },
+                    { text: "Everything stops completely. If I don't reply, I don't eat.", level: 3 },
+                    { text: "Sales keep rolling in automatically.", level: 4 }
+                ]
+            },
+            {
+                q: "How much time is spent answering routine customer questions on WhatsApp?",
+                options: [
+                    { text: "Almost none, my inbox is quiet.", level: 1 },
+                    { text: "A bit, mostly dropping prices and getting ghosted.", level: 2 },
+                    { text: "Hours. I am constantly typing the same answers.", level: 3 },
+                    { text: "Very little. My system handles FAQs automatically.", level: 4 }
+                ]
+            },
+            {
+                q: "Out of 10 people who contact you, how many end up buying?",
+                options: [
+                    { text: "I'm not tracking those numbers right now.", level: 1 },
+                    { text: "Maybe 1 out of 10. High interest, low commitment.", level: 2 },
+                    { text: "About 2 to 3, but I hustle hard to convince them.", level: 3 },
+                    { text: "4 or more. Trust is built before they even talk to me.", level: 4 }
+                ]
+            },
+            {
+                q: "How do you handle past customers who haven't bought in a while?",
+                options: [
+                    { text: "I don't have a way to contact them again.", level: 1 },
+                    { text: "Too focused on finding new customers.", level: 2 },
+                    { text: "I manually scroll WhatsApp to check in on them.", level: 3 },
+                    { text: "My system automatically sends them special offers.", level: 4 }
+                ]
+            }
+        ];
+
+        const resultsData = {
+            1: {
+                title: "Stage 1: Few leads, Few Sales",
+                wins: "You’ve taken the hardest step: Starting. You have a digital presence and you're officially open for business.",
+                current: "The Foundation Phase. You exist, but you’re quiet. Sales feel random or depend on word-of-mouth.",
+                next: "The Growing Pains: Your next step is turning on the 'Traffic Tap.' We need to get your brand in front of thousands daily through targeted ads."
+            },
+            2: {
+                title: "Stage 2: Many Leads, No Sales",
+                wins: "You’re making noise! People are seeing your ads, and the inquiries are starting to roll in.",
+                current: "The Many Leads, No Sales. You’re paying for attention, but losing the sale because there’s no system to catch the leads.",
+                next: "Many Sales, No Time: Your next step is building a Manual Follow-Up System to stop the 'ghosting' and double your sales."
+            },
+            3: {
+                title: "Stage 3: Many Sales, No Time",
+                wins: "You are a sales machine! You’re closing deals and officially making real money.",
+                current: "Many Sales, No Time. You are doing everything manually. If you put your phone down, the money stops.",
+                next: "Many Sales, Automated: Your next step is Automation. We replace your manual effort with a system that sells while you sleep."
+            },
+            4: {
+                title: "Stage 4: Many Sales, Automated",
+                wins: "You’ve built a masterpiece. Your system converts highly and your customers keep coming back.",
+                current: "The Strategic Authority. You have a self-sustaining machine and a revenue engine that works without you.",
+                next: "Market Dominance: Your next step is Scale. Bringing in brand ambassadors and high-level branding to become a household name."
+            }
+        };
+
+        let currentStep = 0;
+        let scores = { 1: 0, 2: 0, 3: 0, 4: 0 };
+
+        function startQuiz() {
+            document.getElementById('screen-home').classList.remove('active');
+            document.getElementById('screen-quiz').classList.add('active');
+            renderQuestion();
+        }
+
+        function renderQuestion() {
+            const qData = questions[currentStep];
+            document.getElementById('questionText').innerText = qData.q;
+            document.getElementById('qCountDisplay').innerText = `Question ${currentStep + 1} of ${questions.length}`;
+            
+            const progressPercent = ((currentStep + 1) / questions.length) * 100;
+            document.getElementById('progressBar').style.width = `${progressPercent}%`;
+            document.getElementById('percentDisplay').innerText = `${Math.round(progressPercent)}%`;
+
+            const container = document.getElementById('optionsContainer');
+            container.innerHTML = '';
+            
+            qData.options.forEach((opt, index) => {
+                const item = document.createElement('div');
+                item.className = 'option-item';
+                item.innerHTML = `<div class="option-num">${index + 1}</div> ${opt.text}`;
+                item.onclick = () => selectOption(opt.level);
+                container.appendChild(item);
+            });
+        }
+
+        function selectOption(level) {
+            scores[level]++;
+            currentStep++;
+            if (currentStep < questions.length) {
+                renderQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        function showResults() {
+            let finalLevel = 1;
+            let maxScore = 0;
+            for (const [lvl, score] of Object.entries(scores)) {
+                if (score > maxScore) {
+                    maxScore = score;
+                    finalLevel = parseInt(lvl);
+                }
+            }
+
+            const data = resultsData[finalLevel];
+            document.getElementById('resultTitle').innerText = data.title;
+            document.getElementById('resultWins').innerText = data.wins;
+            document.getElementById('resultCurrent').innerText = data.current;
+            document.getElementById('resultNext').innerText = data.next;
+
+            document.getElementById('screen-quiz').classList.remove('active');
+            document.getElementById('screen-result').classList.add('active');
+            window.scrollTo(0,0);
+        }
+        function submitLead() {
+    // You can add your Supabase/Backend logic here later
+    
+    // Switch to the thank you screen
+    document.getElementById('screen-result').classList.remove('active');
+    document.getElementById('screen-thanks').classList.add('active');
+    window.scrollTo(0,0);
+}
+    </script>
+</body>
+</html>
