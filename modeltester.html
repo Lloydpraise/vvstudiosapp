@@ -3,830 +3,1109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Control Center & Simulator</title>
-    <link rel="stylesheet" href="theme.css">
+    <title>AI Control Center: Boardroom Simulator</title>
     <style>
         :root { 
-            --bg-color: #0f1115;
-            --panel-bg: #1a1d23;
-            --chat-bg: #14161a;
-            --primary: #0084ff;
-            --success: #28a745;
-            --danger: #dc3545;
-            --text-dark: #ffffff;
-            --border: #2b2f3a;
+            --bg-base: #0b0d12;
+            --glass-bg: rgba(20, 24, 30, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --primary-neon: #00e5ff;
+            --primary-dim: rgba(0, 229, 255, 0.2);
+            --success: #00ff88;
+            --danger: #ff3366;
+            --warning: #ffb84d;
+            --text-main: #e2e8f0;
+            --text-muted: #8b9bb4;
+            --panel-width-logs: 320px;
+            --panel-width-config: 400px;
+            --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
         }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; display: grid; grid-template-columns: 280px 1fr 380px; height: 100vh; background: var(--bg-color); color: var(--text-dark); overflow: hidden; }
         
-        /* Layout Panels */
-        .panel { background: var(--panel-bg); display: flex; flex-direction: column; border-right: 1px solid var(--border); }
-        .panel-header { padding: 15px; background: #20232a; color: white; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
-        .panel-content { flex: 1; overflow-y: auto; padding: 12px; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif; 
+            margin: 0; 
+            display: flex; 
+            height: 100vh; 
+            background: radial-gradient(circle at 50% 0%, #151a28 0%, var(--bg-base) 100%);
+            color: var(--text-main); 
+            overflow: hidden; 
+        }
+        
+        /* Layout & Glassmorphism */
+        .glass-panel { 
+            background: var(--glass-bg); 
+            backdrop-filter: blur(16px); 
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border); 
+            display: flex; 
+            flex-direction: column; 
+        }
 
-        /* Left: Logs & Errors */
-        .log-entry { font-family: monospace; font-size: 11px; padding: 8px; margin-bottom: 8px; border-radius: 4px; background: #252a33; border-left: 3px solid #6c757d; word-wrap: break-word; color: #a0a0a0; }
-        .log-error { background: #3a1f1f; border-left-color: var(--danger); color: #ff6b6b; }
-        .log-system { border-left-color: var(--primary); color: #6eb3ff; }
+        /* Logs Drawer (Sliding Left Panel) */
+        #logs-panel {
+            width: var(--panel-width-logs);
+            position: absolute;
+            left: calc(-1 * var(--panel-width-logs));
+            top: 0;
+            bottom: 0;
+            z-index: 100;
+            transition: left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+        }
+        #logs-panel.open { left: 0; }
+        
+        /* Chat Area (Center) */
+        #chat-area { 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            position: relative; 
+            z-index: 10;
+        }
 
-        /* Center: Chat Console */
-        .chat-area { background: var(--chat-bg); display: flex; flex-direction: column; height: 100%; position: relative; overflow: hidden; }
-        #chat-box { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; scroll-behavior: smooth; }
+        /* Config Area (Right) */
+        #config-panel { 
+            width: var(--panel-width-config); 
+            border-left: 1px solid var(--glass-border); 
+            z-index: 10;
+        }
+
+        /* Headers */
+        .header-bar { 
+            padding: 14px 20px; 
+            background: rgba(11, 13, 18, 0.8); 
+            border-bottom: 1px solid var(--glass-border); 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        /* Chat Styling */
+        #chat-box { flex: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; scroll-behavior: smooth; }
+        #chat-box::-webkit-scrollbar, .log-container::-webkit-scrollbar, .tab-content::-webkit-scrollbar { width: 6px; }
+        #chat-box::-webkit-scrollbar-track, .log-container::-webkit-scrollbar-track, .tab-content::-webkit-scrollbar-track { background: transparent; }
+        #chat-box::-webkit-scrollbar-thumb, .log-container::-webkit-scrollbar-thumb, .tab-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        #chat-box::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+        .input-area { background: rgba(11, 13, 18, 0.9); padding: 12px 20px; display: flex; gap: 10px; align-items: center; border-top: 1px solid var(--glass-border); }
+        #prompt { flex: 1; padding: 10px 16px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.5); color: #fff; font-size: 14px; outline: none; transition: border 0.2s; }
+        #prompt:focus { border-color: var(--primary-neon); box-shadow: 0 0 8px var(--primary-dim); }
         
-        /* Custom scrollbar for chat box */
-        #chat-box::-webkit-scrollbar { width: 8px; }
-        #chat-box::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 4px; }
-        #chat-box::-webkit-scrollbar-thumb { background: #4a5068; border-radius: 4px; }
-        #chat-box::-webkit-scrollbar-thumb:hover { background: #5a6078; }
-        .input-area { background: #1a1d23; padding: 6px 10px; display: flex !important; gap: 6px; align-items: center; border-top: 1px solid var(--border); position: relative; z-index: 1001; flex-shrink: 0; }
-        #prompt { flex: 1; padding: 6px 10px; border-radius: 18px; border: 1px solid #2b2f3a; outline: none; background: #252a33; color: #ffffff; height: 30px; font-size: 14px; }
-        #prompt::placeholder { color: #6b7280; }
-        button.send-btn { padding: 6px 14px; background: var(--primary); color: white; border: none; border-radius: 18px; cursor: pointer; font-weight: bold; height: 30px; font-size: 14px; }
-        
+        /* Buttons */
+        button { cursor: pointer; transition: all 0.2s; font-family: inherit; }
+        .btn-neon { background: transparent; color: var(--primary-neon); border: 1px solid var(--primary-neon); padding: 8px 16px; border-radius: 20px; font-weight: 600; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
+        .btn-neon:hover { background: var(--primary-dim); box-shadow: 0 0 12px var(--primary-dim); }
+        .btn-icon { background: transparent; border: none; color: var(--text-muted); font-size: 20px; padding: 5px; }
+        .btn-icon:hover { color: var(--primary-neon); }
+
         /* Bubbles */
-        .msg { max-width: 80%; padding: 10px 15px; border-radius: 12px; font-size: 14px; position: relative; box-shadow: 0 1px 1px rgba(0,0,0,0.3); }
-        .user { align-self: flex-end; background: var(--primary); color: white; }
-        .bot { align-self: flex-start; background: #2b3e4f; color: #e0e0e0; }
-        .thought { align-self: flex-start; background: #2b3e4f; color: #a8b5c8; font-size: 11px; font-style: italic; border: 1px dashed #4a5068; }
-        .tool { align-self: flex-start; background: #3a4a2a; color: #a8d66e; font-family: monospace; font-size: 12px; border-left: 4px solid #7fb069; }
-
-        /* Right: Config & Tools */
-        .tabs { display: flex; border-bottom: 1px solid var(--border); background: #1a1d23; }
-        .tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; font-weight: bold; color: #6b7280; border-bottom: 2px solid transparent; }
-        .tab.active { color: var(--primary); border-bottom-color: var(--primary); background: #252a33; }
+        .msg-wrapper { display: flex; flex-direction: column; max-width: 80%; }
+        .msg-wrapper.bot { align-self: flex-start; }
+        .msg-wrapper.user { align-self: flex-end; align-items: flex-end; }
         
-        .tab-content { display: none; flex-direction: column; gap: 12px; overflow-y: auto; max-height: calc(100vh - 280px); }
+        .msg { padding: 12px 16px; border-radius: 14px; font-size: 14px; position: relative; line-height: 1.5; }
+        .user .msg { background: var(--primary-neon); color: #000; border-bottom-right-radius: 4px; font-weight: 500; }
+        .bot .msg { background: rgba(30, 35, 45, 0.8); color: var(--text-main); border: 1px solid var(--glass-border); border-bottom-left-radius: 4px; }
+        
+        .thought { align-self: flex-start; background: rgba(0,0,0,0.3); color: var(--text-muted); font-size: 11px; font-family: var(--font-mono); border-left: 2px solid var(--warning); padding: 8px 12px; border-radius: 4px; margin-bottom: 6px; }
+        
+        /* QC Bubble */
+        .qc-bubble { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; font-weight: bold; background: rgba(0,0,0,0.6); border: 1px solid #4a5568; padding: 4px 8px; border-radius: 12px; margin-top: 4px; align-self: flex-start; cursor: pointer; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s; }
+        .qc-bubble:hover { border-color: var(--primary-neon); color: var(--primary-neon); }
+        .qc-bubble.auditing { color: var(--warning); border-color: var(--warning); animation: pulse 1.5s infinite; }
+        .qc-bubble.score-a { color: var(--success); border-color: var(--success); }
+        .qc-bubble.score-f { color: var(--danger); border-color: var(--danger); }
+        
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 184, 77, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(255, 184, 77, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 184, 77, 0); } }
+
+        /* Config Right Panel */
+        .tabs { display: flex; border-bottom: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); }
+        .tab { flex: 1; padding: 12px; text-align: center; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-muted); border-bottom: 2px solid transparent; transition: 0.2s; }
+        .tab.active { color: var(--primary-neon); border-bottom-color: var(--primary-neon); background: rgba(0, 229, 255, 0.05); }
+        
+        .tab-content { display: none; flex-direction: column; gap: 16px; overflow-y: auto; padding: 20px; height: calc(100vh - 160px); }
         .tab-content.active { display: flex; }
 
-        textarea { width: 100%; border-radius: 6px; border: 1px solid #2b2f3a; padding: 10px; font-family: monospace; font-size: 12px; resize: vertical; box-sizing: border-box; background: #252a33; color: #e0e0e0; }
-        textarea::placeholder { color: #6b7280; }
-        .textarea-header { display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #a8b5c8; }
-        .token-count { color: #6b7280; font-weight: normal; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group label { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .form-group textarea, .form-group select { width: 100%; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); padding: 10px; font-family: var(--font-mono); font-size: 12px; background: rgba(0,0,0,0.3); color: var(--text-main); box-sizing: border-box; outline: none; transition: 0.2s; resize: vertical; }
+        .form-group textarea:focus { border-color: var(--primary-neon); background: rgba(0,0,0,0.6); }
         
-        select { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #2b2f3a; margin-bottom: 10px; background: #252a33; color: #e0e0e0; }
-        select option { background: #1a1d23; color: #e0e0e0; }
-        
-        .draft-banner { background: #4a3a1a; color: #e8b949; padding: 10px; text-align: center; font-size: 12px; font-weight: bold; border-bottom: 1px solid #6b5a2a; display: none; }
+        .draft-banner { background: rgba(255, 184, 77, 0.1); color: var(--warning); padding: 10px; text-align: center; font-size: 12px; font-weight: bold; border-bottom: 1px solid rgba(255, 184, 77, 0.3); display: none; text-transform: uppercase; letter-spacing: 1px; }
         .draft-banner.active { display: block; }
-
-        .btn-save { background: var(--success); color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
         
-        /* Loading & Media */
-        .typing { display: none; font-size: 12px; color: #6b7280; font-style: italic; margin-left: 20px; padding: 10px 0; }
-        .image-preview { display: none; max-width: 60px; border-radius: 4px; border: 1px solid #2b2f3a; }
+        .btn-save-full { background: rgba(0, 255, 136, 0.1); color: var(--success); border: 1px solid var(--success); padding: 12px; border-radius: 6px; font-weight: bold; width: 100%; text-transform: uppercase; letter-spacing: 1px; margin-top: auto; }
+        .btn-save-full:hover { background: rgba(0, 255, 136, 0.2); box-shadow: 0 0 15px rgba(0, 255, 136, 0.2); }
 
-        /* Modal Styles */
-        .modal-overlay { 
-            position: fixed; 
-            top: 0; 
-            left: 0; 
-            right: 0; 
-            bottom: 0; 
-            background: rgba(0,0,0,0.7); 
-            z-index: 1000; 
-            display: flex;
-            align-items: center; 
-            justify-content: center; 
-            padding: 20px; 
-            opacity: 0; 
-            pointer-events: none;
-            transition: opacity 0.3s ease; 
-        }
-        .modal-overlay.active { 
-            opacity: 1;
-            pointer-events: auto;
-        }
-        .modal-content { background: var(--panel-bg); border-radius: 8px; padding: 25px; width: 90%; max-width: 900px; height: 90vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border); }
-        .modal-header h2 { margin: 0; color: #ffffff; font-size: 18px; }
-        .modal-close-btn { background: none; border: none; color: #a8b5c8; font-size: 24px; cursor: pointer; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
-        .modal-close-btn:hover { color: #ffffff; }
-        .modal-textarea { flex: 1; width: 100%; padding: 12px; border: 1px solid #2b2f3a; border-radius: 6px; background: #252a33; color: #e0e0e0; font-family: monospace; font-size: 13px; resize: vertical; box-sizing: border-box; }
-        .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border); }
-        .modal-btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; }
-        .modal-btn-save { background: var(--success); color: white; }
-        .modal-btn-save:hover { background: #20c020; }
-        .modal-btn-cancel { background: #3a4a5a; color: #e0e0e0; }
-        .modal-btn-cancel:hover { background: #4a5a6a; }
-        .expand-btn { background: none; border: none; color: #6b8dd6; cursor: pointer; font-size: 16px; padding: 2px 6px; margin-left: 8px; }
-        .expand-btn:hover { color: #7b9de6; }
+        /* Modals (QC & Edit) */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: 0.3s; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-content { background: var(--bg-base); border: 1px solid var(--glass-border); border-radius: 12px; padding: 28px; width: 78%; max-width: 880px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0, 229, 255, 0.08); }
+
+        /* Keep the prompt/text edit modal centered and smaller rather than full-screen */
+        #textModal.active { align-items: center; justify-content: center; }
+        #textModal.active .modal-content { width: 78%; max-width: 880px; align-self: center; border-radius: 12px; padding: 22px; box-shadow: 0 30px 80px rgba(0,0,0,0.6); }
+        #textModal.active .modal-header { margin-bottom: 12px; padding-bottom: 10px; }
+        #textModal.active #textModalEditor { height: calc(60vh); }
+
+        /* Editor typography inside modal for readable, skim-friendly editing */
+        #textModalEditor { font-size: 16px; line-height: 1.5; }
+        #textModalEditor h1 { font-size: 18px; margin: 0 0 8px; font-weight: 700; }
+        #textModalEditor h2 { font-size: 16px; margin: 0 0 6px; font-weight: 700; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--glass-border); padding-bottom: 15px; }
+        .modal-header h2 { margin: 0; font-size: 18px; display: flex; align-items: center; gap: 10px; }
+        
+        /* QC Specific Modal styling */
+        .qc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
+        .qc-card { background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 8px; padding: 15px; text-align: center; }
+        .qc-card .title { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+        .qc-card .grade { font-size: 32px; font-weight: bold; margin: 10px 0; font-family: var(--font-mono); }
+        .grade-A { color: var(--success); } .grade-B { color: #a3ff00; } .grade-C { color: var(--warning); } .grade-D { color: #ff8800; } .grade-F { color: var(--danger); }
+        .qc-suggestion { background: rgba(0, 229, 255, 0.05); border-left: 3px solid var(--primary-neon); padding: 15px; font-size: 13px; line-height: 1.5; color: var(--text-main); font-family: var(--font-mono); }
+
+        /* Left: Logs & Errors - Upgraded Styles */
+.log-entry { 
+    font-family: 'Fira Code', monospace; 
+    font-size: 11px; 
+    padding: 10px; 
+    margin-bottom: 8px; 
+    border-radius: 6px; 
+    background: #1e2227; 
+    border-left: 3px solid #6c757d; 
+    word-wrap: break-word; 
+    color: #abb2bf;
+    line-height: 1.4;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* History list items */
+.history-item { display: block; width: 100%; text-align: left; padding: 10px; font-size: 11px; text-transform: none; background: rgba(0,0,0,0.3); border-color: var(--glass-border); color: var(--text-main); border-radius:6px; transition: 0.18s; }
+.history-item:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,0.35); }
+.history-item.selected { background: linear-gradient(90deg, rgba(0,229,255,0.06), rgba(0,0,0,0.35)); border-color: var(--primary-neon); box-shadow: 0 6px 24px rgba(0,229,255,0.06); }
+.history-item.visited { opacity: 0.7; }
+.log-error { background: #3a1f1f; border-left-color: var(--danger); color: #ff6b6b; }
+.log-system { border-left-color: var(--primary); color: #6eb3ff; }
+.log-network { border-left-color: #d19a66; color: #d19a66; background: #282c34; }
+.log-data { font-size: 10px; color: #98c379; background: #21252b; border-left: 3px solid #98c379; margin-top: -5px; border-top-left-radius: 0; border-top-right-radius: 0; }
+pre { margin: 0; white-space: pre-wrap; }
     </style>
 </head>
 <body>
 
-    <div class="panel">
-        <div class="panel-header">📋 System Logs</div>
-        <div class="panel-content" id="log-box">
-            <div class="log-entry log-system">System initialized. Waiting to fetch config...</div>
+    <div id="logs-panel" class="glass-panel">
+    <div class="header-bar" style="padding: 0;">
+        <div style="display: flex; width: 100%;">
+            <div id="tab-btn-logs" class="tab active" style="flex: 1; padding: 14px;" onclick="switchLeftTab('logs')">Terminal Logs</div>
+            <div id="tab-btn-history" class="tab" style="flex: 1; padding: 14px;" onclick="switchLeftTab('history')">Past Chats</div>
         </div>
+        <button class="btn-icon" style="padding: 14px;" onclick="toggleLogs()">×</button>
+    </div>
+    
+    <div class="log-container" id="log-box" style="flex: 1; overflow-y: auto;">
+        <div class="log-entry log-system">Terminal initialized.</div>
     </div>
 
-    <div class="chat-area">
-        <div class="panel-header">
-            <span>💬 Live Simulator</span>
-            <span id="draft-badge" style="background: #ffc107; color: black; padding: 2px 8px; border-radius: 12px; font-size: 11px; display: none;">Draft Mode Active</span>
+    <div id="history-box" style="display: none; flex: 1; overflow-y: auto; padding: 15px;">
+        <button class="btn-neon" style="width: 100%; margin-bottom: 15px;" onclick="fetchHistoricalConversations()">Load Database Chats</button>
+        <div id="history-list" style="display: flex; flex-direction: column; gap: 10px;">
+            </div>
+    </div>
+</div>
+
+    <div id="chat-area">
+        <div class="header-bar glass-panel" style="border-radius: 0; border-bottom: 1px solid var(--glass-border);">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <button class="btn-icon" onclick="toggleLogs()" title="Toggle Logs">≡</button>
+                <span>Live Simulator <span id="qc-toggle-status" style="font-size: 10px; color: var(--success); border: 1px solid var(--success); padding: 2px 6px; border-radius: 10px; margin-left: 10px;">QC ON</span></span>
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 8px;">
+                <div id="status-led" style="width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success);"></div>
+                <span id="biz-label">Loading...</span>
+            </div>
         </div>
+
         <div id="chat-box"></div>
-        <div id="typing-indicator" class="typing">Brain is thinking...</div>
-        
+        <div id="replay-controls" style="display: none; background: rgba(255, 184, 77, 0.1); border-top: 1px solid var(--warning); padding: 10px 20px; align-items: center; justify-content: space-between;">
+    <div style="font-size: 12px; color: var(--warning); font-weight: bold; text-transform: uppercase;">
+        ⏭️ Replay Mode Active: <span id="replay-id-label">None</span>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <button class="btn-neon" style="border-color: var(--danger); color: var(--danger);" onclick="exitReplayMode()">Exit Replay</button>
+        <button class="btn-neon" onclick="loadNextHistoricalMessage()">Load Next Customer Msg</button>
+    </div>
+</div>
         <div class="input-area">
             <input type="file" id="imageInput" style="display:none" onchange="previewImage()">
-            <img id="img-preview" class="image-preview" src="">
-            <button onclick="document.getElementById('imageInput').click()" style="background:transparent; border:none; cursor:pointer; font-size:20px;">📷</button>
-            <input type="text" id="prompt" placeholder="Message the AI..." onkeypress="if(event.key==='Enter')sendMessage()">
-            <button class="send-btn" onclick="sendMessage()">Send</button>
+            <img id="img-preview" style="display: none; height: 35px; border-radius: 6px; border: 1px solid var(--glass-border);" src="">
+            <button class="btn-icon" onclick="document.getElementById('imageInput').click()">📷</button>
+            <input type="text" id="prompt" placeholder="Execute command or message AI..." onkeypress="if(event.key==='Enter')sendMessage()">
+            <button class="btn-neon" onclick="sendMessage()">Transmit</button>
         </div>
     </div>
 
-    <div class="panel">
-        <div class="panel-header">⚙️ Control Center</div>
-        <div class="draft-banner" id="draft-banner">⚠️ UN-SAVED DRAFTS IN USE FOR SIMULATION</div>
+    <div id="config-panel" class="glass-panel">
+        <div class="header-bar">Control Center</div>
+        <div class="draft-banner" id="draft-banner">Unsaved Drafts Active</div>
         
-        <div style="padding: 12px 15px; border-bottom: 1px solid var(--border); background: #1a1d23;">
-            <div style="font-size: 12px; font-weight: bold; color: #a8b5c8; margin-bottom: 6px;">Select Business</div>
-            <select id="businessSelect" onchange="switchBusiness()" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #2b2f3a; background: #252a33; color: #e0e0e0;">
-                <option value="">-- Loading businesses --</option>
+        <div style="padding: 15px; border-bottom: 1px solid var(--glass-border); background: rgba(0,0,0,0.3);">
+            <select id="businessSelect" onchange="switchBusiness()" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--glass-border); background: rgba(255,255,255,0.05); color: #fff; font-weight: bold; outline: none;">
+                <option value="">-- Loading --</option>
             </select>
-            <div style="font-size: 11px; color: #6b7280; margin-top: 6px;" id="businessInfo">Fetching available businesses...</div>
         </div>
         
         <div class="tabs">
-            <div class="tab active" onclick="switchTab('prompts')">Prompts</div>
-            <div class="tab" onclick="switchTab('tools')">Tool Manager</div>
+            <div class="tab active" onclick="switchTab('prompts')">Global Prompts</div>
+            <div class="tab" onclick="switchTab('biz')">Biz Prompt</div>
+            <div class="tab" onclick="switchTab('tools')">Tools</div>
         </div>
 
-        <div class="panel-content">
-            <div id="tab-prompts" class="tab-content active">
-                <div>
-                    <div class="textarea-header">
-                        <div style="display: flex; align-items: center;">
-                            <span>Master System Prompt</span>
-                            <button class="expand-btn" onclick="openModal('masterPrompt', 'Master System Prompt')" title="Edit in full screen">⛶</button>
-                        </div>
-                        <span class="token-count" id="master-tokens">~0 tokens</span>
-                    </div>
-                    <textarea id="masterPrompt" rows="8" oninput="handleEdit('masterPrompt', 'master-tokens')"></textarea>
-                </div>
-                
-                <div>
-                    <div class="textarea-header">
-                        <div style="display: flex; align-items: center;">
-                            <span>Business System Prompt</span>
-                            <button class="expand-btn" onclick="openModal('bizPrompt', 'Business System Prompt')" title="Edit in full screen">⛶</button>
-                        </div>
-                        <span class="token-count" id="biz-tokens">~0 tokens</span>
-                    </div>
-                    <textarea id="bizPrompt" rows="6" oninput="handleEdit('bizPrompt', 'biz-tokens')"></textarea>
-                </div>
-                
-                <button class="btn-save" onclick="saveConfigsToDB()">💾 Save Prompts to Live DB</button>
+        <div id="tab-prompts" class="tab-content active">
+            <div class="form-group">
+                <label>Manager AI Prompt <span class="btn-icon" style="font-size:12px; padding:0" onclick="openTextModal('manager_ai_prompt', 'Manager AI Prompt')">⛶</span></label>
+                <textarea id="manager_ai_prompt" rows="3" oninput="handleEdit()"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Sales AI (Mechanics) <span class="btn-icon" style="font-size:12px; padding:0" onclick="openTextModal('sales_ai_prompt_mechanics', 'Sales Mechanics')">⛶</span></label>
+                <textarea id="sales_ai_prompt_mechanics" rows="3" oninput="handleEdit()"></textarea>
+            </div>
+            <div class="form-group">
+                <label>EQ Analyst Prompt <span class="btn-icon" style="font-size:12px; padding:0" onclick="openTextModal('eq_ai_prompt', 'EQ Analyst')">⛶</span></label>
+                <textarea id="eq_ai_prompt" rows="2" oninput="handleEdit()"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Librarian (SOP) Prompt <span class="btn-icon" style="font-size:12px; padding:0" onclick="openTextModal('sop_ai_prompt', 'SOP Librarian')">⛶</span></label>
+                <textarea id="sop_ai_prompt" rows="2" oninput="handleEdit()"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Tools AI Prompt <span class="btn-icon" style="font-size:12px; padding:0" onclick="openTextModal('tools_ai_prompt', 'Tools AI')">⛶</span></label>
+                <textarea id="tools_ai_prompt" rows="2" oninput="handleEdit()"></textarea>
+            </div>
+            <button class="btn-save-full" onclick="saveConfigsToDB()">Deploy Global Settings</button>
+        </div>
+
+        <div id="tab-biz" class="tab-content">
+            <div class="form-group" style="height: 100%;">
+                <label>Client Specific Prompt (Biz) <span class="btn-icon" style="font-size:12px; padding:0" onclick="openTextModal('bizPrompt', 'Business Prompt')">⛶</span></label>
+                <textarea id="bizPrompt" style="flex:1" oninput="handleEdit()"></textarea>
+            </div>
+            <button class="btn-save-full" onclick="saveConfigsToDB()">Deploy Biz Settings</button>
+        </div>
+
+        <div id="tab-tools" class="tab-content">
+            <div class="form-group">
+                <label>Select Tool</label>
+                <select id="toolSelect" onchange="loadSelectedTool()"></select>
+            </div>
+            <div class="form-group">
+                <label>Description <span class="btn-icon" style="font-size:12px; padding:0" onclick="openTextModal('toolDesc', 'Tool Description')">⛶</span></label>
+                <textarea id="toolDesc" rows="3" oninput="handleEdit()"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Parameters (JSON)</label>
+                <textarea id="toolParams" rows="8" oninput="handleEdit()"></textarea>
+            </div>
+            <button class="btn-save-full" onclick="saveToolToDB()">Update Tool Logic</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="textModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="textModalTitle">Edit</h2>
+                <button class="btn-icon" onclick="closeModal('textModal')">×</button>
+            </div>
+            <!-- Human-friendly editable view (Arial 12px). This displays AI-markup as readable headings/bold/italics. -->
+            <div id="textModalEditor" contenteditable="true"
+                 style="flex:1; background:#0e1113; border:1px solid rgba(255,255,255,0.03); color:var(--text-main); font-family: Arial, Helvetica, sans-serif; font-size:16px; line-height:1.5; padding:18px 20px; border-radius:8px; overflow:auto; min-height:220px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);">
+                <!-- Document feel: Arial 16px, comfortable line-height, subtle inset paper look -->
             </div>
 
-            <div id="tab-tools" class="tab-content">
-                <div>
-                    <div class="textarea-header"><span>Select Tool to Edit</span></div>
-                    <select id="toolSelect" onchange="loadSelectedTool()"></select>
-                </div>
+            <!-- Toolbar placed at bottom for easy editing (headings, bold, italic, divider) -->
+            <div id="textModalToolbar" style="display:flex; gap:8px; justify-content:flex-start; flex-wrap:wrap; margin-top:12px;">
+                <button class="btn-neon" type="button" onclick="formatBlock('h1')">H1</button>
+                <button class="btn-neon" type="button" onclick="formatBlock('h2')">H2</button>
+                <button class="btn-neon" type="button" onclick="formatInline('bold')"><strong>B</strong></button>
+                <button class="btn-neon" type="button" onclick="formatInline('italic')"><em>I</em></button>
+                <button class="btn-neon" type="button" onclick="insertDivider()">---</button>
+            </div>
 
-                <div>
-                    <div class="textarea-header">
-                        <div style="display: flex; align-items: center;">
-                            <span>Tool Description</span>
-                            <button class="expand-btn" onclick="openModal('toolDesc', 'Tool Description')" title="Edit in full screen">⛶</button>
-                        </div>
-                        <span class="token-count" id="tool-desc-tokens">~0 tokens</span>
-                    </div>
-                    <textarea id="toolDesc" rows="4" oninput="handleEdit('toolDesc', 'tool-desc-tokens')"></textarea>
-                </div>
-
-                <div>
-                    <div class="textarea-header">
-                        <div style="display: flex; align-items: center;">
-                            <span>Parameters (JSON)</span>
-                            <button class="expand-btn" onclick="openModal('toolParams', 'Parameters')" title="Edit in full screen">⛶</button>
-                        </div>
-                    </div>
-                    <textarea id="toolParams" rows="8" style="font-family: monospace;" oninput="handleEdit()"></textarea>
-                </div>
-
-                <button class="btn-save" onclick="saveToolToDB()">💾 Save Tool to Live DB</button>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px;">
+                <button class="btn-neon" style="color:var(--text-muted); border-color:var(--text-muted);" onclick="closeModal('textModal')">Cancel</button>
+                <button class="btn-neon" onclick="saveTextModal()">Confirm Changes</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal for editing -->
-    <div class="modal-overlay" id="editModal">
+    <div class="modal-overlay" id="qcModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 id="modalTitle">Edit Content</h2>
-                <button class="modal-close-btn" onclick="closeModal()">×</button>
+                <h2>🔍 Quality Control Audit Report</h2>
+                <button class="btn-icon" onclick="closeModal('qcModal')">×</button>
             </div>
-            <textarea class="modal-textarea" id="modalTextarea"></textarea>
-            <div class="modal-footer">
-                <button class="modal-btn modal-btn-cancel" onclick="closeModal()">Cancel</button>
-                <button class="modal-btn modal-btn-save" onclick="saveModalChanges()">Save Changes</button>
+            
+            <div style="text-align: center; margin-bottom: 20px;">
+                <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Overall Accuracy</div>
+                <div id="qc-score-main" style="font-size: 48px; font-weight: bold; font-family: var(--font-mono); color: var(--primary-neon); text-shadow: 0 0 15px var(--primary-dim);">0%</div>
+            </div>
+
+            <div class="qc-grid">
+                <div class="qc-card">
+                    <div class="title">Manager Routing</div>
+                    <div id="qc-grade-mgr" class="grade">--</div>
+                    <div id="qc-reason-mgr" style="font-size: 10px; color: var(--text-muted);">Waiting for data...</div>
+                </div>
+                <div class="qc-card">
+                    <div class="title">Sales Tone</div>
+                    <div id="qc-grade-sales" class="grade">--</div>
+                    <div id="qc-reason-sales" style="font-size: 10px; color: var(--text-muted);">Waiting for data...</div>
+                </div>
+                <div class="qc-card">
+                    <div class="title">EQ / SOP Usage</div>
+                    <div id="qc-grade-eq" class="grade">--</div>
+                    <div id="qc-reason-eq" style="font-size: 10px; color: var(--text-muted);">Waiting for data...</div>
+                </div>
+            </div>
+
+            <div class="qc-suggestion">
+                <strong style="color: var(--warning); display: block; margin-bottom: 5px;">AI Suggested Prompt Improvement:</strong>
+                <span id="qc-improvement">No improvement suggestion available.</span>
             </div>
         </div>
     </div>
 
     <script>
-        const TESTER_URL = "https://xgtnbxdxbbywvzrttixf.supabase.co/functions/v1/tester-webhook"; // Update to your Supabase URL
-        let BUSINESS_ID = "kisasacraft66"; // Default business ID
+        // --- CONFIG ---
+        const TESTER_URL = "https://xgtnbxdxbbywvzrttixf.supabase.co/functions/v1/tester-webhook"; // Brain Relay
+        const QC_URL = "https://xgtnbxdxbbywvzrttixf.supabase.co/functions/v1/quality-control"; // Critic Agent
+        let BUSINESS_ID = "kisasacraft66";
 
+        // --- STATE ---
         let isDraftMode = false;
         let base64Image = null;
         let activeToolsData = [];
-        let availableBusinesses = [];
-        
-        // --- CHAT MEMORY (Last 10 messages) ---
         let chatHistory = []; 
-        let conversationId = '';
+        let conversationId = 'sim_' + Math.random().toString(36).substr(2, 9);
+        let qcReports = {}; // Store QC results by Message ID
+        let currentTextField = null;
+        // Toggle background log polling (some backends may not support this action)
+        const ENABLE_LOG_POLLING = false;
 
-        // --- MODAL STATE ---
-        let currentEditingField = null;
+        // The 5 Global Prompts mapping
+        const PROMPT_KEYS = ['manager_ai_prompt', 'sales_ai_prompt_mechanics', 'eq_ai_prompt', 'sop_ai_prompt', 'tools_ai_prompt'];
 
-        // --- MODAL FUNCTIONS ---
-        function openModal(fieldId, fieldTitle) {
-            currentEditingField = fieldId;
-            const textarea = document.getElementById(fieldId);
-            const modalTextarea = document.getElementById('modalTextarea');
-            const modalTitle = document.getElementById('modalTitle');
-            
-            modalTitle.textContent = `Edit: ${fieldTitle}`;
-            modalTextarea.value = textarea.value;
-            
-            const modal = document.getElementById('editModal');
-            modal.classList.add('active');
-            
-            // Focus textarea after modal is visible
-            setTimeout(() => {
-                modalTextarea.focus();
-                modalTextarea.select();
-            }, 50);
-            
-            console.log('Modal opened for:', fieldId);
-        }
-
-        function closeModal() {
-            const modal = document.getElementById('editModal');
-            modal.classList.remove('active');
-            currentEditingField = null;
-            console.log('Modal closed');
-            
-            // Ensure input area stays visible
-            const inputArea = document.querySelector('.input-area');
-            if (inputArea) {
-                inputArea.style.display = 'flex';
-                inputArea.style.visibility = 'visible';
-            }
-        }
-
-        function saveModalChanges() {
-            if (!currentEditingField) return;
-            
-            const textarea = document.getElementById(currentEditingField);
-            const modalTextarea = document.getElementById('modalTextarea');
-            
-            // Update the original textarea
-            textarea.value = modalTextarea.value;
-            
-            // Trigger input event to update token count and draft mode
-            textarea.dispatchEvent(new Event('input'));
-            
-            // Ensure modal is closed
-            closeModal();
-        }
-
-        // Close modal when clicking outside the content
-        document.addEventListener('DOMContentLoaded', function() {
-            const modal = document.getElementById('editModal');
-            
-            // Click outside to close
-            modal.addEventListener('click', function(e) {
-                if (e.target === modal) {
-                    closeModal();
-                }
-            });
-        });
-
-        // Allow Escape key to close modal
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && document.getElementById('editModal').classList.contains('active')) {
-                closeModal();
-            }
-        });
-
-        // --- INIT: Fetch Live DB Data ---
+        // --- INIT ---
         window.onload = async () => {
-            console.log('Initializing Model Tester...');
-            logSystem("Initializing Control Center...");
+            log('sys', "Cyber-Command Terminal Initialized.");
+            log('sys', `Session ID: ${conversationId}`);
             
-            // Generate new conversation ID for each reload
-            conversationId = 'sim_' + Math.random().toString(36).substr(2, 9);
-            console.log(`New conversation ID: ${conversationId}`);
-            
-            // Reset chat history for new conversation
-            chatHistory = [];
-            
-            // Step 1: Fetch all available businesses
             await fetchAvailableBusinesses();
-            
-            // Step 2: Load config for default business
             await loadBusinessConfig(BUSINESS_ID);
+            
+            // Start background log polling only if enabled (many backends don't implement this)
+            if(ENABLE_LOG_POLLING) {
+                setInterval(fetchDBLogs, 10000);
+            }
         };
 
-        // --- FETCH AVAILABLE BUSINESSES ---
-        async function fetchAvailableBusinesses() {
-            logSystem("Fetching available businesses from businesses table...");
-            try {
-                const res = await fetch(TESTER_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        action: "fetch_businesses"
-                    })
-                });
-                const data = await res.json();
-                console.log('[DB] Businesses query response:', data);
-                
-                if(data.error) {
-                    throw new Error(data.error);
-                }
-
-                availableBusinesses = data.businesses || [];
-                
-                if (!Array.isArray(availableBusinesses) || availableBusinesses.length === 0) {
-                    console.error('[DB] ❌ Query failed: businesses table returned empty');
-                    logSystem("❌ ERROR: No businesses found in businesses table");
-                } else {
-                    console.log(`[DB] ✅ Retrieved ${availableBusinesses.length} businesses`);
-                    logSystem(`✅ Retrieved ${availableBusinesses.length} businesses from table`);
-                    availableBusinesses.forEach(biz => {
-                        console.log(`  [Business] id=${biz.business_id}, name=${biz.name || 'N/A'}`);
-                    });
-                }
-
-                // Populate business selector
-                const businessSelect = document.getElementById('businessSelect');
-                businessSelect.innerHTML = '';
-                availableBusinesses.forEach(biz => {
-                    const opt = document.createElement('option');
-                    opt.value = biz.business_id;
-                    opt.innerText = `${biz.name || biz.business_id} (${biz.business_id})`;
-                    businessSelect.appendChild(opt);
-                });
-
-                // Set default to kisasacraft66
-                businessSelect.value = BUSINESS_ID;
-                updateBusinessInfo();
-                
-            } catch (err) {
-                logError("Failed to fetch businesses: " + err.message);
-                console.error('[DB] ❌ Business fetch error:', err);
-                const businessSelect = document.getElementById('businessSelect');
-                businessSelect.innerHTML = `<option value="${BUSINESS_ID}">${BUSINESS_ID}</option>`;
-                businessSelect.value = BUSINESS_ID;
-            }
-        }
-
-        // --- SWITCH BUSINESS ---
-        async function switchBusiness() {
-            const newBusinessId = document.getElementById('businessSelect').value;
-            if (!newBusinessId || newBusinessId === BUSINESS_ID) return;
-
-            BUSINESS_ID = newBusinessId;
-            console.log(`[UI] Switched to business: ${BUSINESS_ID}`);
-            logSystem(`Switching to business: ${BUSINESS_ID}`);
-            updateBusinessInfo();
-            
-            // Reload config for new business
-            await loadBusinessConfig(BUSINESS_ID);
-        }
-
-        // --- UPDATE BUSINESS INFO DISPLAY ---
-        function updateBusinessInfo() {
-            const selectedBiz = availableBusinesses.find(b => b.business_id === BUSINESS_ID);
-            const infoDiv = document.getElementById('businessInfo');
-            if (selectedBiz) {
-                infoDiv.innerHTML = `📍 <strong>${selectedBiz.name || 'N/A'}</strong> • Industry: ${selectedBiz.industry || 'N/A'} • Type: ${selectedBiz.business_type || 'general'}`;
-            } else {
-                infoDiv.innerHTML = `📍 Business ID: <strong>${BUSINESS_ID}</strong>`;
-            }
-        }
-
-        // --- LOAD BUSINESS CONFIG ---
-        async function loadBusinessConfig(businessId) {
-            logSystem(`Fetching configuration for: ${businessId}...`);
-            try {
-                const res = await fetch(TESTER_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        action: "fetch_init_data", 
-                        businessId: businessId
-                    })
-                });
-                const data = await res.json();
-                console.log('[DB] Raw response from webhook:', data);
-                
-                if(data.error) {
-                    throw new Error(data.error);
-                }
-
-                // --- MASTER PROMPT (from global_config.master_system_prompt) ---
-                // Backend should return: data.global_config or data.masterPrompt
-                const masterPrompt = data.master_system_prompt || data.masterPrompt || "";
-                
-                if (!masterPrompt || masterPrompt.trim() === "") {
-                    console.error('[DB] ❌ Query failed: global_config.master_system_prompt is empty or NULL');
-                    logSystem("❌ ERROR: Master prompt query returned no data - check global_config table");
-                } else {
-                    console.log('[DB] ✅ global_config.master_system_prompt retrieved:', masterPrompt.substring(0, 50) + '...');
-                    logSystem("✅ Master prompt loaded from global_config");
-                }
-                
-                document.getElementById('masterPrompt').value = masterPrompt;
-                updateTokenCount('masterPrompt', 'master-tokens');
-
-                // --- BUSINESS PROMPT (from businesses.system_prompt where business_id = businessId) ---
-                // Backend should return: data.system_prompt or data.bizPrompt
-                const bizPrompt = data.system_prompt || data.bizPrompt || "";
-                
-                if (!bizPrompt || bizPrompt.trim() === "") {
-                    console.error(`[DB] ❌ Query failed: businesses.system_prompt for business_id="${businessId}" is empty or NULL`);
-                    logSystem(`⚠️ Business prompt empty - check businesses table for business_id: ${businessId}`);
-                } else {
-                    console.log('[DB] ✅ businesses.system_prompt retrieved:', bizPrompt.substring(0, 50) + '...');
-                    logSystem("✅ Business prompt loaded from businesses table");
-                }
-                
-                document.getElementById('bizPrompt').value = bizPrompt;
-                updateTokenCount('bizPrompt', 'biz-tokens');
-
-                // --- TOOLS (from tools_library) ---
-                // Backend should return: data.tools as array of { id (uuid), name, description, parameters (jsonb) }
-                activeToolsData = data.tools || [];
-                
-                console.log('[DB] Tools query result:', activeToolsData);
-                
-                if (!Array.isArray(activeToolsData)) {
-                    console.error('[DB] ❌ Query failed: tools_library returned non-array or NULL');
-                    logSystem("❌ ERROR: Tools query returned invalid data - check tools_library table");
-                    activeToolsData = [];
-                } else if (activeToolsData.length === 0) {
-                    console.error('[DB] ❌ Query failed: tools_library returned empty array');
-                    logSystem("❌ ERROR: No tools found in tools_library table");
-                } else {
-                    console.log(`[DB] ✅ Retrieved ${activeToolsData.length} tools from tools_library`);
-                    logSystem(`✅ Retrieved ${activeToolsData.length} tools from tools_library`);
-                    activeToolsData.forEach((tool, idx) => {
-                        console.log(`  [Tool ${idx}] id=${tool.id}, name=${tool.name}`);
-                    });
-                }
-                
-                const toolSelect = document.getElementById('toolSelect');
-                toolSelect.innerHTML = '<option value="">-- Select a tool --</option>';
-                activeToolsData.forEach(tool => {
-                    const opt = document.createElement('option');
-                    opt.value = tool.id;
-                    opt.innerText = tool.name;
-                    toolSelect.appendChild(opt);
-                });
-
-                logSystem("✅ Config and Tools loaded successfully.");
-                console.log('[DB] Init complete:', { 
-                    businessId: businessId,
-                    masterPromptLength: masterPrompt.length,
-                    businessPromptLength: bizPrompt.length,
-                    toolCount: activeToolsData.length 
-                });
-            } catch (err) {
-                logError("Failed to fetch config: " + err.message);
-                console.error('[DB] ❌ CRITICAL ERROR:', err);
-            }
-        }
-
-        // --- UI LOGIC ---
+        // --- UI TOGGLES ---
+        function toggleLogs() { document.getElementById('logs-panel').classList.toggle('open'); }
         function switchTab(tabId) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
             document.querySelector(`.tab[onclick="switchTab('${tabId}')"]`).classList.add('active');
             document.getElementById(`tab-${tabId}`).classList.add('active');
         }
-
-        function handleEdit(inputId, tokenCounterId) {
+        function handleEdit() {
             if(!isDraftMode) {
                 isDraftMode = true;
-                document.getElementById('draft-badge').style.display = 'inline-block';
                 document.getElementById('draft-banner').classList.add('active');
-                logSystem("Draft Mode Activated. Simulator will use unsaved changes.");
+                setLed('warning');
+                log('sys', "Draft Overrides Active.");
             }
-            if(inputId && tokenCounterId) updateTokenCount(inputId, tokenCounterId);
+        }
+        function setLed(state) {
+            const led = document.getElementById('status-led');
+            if(state === 'success') { led.style.background = 'var(--success)'; led.style.boxShadow = '0 0 8px var(--success)'; }
+            if(state === 'warning') { led.style.background = 'var(--warning)'; led.style.boxShadow = '0 0 8px var(--warning)'; }
+            if(state === 'thinking') { led.style.background = 'var(--primary-neon)'; led.style.boxShadow = '0 0 15px var(--primary-neon)'; }
         }
 
-        function updateTokenCount(inputId, counterId) {
-            const text = document.getElementById(inputId).value;
-            // Rough estimation: 1 token ≈ 4 characters
-            const tokens = Math.ceil(text.length / 4);
-            document.getElementById(counterId).innerText = `~${tokens} tokens`;
+        // --- MODAL LOGIC ---
+        // Formatting toolbar helpers
+        function formatBlock(tag) {
+            document.execCommand('formatBlock', false, tag);
+        }
+        function formatInline(cmd) {
+            if(cmd === 'bold') document.execCommand('bold');
+            else if(cmd === 'italic') document.execCommand('italic');
+            else if(cmd === 'underline') document.execCommand('underline');
+        }
+        function insertDivider() {
+            document.execCommand('insertHTML', false, '<hr>');
         }
 
+        // Convert AI-markup (###, ---, **bold**, _italic_) to readable HTML for the editor
+        function convertToHumanReadable(markup) {
+            if(!markup) return '';
+            let text = String(markup).replace(/\r\n/g,'\n');
+
+            // Headings (support #/##/### -> render as heading tags)
+            text = text.replace(/^###\s*(.+)$/gm, '<h1>$1</h1>');
+            text = text.replace(/^##\s*(.+)$/gm, '<h2>$1</h2>');
+            text = text.replace(/^#\s*(.+)$/gm, '<h3>$1</h3>');
+
+            // Bold and italic
+            text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            text = text.replace(/_(.+?)_/g, '<em>$1</em>');
+
+            // Divider tokens -> <hr>
+            text = text.replace(/^---$/gm, '<hr>');
+
+            // Paragraph handling: split on double newlines into paragraphs
+            const parts = text.split(/\n\s*\n/);
+            for(let i=0;i<parts.length;i++){
+                const p = parts[i].trim();
+                if(!p) { parts[i] = ''; continue; }
+                if(/^<h\d|^<hr/i.test(p)) { parts[i] = p; }
+                else { parts[i] = '<p>' + p.replace(/\n/g,'<br>') + '</p>'; }
+            }
+            return parts.join('\n');
+        }
+
+        // Convert editor HTML back to AI-markup with ###, ---, **bold**, _italic_
+        function convertToAIMarkup(html) {
+            if(!html) return '';
+            const tmp = document.createElement('div');
+            tmp.innerHTML = html;
+
+            // Headings -> always save as '### '
+            tmp.querySelectorAll('h1,h2,h3,h4,h5').forEach(n => {
+                n.outerHTML = '\n### ' + n.textContent.trim() + '\n';
+            });
+
+            // HR -> divider token
+            tmp.querySelectorAll('hr').forEach(n => { n.outerHTML = '\n---\n'; });
+
+            // Bold / italic
+            tmp.querySelectorAll('strong,b').forEach(n => { n.outerHTML = '**' + n.textContent + '**'; });
+            tmp.querySelectorAll('em,i').forEach(n => { n.outerHTML = '_' + n.textContent + '_'; });
+
+            // Replace <br> with newlines
+            tmp.querySelectorAll('br').forEach(n => { n.outerHTML = '\n'; });
+
+            // Convert block-level paragraphs and divs to separated text
+            tmp.querySelectorAll('p,div').forEach(n => { n.outerHTML = n.textContent.trim() + '\n\n'; });
+
+            // Get the text, remove any leftover tags and normalize newlines
+            let out = tmp.innerHTML.replace(/<[^>]+>/g,'').replace(/\n{3,}/g,'\n\n').trim();
+            // Ensure dividers and headings keep spacing
+            out = out.replace(/\n\s*---\s*\n/g,'\n---\n');
+            out = out.replace(/\n{2,}/g,'\n\n');
+            return out;
+        }
+
+        function openTextModal(fieldId, title) {
+            currentTextField = fieldId;
+            document.getElementById('textModalTitle').innerText = "Edit: " + title;
+            const aiMarkup = document.getElementById(fieldId).value || '';
+            document.getElementById('textModalEditor').innerHTML = convertToHumanReadable(aiMarkup);
+            document.getElementById('textModal').classList.add('active');
+            // Focus and place caret at end
+            const editor = document.getElementById('textModalEditor');
+            editor.focus();
+            document.getSelection().collapseToEnd();
+        }
+
+        function saveTextModal() {
+            const editorHtml = document.getElementById('textModalEditor').innerHTML;
+            const aiMarkup = convertToAIMarkup(editorHtml);
+            document.getElementById(currentTextField).value = aiMarkup;
+            handleEdit();
+            closeModal('textModal');
+        }
+        function closeModal(modalId) { document.getElementById(modalId).classList.remove('active'); }
+
+        // --- LOGGING ---
+        function log(type, msg) {
+            const box = document.getElementById('log-box');
+            let cls = type === 'error' ? 'log-error' : (type === 'db' ? 'log-db' : 'log-sys');
+            const time = new Date().toLocaleTimeString('en-US', {hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
+            box.innerHTML += `<div class="log-entry ${cls}">[${time}] ${msg}</div>`;
+            box.scrollTop = box.scrollHeight;
+        }
+
+        async function fetchDBLogs() {
+            try {
+                // Send a probe to the QC endpoint instead for debugging (returns whatever QC responds)
+                const res = await fetch(QC_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ probe: 'logs', conversationId: conversationId })
+                });
+                if(!res.ok) {
+                    const txt = await res.text().catch(()=>'');
+                    log('error', `fetchDBLogs (QC probe) failed: ${res.status} ${res.statusText} - ${txt}`);
+                    return;
+                }
+                // Try JSON, fallback to text
+                let data;
+                try { data = await res.json(); }
+                catch(_) { data = await res.text(); }
+                log('db', `QC probe response: ${typeof data === 'string' ? data : JSON.stringify(data).slice(0,1000)}`);
+            } catch(e) { /* Ignore background poll errors */ }
+        }
+
+        // --- DATABASE SYNC ---
+        async function fetchAvailableBusinesses() {
+            try {
+                const res = await fetch(TESTER_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: "fetch_businesses" }) });
+                if(!res.ok) {
+                    const txt = await res.text().catch(()=>'');
+                    log('error', `fetchAvailableBusinesses failed: ${res.status} ${res.statusText} - ${txt}`);
+                    return;
+                }
+                const data = await res.json();
+                const select = document.getElementById('businessSelect');
+                select.innerHTML = '';
+                (data.businesses || []).forEach(biz => {
+                    const opt = document.createElement('option');
+                    opt.value = biz.business_id; opt.innerText = `${biz.name} (${biz.business_id})`;
+                    select.appendChild(opt);
+                });
+                select.value = BUSINESS_ID;
+            } catch (err) { log('error', "Fetch Biz Error: " + err.message); }
+        }
+
+        async function switchBusiness() {
+            BUSINESS_ID = document.getElementById('businessSelect').value;
+            log('sys', `Switched Context to: ${BUSINESS_ID}`);
+            await loadBusinessConfig(BUSINESS_ID);
+        }
+
+        async function loadBusinessConfig(businessId) {
+            log('sys', `Pulling Config for ${businessId}...`);
+            document.getElementById('biz-label').innerText = businessId;
+            try {
+                const res = await fetch(TESTER_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: "fetch_init_data", businessId: businessId })
+                });
+                const data = await res.json();
+                
+                // Map the 5 Global Prompts
+                const gp = data.prompts || {};
+                PROMPT_KEYS.forEach(key => {
+                    document.getElementById(key).value = gp[key] || "";
+                });
+                
+                document.getElementById('bizPrompt').value = data.business_prompt || "";
+                
+                // Map Tools
+                activeToolsData = data.tools || [];
+                const tSelect = document.getElementById('toolSelect');
+                tSelect.innerHTML = '<option value="">-- Select Tool --</option>';
+                activeToolsData.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.id; opt.innerText = t.name;
+                    tSelect.appendChild(opt);
+                });
+                log('sys', "Config Synced.");
+                isDraftMode = false;
+                document.getElementById('draft-banner').classList.remove('active');
+                setLed('success');
+            } catch (err) { log('error', "Init Sync Failed."); }
+        }
+
+        function getCurrentPrompts() {
+            const globalObj = {};
+            PROMPT_KEYS.forEach(k => globalObj[k] = document.getElementById(k).value);
+            return {
+                globalPrompts: globalObj,
+                businessPrompt: document.getElementById('bizPrompt').value
+            };
+        }
+
+        async function saveConfigsToDB() {
+            try {
+                const p = getCurrentPrompts();
+                const res = await fetch(TESTER_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: "update_prompts", businessId: BUSINESS_ID, ...p })
+                });
+                const data = await res.json();
+                if(data.error) throw new Error(data.error);
+                log('sys', "Deploy Success: Prompts written to DB.");
+                isDraftMode = false;
+                document.getElementById('draft-banner').classList.remove('active');
+                setLed('success');
+            } catch(err) { log('error', "Deploy Failed: " + err.message); }
+        }
+
+        // --- SIMULATION & QC LOGIC ---
         function previewImage() {
             const file = document.getElementById('imageInput').files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onload = e => {
                     base64Image = e.target.result.split(',')[1];
-                    const preview = document.getElementById('img-preview');
-                    preview.src = e.target.result;
-                    preview.style.display = 'block';
+                    document.getElementById('img-preview').src = e.target.result;
+                    document.getElementById('img-preview').style.display = 'block';
                 }
                 reader.readAsDataURL(file);
             }
         }
-
-        // --- TOOL MANAGER LOGIC ---
-        function loadSelectedTool() {
-            const toolId = document.getElementById('toolSelect').value;
-            if(!toolId) {
-                document.getElementById('toolDesc').value = "";
-                document.getElementById('toolParams').value = "";
-                return;
-            }
-            const tool = activeToolsData.find(t => t.id === toolId);
-            if(tool) {
-                document.getElementById('toolDesc').value = tool.description;
-                document.getElementById('toolParams').value = JSON.stringify(tool.parameters, null, 2);
-                updateTokenCount('toolDesc', 'tool-desc-tokens');
-            }
-        }
-
-        // --- NETWORK WRITERS ---
-        async function saveConfigsToDB() {
-            try {
-                logSystem("Saving prompts to production DB...");
-                console.log('[DB] Saving to: global_config.master_system_prompt + businesses.system_prompt');
-                const res = await fetch(TESTER_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: "update_prompts",
-                        businessId: BUSINESS_ID,
-                        // Field names match actual DB schema
-                        master_system_prompt: document.getElementById('masterPrompt').value,
-                        system_prompt: document.getElementById('bizPrompt').value
-                    })
-                });
-                const data = await res.json();
-                if(data.error) throw new Error(data.error);
-                
-                isDraftMode = false;
-                document.getElementById('draft-badge').style.display = 'none';
-                document.getElementById('draft-banner').classList.remove('active');
-                console.log('[DB] ✅ Prompts saved successfully');
-                logSystem("✅ Prompts saved successfully to: global_config & businesses");
-                
-                // Ensure input area stays visible
-                const inputArea = document.querySelector('.input-area');
-                if (inputArea) {
-                    inputArea.style.display = 'flex';
-                    inputArea.style.visibility = 'visible';
-                }
-            } catch(err) { 
-                console.error('[DB] Save failed:', err);
-                logError("Save failed: " + err.message); 
-            }
-        }
-
-        async function saveToolToDB() {
-            try {
-                const toolId = document.getElementById('toolSelect').value;
-                if(!toolId) throw new Error("No tool selected.");
-                
-                // Validate JSON before sending
-                const paramsRaw = document.getElementById('toolParams').value;
-                let parsedParams;
-                try { parsedParams = JSON.parse(paramsRaw); } catch(e) { throw new Error("Invalid JSON in parameters."); }
-
-                logSystem("Updating tool definition in tools_library...");
-                console.log('[DB] Updating tools_library row with id:', toolId);
-                const res = await fetch(TESTER_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: "update_tool",
-                        toolId: toolId,
-                        // Field names match tools_library schema
-                        name: activeToolsData.find(t => t.id === toolId)?.name || "",
-                        description: document.getElementById('toolDesc').value,
-                        parameters: parsedParams
-                    })
-                });
-                const data = await res.json();
-                if(data.error) throw new Error(data.error);
-                
-                console.log('[DB] ✅ Tool updated in tools_library');
-                logSystem(`✅ Tool updated successfully in tools_library.`);
-                
-                // Ensure input area stays visible
-                const inputArea = document.querySelector('.input-area');
-                if (inputArea) {
-                    inputArea.style.display = 'flex';
-                    inputArea.style.visibility = 'visible';
-                }
-            } catch(err) { 
-                console.error('[DB] Tool save failed:', err);
-                logError("Tool Save failed: " + err.message); 
-            }
-        }
-
-        // --- CHAT / SIMULATION LOGIC ---
         async function sendMessage() {
-            const promptInput = document.getElementById('prompt');
-            const text = promptInput.value.trim();
-            const fileInput = document.getElementById('imageInput');
-            
-            if(!text && !base64Image) return;
+    const input = document.getElementById('prompt');
+    const text = input.value.trim();
+    
+    // 1. Validation & Setup
+    if (!text && !base64Image) return;
 
-            // 1. Render User Message
-            renderChatBubble('user', text, base64Image);
-            
-            // 2. Add to Chat Memory
-            chatHistory.push({ role: 'user', content: text });
-            if (chatHistory.length > 10) chatHistory = chatHistory.slice(-10); // Keep last 10 messages
+    const msgId = 'msg_' + Date.now(); 
+    const currentPrompts = getCurrentPrompts(); 
+    
+    // 2. Render User Message Visually
+    renderBubble('user', text, base64Image, null);
 
-            // 3. Prepare Payload
-            const payload = {
-                action: "simulate",
-                userId: "test_user_001",
-                businessId: BUSINESS_ID,
-                platform: "whatsapp",
-                conversationId: conversationId,
-                text: text,
-                is_simulation: true,
-                history: chatHistory, // Bundle the history!
-                overrides: isDraftMode ? {
-                    global: document.getElementById('masterPrompt').value,
-                    business: document.getElementById('bizPrompt').value
-                } : null
+    // 3. Prepare Payload
+    // In Replay Mode, ensuring 'conversationId' stays consistent is key to context.
+    const payload = {
+        action: "simulate",
+        userId: "test_ui_001",
+        businessId: BUSINESS_ID,
+        conversationId: conversationId, // Ensure this is the ID of the historical chat
+        text: text, 
+        history: [...chatHistory], // Send the full current context bundle
+        ...currentPrompts
+    };
+
+    if (base64Image) {
+        payload.media = { type: "image/jpeg", base64: base64Image };
+    }
+
+    // 4. Update history with User message for the NEXT turn
+    chatHistory.push({ role: 'user', content: text });
+    
+    // Optional: Only slice if history is getting too heavy (> 15 messages)
+    if (chatHistory.length > 15) chatHistory = chatHistory.slice(-15);
+
+    // 5. Cleanup Input UI
+    input.value = ''; 
+    document.getElementById('img-preview').style.display = 'none';
+    const fInput = document.getElementById('imageInput'); 
+    fInput.value = ''; 
+    base64Image = null;
+    
+    setLed('thinking');
+    log('sys', `Forwarding Turn to Brain. Context Depth: ${payload.history.length} messages.`);
+
+    try {
+        const res = await fetch(TESTER_URL, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(payload) 
+        });
+
+        if (!res.ok) {
+            const txt = await res.text().catch(() => '');
+            log('error', `Simulate failed: ${res.status} - ${txt}`);
+            setLed('danger');
+            return;
+        }
+
+        const data = await res.json();
+        setLed(isDraftMode ? 'warning' : 'success');
+
+        if (data.error) { 
+            log('error', data.error); 
+            setLed('danger');
+            return; 
+        }
+
+        // 6. Process Telemetry & Agent Thoughts
+        if (data.feature_one_meta && data.feature_one_meta.thoughts) {
+            data.feature_one_meta.thoughts.forEach(t => {
+                const time = t.duration ? `[${t.duration}]` : '';
+                if (t.agent === 'manager') renderThought(`MANAGER ${time}: Stage -> ${t.instruction?.new_stage || 'N/A'}`);
+                else if (t.agent === 'eq_analyst') renderThought(`EQ ANALYST ${time}: Hook -> ${t.output?.sales_hook || 'No Hook'}`);
+                else if (t.agent === 'sales_ai') renderThought(`SALES AI ${time}: Generating final response...`);
+                else if (t.agent === 'tool_executor') renderThought(`SYSTEM ${time}: Executed ${t.tool_calls?.length || 0} tools.`);
+                
+                // Process Product Cards sent by the AI
+                if (t.type === 'outbound_ui' && t.detail?.type === 'product_card') {
+                    const product = t.detail.data;
+                    renderCard(product);
+                    chatHistory.push({ 
+                        role: 'assistant', 
+                        content: `[System Sent Product] ID: ${product.id} | Title: ${product.name || product.title} | Price: ${product.price}` 
+                    });
+                }
+            });
+        }
+
+        // 7. Render Total Query Time
+        if (data.metadata?.total_duration) {
+            log('sys', `Total Round-trip Time: ${data.metadata.total_duration}`);
+        }
+
+        // 8. Process Final AI Reply
+        if (data.reply) {
+            renderBubble('bot', data.reply, null, msgId);
+            
+            // CRITICAL: Update history so the NEXT message in Replay knows what the AI just said
+            chatHistory.push({ role: 'assistant', content: data.reply });
+            
+            if (data.feature_one_meta) {
+                runAsyncQC(msgId, text, data.reply, data.feature_one_meta, currentPrompts.globalPrompts);
+            }
+        }
+
+    } catch (err) { 
+        log('error', `Network Error: ${err.message}`); 
+        setLed('danger'); 
+    }
+}
+        async function runAsyncQC(msgId, userMessage, aiResponse, metadata, prompts) {
+    // Add Pulsing Bubble to the DOM
+    const bubbleDiv = document.createElement('div');
+    bubbleDiv.id = `qc-btn-${msgId}`;
+    bubbleDiv.className = 'qc-bubble auditing';
+    bubbleDiv.innerText = 'QC Auditing...';
+    
+    const parentMsg = document.getElementById(msgId);
+    if(parentMsg) parentMsg.appendChild(bubbleDiv);
+
+    try {
+        // TRACE 1: Log what we are sending out
+        console.log(`[QC_TRACE] Starting audit for message: ${msgId}`);
+
+        const res = await fetch(QC_URL, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ userMessage, aiResponse, metadata, prompts })
+        });
+
+        if(!res.ok) {
+            const txt = await res.text().catch(()=>'');
+            bubbleDiv.classList.remove('auditing');
+            bubbleDiv.innerText = `QC Error`;
+            log('error', `QC endpoint failed: ${res.status} - ${txt}`);
+            return;
+        }
+
+        const qc = await res.json();
+
+        // TRACE 2: Log exactly what came back from the server
+        console.log("[QC_TRACE] Data received from Edge Function:", qc);
+
+        // Store Data
+        qcReports[msgId] = qc;
+
+        // --- THE FIX: Map the score correctly ---
+        // We check for both 'score' (what the AI sends) and 'overall_score' as a backup
+        const finalScore = qc.score !== undefined ? qc.score : (qc.overall_score || 0);
+
+        // Update UI Bubble
+        bubbleDiv.classList.remove('auditing');
+        bubbleDiv.innerText = `QC: ${finalScore}%`;
+        
+        // Color coding based on the new score variable
+        if(finalScore >= 80) {
+            bubbleDiv.classList.add('score-a');
+        } else if (finalScore < 60) {
+            bubbleDiv.classList.add('score-f');
+        }
+        
+        bubbleDiv.onclick = () => {
+            console.log("[QC_TRACE] Opening modal for score:", finalScore);
+            showQCModal(msgId);
+        };
+
+        log('sys', `QC Completed. Score: ${finalScore}%`);
+
+    } catch(e) {
+        console.error("[QC_TRACE_ERROR]", e);
+        bubbleDiv.classList.remove('auditing');
+        bubbleDiv.innerText = 'QC Failed';
+        log('error', "QC Agent Error: " + e.message);
+    }
+}
+        function showQCModal(msgId) {
+    const qc = qcReports[msgId];
+    if (!qc) {
+        console.error("[QC_TRACE] No report found for ID:", msgId);
+        return;
+    }
+
+    console.log("[QC_TRACE] Populating Modal with:", qc);
+
+    // 1. Handle Main Score (Check both 'score' and 'overall_score')
+    const displayScore = qc.score !== undefined ? qc.score : (qc.overall_score || 0);
+    const scoreEl = document.getElementById('qc-score-main');
+    scoreEl.innerText = `${displayScore}%`;
+    scoreEl.style.color = displayScore >= 80 ? 'var(--success)' : (displayScore < 60 ? 'var(--danger)' : 'var(--warning)');
+
+    // 2. Map Grades (OpenAI returns: qc.grades.manager, etc.)
+    const grades = qc.grades || {};
+    
+    // Manager Grade
+    const mgrGrade = grades.manager || '--';
+    const mgrEl = document.getElementById('qc-grade-mgr');
+    mgrEl.className = `grade grade-${mgrGrade.replace('+', '').replace('-', '')}`; // Clean CSS class
+    mgrEl.innerText = mgrGrade;
+    // Since the AI doesn't provide separate 'reasons' per grade in this version, 
+    // we use the librarian_check or a generic placeholder
+    document.getElementById('qc-reason-mgr').innerText = qc.librarian_check || 'Audit complete.';
+
+    // Sales Grade
+    const salesGrade = grades.sales || '--';
+    const salesEl = document.getElementById('qc-grade-sales');
+    salesEl.className = `grade grade-${salesGrade.replace('+', '').replace('-', '')}`;
+    salesEl.innerText = salesGrade;
+    document.getElementById('qc-reason-sales').innerText = "Tone and mechanics checked.";
+
+    // EQ Grade
+    const eqGrade = grades.eq || '--';
+    const eqEl = document.getElementById('qc-grade-eq');
+    eqEl.className = `grade grade-${eqGrade.replace('+', '').replace('-', '')}`;
+    eqEl.innerText = eqGrade;
+    document.getElementById('qc-reason-eq').innerText = "Psychological hook analysis.";
+
+    // 3. Improvement Suggestion
+    document.getElementById('qc-improvement').innerText = qc.improvement_suggestion || "No suggestions provided.";
+
+    // 4. Show the Modal
+    const modal = document.getElementById('qcModal');
+    if (modal) {
+        modal.classList.add('active');
+    } else {
+        log('error', "Modal element #qcModal not found in DOM");
+    }
+}
+        // --- RENDERERS ---
+        function renderBubble(type, text, imgBase64, msgId) {
+            const box = document.getElementById('chat-box');
+            const wrap = document.createElement('div');
+            wrap.className = `msg-wrapper ${type}`;
+            if(msgId) wrap.id = msgId;
+            
+            let content = `<div class="msg">`;
+            if (imgBase64) content += `<img src="data:image/jpeg;base64,${imgBase64}" style="max-width:200px; border-radius:8px; margin-bottom:8px; display:block;">`;
+            if (text) content += text.replace(/\n/g, '<br>');
+            content += `</div>`;
+
+            wrap.innerHTML = content;
+            box.appendChild(wrap);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function renderThought(text) {
+            const box = document.getElementById('chat-box');
+            const div = document.createElement('div');
+            div.className = 'thought';
+            div.innerText = text;
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function renderCard(c) {
+            if(!c || (!c.name && !c.title)) return;
+            const box = document.getElementById('chat-box');
+            const div = document.createElement('div');
+            div.className = 'msg-wrapper bot';
+            div.innerHTML = `
+                <div style="background:rgba(0,0,0,0.5); border:1px solid var(--glass-border); border-radius:8px; overflow:hidden; width:220px; font-family:sans-serif;">
+                    ${c.image ? `<img src="${c.image}" style="width:100%; height:140px; object-fit:cover;">` : ''}
+                    <div style="padding:10px;">
+                        <div style="font-weight:bold; font-size:13px; margin-bottom:5px;">${c.name||c.title}</div>
+                        <div style="color:var(--primary-neon); font-weight:bold; font-size:14px;">$${c.price||c.cost||'--'}</div>
+                    </div>
+                </div>`;
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        }
+        // --- IMPROVED LOGGING SYSTEM ---
+function logSystem(msg) {
+    const box = document.getElementById('log-box');
+    box.innerHTML += `<div class="log-entry log-system"><strong>[SYSTEM]</strong><br>${msg}</div>`;
+    box.scrollTop = box.scrollHeight;
+}
+
+function logError(msg) {
+    const box = document.getElementById('log-box');
+    box.innerHTML += `<div class="log-entry log-error"><strong>[ERROR]</strong><br>${msg}</div>`;
+    box.scrollTop = box.scrollHeight;
+}
+
+/**
+ * New function to show Network Traffic & Data Payloads
+ * @param {string} label - The type of traffic (REQ/RES)
+ * @param {object} data - The JSON data to display
+ */
+function logNetwork(label, data) {
+    const box = document.getElementById('log-box');
+    const timestamp = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    
+    // Create the header entry
+    box.innerHTML += `<div class="log-entry log-network"><strong>[${timestamp}] ${label}</strong></div>`;
+    
+    // Create the data sub-entry with formatted JSON
+    const jsonStr = JSON.stringify(data, null, 2);
+    box.innerHTML += `
+        <div class="log-entry log-data">
+            <pre>${jsonStr}</pre>
+        </div>
+    `;
+    box.scrollTop = box.scrollHeight;
+}
+// --- REPLAY STATE ---
+let historicalThread = []; // Holds the user's past messages
+let historicalIndex = 0;   // Tracks where we are in the timeline
+
+// Toggle between Logs and History on the left panel
+function switchLeftTab(tab) {
+    document.getElementById('tab-btn-logs').classList.toggle('active', tab === 'logs');
+    document.getElementById('tab-btn-history').classList.toggle('active', tab === 'history');
+    document.getElementById('log-box').style.display = tab === 'logs' ? 'block' : 'none';
+    document.getElementById('history-box').style.display = tab === 'history' ? 'block' : 'none';
+}
+
+// 1. Fetch past conversations from your DB
+async function fetchHistoricalConversations() {
+    const list = document.getElementById('history-list');
+    list.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">Fetching from Supabase...</div>';
+    
+    try {
+        const res = await fetch(TESTER_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: "fetch_past_conversations", businessId: BUSINESS_ID })
+        });
+        const data = await res.json();
+        
+        list.innerHTML = '';
+        if (!data.conversations || data.conversations.length === 0) {
+            list.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">No past chats found.</div>';
+            return;
+        }
+
+        data.conversations.forEach(conv => {
+            const btn = document.createElement('button');
+            // Use a dedicated class for easier selection/styling
+            btn.className = 'history-item';
+            btn.id = `history-item-${conv.id}`;
+
+            // Try multiple possible name fields, fall back to phone or Unknown
+            const displayName = conv.contact_name || conv.name || conv.customer_name || conv.phone || 'Unknown';
+            const shortId = conv.id ? conv.id.substring(0,8) + '...' : '';
+
+            btn.innerHTML = `<strong style="color:var(--primary-neon)">${displayName}</strong><br><span style="color:var(--text-muted)">ID: ${shortId}</span>`;
+
+            // When clicked, select/highlight the item then load the conversation
+            btn.onclick = () => {
+                selectHistoryItem(conv.id);
+                loadHistoricalConversation(conv.id);
             };
 
-            if (base64Image) {
-                payload.media = { type: fileInput.files[0].type || "image/jpeg", base64: base64Image };
-            }
+            list.appendChild(btn);
+        });
+    } catch (e) {
+        list.innerHTML = `<div style="color:var(--danger); font-size:12px;">Error: ${e.message}</div>`;
+    }
+}
 
-            // 4. Reset Input UI
-            promptInput.value = '';
-            fileInput.value = '';
-            base64Image = null;
-            document.getElementById('img-preview').style.display = 'none';
-            document.getElementById('typing-indicator').style.display = 'block';
-
-            // 5. Send to Webhook
-            try {
-                const res = await fetch(TESTER_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                const data = await res.json();
-                document.getElementById('typing-indicator').style.display = 'none';
-                
-                if (data.error) {
-                    logError(data.error);
-                    return;
-                }
-
-                // 6. Render Diagnostic Timeline
-                let finalAiReply = "";
-                if (data.events && Array.isArray(data.events)) {
-                    console.log(`[Response] Processing ${data.events.length} events from AI`);
-                    data.events.forEach((event, index) => {
-                        console.log(`[Event ${index}]`, { type: event.type, data: event.data || event.text });
-                        renderDiagnosticEvent(event);
-                        if (event.type === 'text') finalAiReply += event.text + " ";
-                    });
-                } else if (data.reply) {
-                    finalAiReply = data.reply;
-                    renderChatBubble('bot', data.reply);
-                }
-
-                // Handle standalone product cards from response
-                if (data.cards && Array.isArray(data.cards)) {
-                    console.log(`[Response] Found ${data.cards.length} product cards`);
-                    data.cards.forEach((card, index) => {
-                        console.log(`[Card ${index}]`, card);
-                        renderProductCard(card);
-                    });
-                } else if (!data.cards || data.cards.length === 0) {
-                    if (data.events && data.events.some(e => e.type === 'product_card' || e.type === 'card')) {
-                        console.log('[Response] Product cards found in events');
-                    } else {
-                        console.log('[Response] No product cards in response');
-                    }
-                }
-
-                // 7. Save Bot Response to Memory
-                if(finalAiReply) {
-                    chatHistory.push({ role: 'assistant', content: finalAiReply.trim() });
-                    if (chatHistory.length > 10) chatHistory = chatHistory.slice(-10);
-                }
-
-            } catch (err) {
-                document.getElementById('typing-indicator').style.display = 'none';
-                logError('Network Error: ' + err.message);
-                console.error('[Network Error]', err);
-            }
-        }
-
-        // --- RENDERERS ---
-        function renderDiagnosticEvent(event) {
-            if (event.type === 'thought') renderChatBubble('thought', "🧠 " + event.text);
-            else if (event.type === 'tool_call') renderChatBubble('tool', "🛠️ Executing: " + event.name);
-            else if (event.type === 'text') renderChatBubble('bot', event.text);
-            else if (event.type === 'product_card' || event.type === 'card') renderProductCard(event.data);
-        }
-
-        function renderProductCard(cardData) {
-            const box = document.getElementById('chat-box');
-            const div = document.createElement('div');
-            div.className = 'msg bot';
+// 2. Load a specific conversation's history
+async function loadHistoricalConversation(pastConvId) {
+    logSystem(`Initializing Replay for Conversation: ${pastConvId}`);
+    
+    try {
+        const res = await fetch(TESTER_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: "fetch_past_messages", conversationId: pastConvId })
+        });
+        const data = await res.json();
+        
+        // Filter out only what the USER actually said, sort chronologically
+        historicalThread = data.messages
+            .filter(m => m.role === 'user')
+            .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
             
-            // Validate card data
-            if (!cardData) {
-                console.warn('[Product Card] No card data received - hiding card');
-                logSystem("[WARN] Product card received with no data - skipped");
-                return;
-            }
-
-            // Check for required fields
-            if (!cardData.name && !cardData.title && !cardData.image) {
-                console.warn('[Product Card] Incomplete card data:', cardData);
-                logSystem("[WARN] Product card incomplete (missing name/title/image) - skipped");
-                return;
-            }
-
-            const title = cardData.name || cardData.title || 'Untitled Product';
-            const image = cardData.image || cardData.img || '';
-            const price = cardData.price || cardData.cost || 'N/A';
-            const description = cardData.description || cardData.desc || '';
-            const url = cardData.url || cardData.link || '#';
-
-            let cardHTML = `
-                <div style="background: white; border-radius: 8px; overflow: hidden; max-width: 280px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin: 5px 0;">
-            `;
-
-            if (image) {
-                cardHTML += `<img src="${image}" style="width: 100%; height: 200px; object-fit: cover;" alt="${title}" onerror="this.style.display='none'">`;
-            }
-
-            cardHTML += `
-                <div style="padding: 12px;">
-                    <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: bold; color: #1c1e21;">${title}</h4>
-                    ${description ? `<p style="margin: 0 0 8px 0; font-size: 12px; color: #65676b; line-height: 1.4;">${description}</p>` : ''}
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 14px; font-weight: bold; color: #0084ff;">$${price}</span>
-                        <a href="${url}" target="_blank" style="background: #0084ff; color: white; padding: 6px 12px; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: bold;">View</a>
-                    </div>
-                </div>
-            </div>
-            `;
-
-            div.innerHTML = cardHTML;
-            console.log('[Product Card] Rendered card:', { title, price, image, url });
-            box.appendChild(div);
-            box.scrollTop = box.scrollHeight;
-            
-            // Add summarized product to chat history
-            chatHistory.push({ role: 'assistant', content: `system sent product (${title})` });
-            if (chatHistory.length > 10) chatHistory = chatHistory.slice(-10);
+        historicalIndex = 0;
+        
+        if (historicalThread.length === 0) {
+            logError("No user messages found in this thread.");
+            return;
         }
 
-        function renderChatBubble(type, text, imgBase64 = null) {
-            const box = document.getElementById('chat-box');
-            const div = document.createElement('div');
-            div.className = `msg ${type}`;
-            
-            let content = '';
-            if (imgBase64) content += `<img src="data:image/jpeg;base64,${imgBase64}" style="max-width:150px; border-radius:8px; margin-bottom:5px; display:block;"><br>`;
-            if (text) content += text.replace(/\n/g, '<br>');
+        // Setup the UI for replay
+        document.getElementById('replay-controls').style.display = 'flex';
+        document.getElementById('replay-id-label').innerText = pastConvId.substring(0,8);
+        
+        // Reset the current test chat box so we start fresh
+        document.getElementById('chat-box').innerHTML = '';
+        chatHistory = []; 
+        
+        // Automatically load the first message into the input box
+        loadNextHistoricalMessage();
+        
+        // Mark this item as selected & visited in the history list
+        try { selectHistoryItem(pastConvId); markVisited(pastConvId); } catch(e) { /* ignore if DOM ids aren't present */ }
 
-            div.innerHTML = content;
-            box.appendChild(div);
-            box.scrollTop = box.scrollHeight;
-        }
+        // Close the left panel so user can focus on testing
+        document.getElementById('logs-panel').classList.remove('open');
 
-        function logSystem(msg) {
-            const box = document.getElementById('log-box');
-            box.innerHTML += `<div class="log-entry log-system">[SYS] ${msg}</div>`;
-            box.scrollTop = box.scrollHeight;
-        }
+    } catch (e) {
+        logError(`Failed to load history: ${e.message}`);
+    }
+}
 
-        function logError(msg) {
-            const box = document.getElementById('log-box');
-            box.innerHTML += `<div class="log-entry log-error">[ERR] ${msg}</div>`;
-            box.scrollTop = box.scrollHeight;
-        }
+// 3. Step through the timeline
+function loadNextHistoricalMessage() {
+    if (historicalIndex >= historicalThread.length) {
+        alert("End of historical conversation reached!");
+        return;
+    }
+    
+    const nextMsg = historicalThread[historicalIndex];
+    const input = document.getElementById('prompt');
+    
+    // Extract text (handles if your DB saves content as a string or JSON object)
+    let textToInject = typeof nextMsg.content === 'string' ? nextMsg.content : (nextMsg.content?.text || "");
+    
+    // Put it in the input box so the tester can see it, edit it, and hit Transmit
+    input.value = textToInject;
+    
+    logSystem(`Loaded historical message ${historicalIndex + 1} of ${historicalThread.length}. Ready to transmit.`);
+    historicalIndex++;
+}
+
+// 4. Bail out of Replay mode
+function exitReplayMode() {
+    document.getElementById('replay-controls').style.display = 'none';
+    historicalThread = [];
+    historicalIndex = 0;
+    logSystem("Exited Replay Mode.");
+}
+
+// Highlight a selected history item by id (adds .selected class)
+function selectHistoryItem(id) {
+    try {
+        document.querySelectorAll('#history-list .history-item').forEach(b => b.classList.remove('selected'));
+        const el = document.getElementById(`history-item-${id}`);
+        if (el) el.classList.add('selected');
+    } catch (e) { /* safe no-op */ }
+}
+
+// Mark a history item as visited (adds .visited class)
+function markVisited(id) {
+    try {
+        const el = document.getElementById(`history-item-${id}`);
+        if (el) el.classList.add('visited');
+    } catch (e) { /* safe no-op */ }
+}
     </script>
 </body>
 </html>
