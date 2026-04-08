@@ -54,6 +54,22 @@
 
         /* Utility */
         .hidden-force { display: none !important; }
+        .view-section { 
+            min-height: 0; /* Allow flex children to shrink below content size */
+            height: 100%;  /* Take full parent height */
+            width: 100%;   /* Take full parent width */
+        }
+        .view-section:not(.hidden) { display: flex !important; }
+        
+        /* Ensure conversation list containers have proper height */
+        #fb-conversation-list,
+        #ig-conversation-list,
+        #tt-conversation-list,
+        #crm-contact-list {
+            height: 100%;
+            width: 100%;
+        }
+        
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -192,140 +208,233 @@
 
         function switchPlatform(platform) {
             currentPlatform = platform;
+            console.log('[UI] switchPlatform ->', platform);
             
+            // 0. Hide all other platform chat windows first
+            ['facebook', 'instagram', 'tiktok'].forEach(p => {
+                if (p !== platform) {
+                    const chatWindow = document.getElementById(`${p}-chat-window`);
+                    if (chatWindow) {
+                        chatWindow.classList.add('hidden');
+                    }
+                }
+            });
+
             // 1. Update Top Nav Styles
+            // Reset all top nav buttons to inactive
             document.querySelectorAll('.top-nav-btn').forEach(btn => {
                 btn.classList.remove('bg-[#2b2f3a]', 'text-white', 'shadow-md');
                 btn.classList.add('text-white/50', 'hover:bg-[#1a1d23]');
+                btn.setAttribute('aria-current', 'false');
             });
+
+            // Mark the clicked platform button as active
             const activeBtn = document.getElementById(`btn-${platform}`);
-            if(activeBtn) {
+            if (activeBtn) {
                 activeBtn.classList.remove('text-white/50', 'hover:bg-[#1a1d23]');
                 activeBtn.classList.add('bg-[#2b2f3a]', 'text-white', 'shadow-md');
+                activeBtn.setAttribute('aria-current', 'true');
             }
 
             // 2. Show Correct Sub-Nav Bar
             document.querySelectorAll('.sub-nav-container').forEach(el => el.classList.add('hidden'));
             const activeSubNav = document.getElementById(`subnav-${platform}`);
-            if(activeSubNav) activeSubNav.classList.remove('hidden');
+            if (activeSubNav) {
+                activeSubNav.classList.remove('hidden');
+                console.log('[UI] activeSubNav found for', platform, activeSubNav);
+            } else {
+                console.warn('[UI] no subnav for platform', platform);
+            }
 
             // 3. Update Body Class for Colors
             document.body.className = `h-screen flex flex-col overflow-hidden bg-[#0f1115] platform-${platform}`;
 
             // 4. Default to first tab of that platform (usually Livechat/DMs)
             const defaultTab = platform === 'whatsapp' ? 'livechat' : 'dms';
-            switchTab(defaultTab);
+            // small timeout to allow DOM class changes to settle
+            setTimeout(() => switchTab(defaultTab), 10);
         }
 
         function switchTab(tab) {
-            currentTab = tab;
+    currentTab = tab;
+    console.log('[UI] switchTab ->', { tab, currentPlatform });
 
-            // Special handling for AI Playground
-            if(tab === 'ai-playground') {
-                // Deselect all platform buttons
-                document.querySelectorAll('.top-nav-btn').forEach(btn => {
-                    btn.classList.remove('bg-[#2b2f3a]', 'text-white', 'shadow-md');
-                    btn.classList.add('text-white/50', 'hover:bg-[#1a1d23]');
-                });
-                // Highlight AI Lab button
-                const aiLabBtn = document.getElementById('nav-ai-playground');
-                if(aiLabBtn) {
-                    aiLabBtn.classList.add('bg-[#2b2f3a]', 'text-white', 'shadow-md');
-                    aiLabBtn.classList.remove('text-white/50', 'hover:bg-[#1a1d23]');
-                }
-                // Hide subnav for AI playground
-                document.querySelectorAll('.sub-nav-container').forEach(el => el.classList.add('hidden'));
-                // Hide all views
-                document.querySelectorAll('.view-section').forEach(el => {
-                    el.classList.add('hidden');
-                    el.classList.add('hidden-force');
-                });
-                // Show AI playground
-                const aiView = document.getElementById('view-ai-playground');
-                if(aiView) {
-                    aiView.classList.remove('hidden');
-                    aiView.classList.remove('hidden-force');
-                }
-                // Load AI data
-                if(window.aiManager) window.aiManager.loadMyBusinessPrompt();
-                return;
-            }
+    // 1. Special handling for AI Playground
+    if (tab === 'ai-playground') {
+        // Deselect all top platform buttons
+        document.querySelectorAll('.top-nav-btn').forEach(btn => {
+            btn.classList.remove('bg-[#2b2f3a]', 'text-white', 'shadow-md');
+            btn.classList.add('text-white/50', 'hover:bg-[#1a1d23]');
+        });
+        // Highlight AI Lab button
+        const aiLabBtn = document.getElementById('nav-ai-playground');
+        if (aiLabBtn) {
+            aiLabBtn.classList.add('bg-[#2b2f3a]', 'text-white', 'shadow-md');
+            aiLabBtn.classList.remove('text-white/50', 'hover:bg-[#1a1d23]');
+        }
+        // Hide all sub-navbars
+        document.querySelectorAll('.sub-nav-container').forEach(el => el.classList.add('hidden'));
+        // Hide all views completely
+        document.querySelectorAll('.view-section').forEach(el => {
+            el.classList.add('hidden');
+            el.classList.add('hidden-force');
+        });
+        // Show AI playground
+        const aiView = document.getElementById('view-ai-playground');
+        if (aiView) {
+            aiView.classList.remove('hidden');
+            aiView.classList.remove('hidden-force');
+        }
+        // Load AI data
+        if (window.aiManager) window.aiManager.loadMyBusinessPrompt();
+        return;
+    }
 
-            // Show subnav for platform tabs
-            document.querySelectorAll('.sub-nav-container').forEach(el => el.classList.add('hidden'));
-            const activeSubNav = document.getElementById(`subnav-${currentPlatform}`);
-            if(activeSubNav) activeSubNav.classList.remove('hidden');
+    // 2. Handle Sub-navigation Visibility
+    document.querySelectorAll('.sub-nav-container').forEach(el => el.classList.add('hidden'));
+    const activeSubNav = document.getElementById(`subnav-${currentPlatform}`);
+    if (activeSubNav) activeSubNav.classList.remove('hidden');
 
-            // 1. Update Sub-Nav Styles
-            document.querySelectorAll('.sub-nav-item').forEach(el => el.classList.remove('active'));
-            // Select buttons that link to this tab within the current visible subnav
-            const activeBtns = document.querySelectorAll(`button[onclick="switchTab('${tab}')"]`);
-            activeBtns.forEach(btn => {
-                // Only highlight if it's inside the visible container
-                if(!btn.closest('.hidden')) btn.classList.add('active');
-            });
+    // 3. Update Sub-Nav Link Styles
+    document.querySelectorAll('.sub-nav-item').forEach(el => el.classList.remove('active'));
+    const activeBtns = document.querySelectorAll(`button[onclick="switchTab('${tab}')"]`);
+    activeBtns.forEach(btn => {
+        // Only highlight the button if its parent container is the currently visible subnav
+        if (!btn.closest('.hidden')) btn.classList.add('active');
+    });
 
-            // 2. Show Content
-            document.querySelectorAll('.view-section').forEach(el => {
-                el.classList.add('hidden');
-                el.classList.add('hidden-force');
-            });
+    // 4. Reset All Content Views (Force hide everything first)
+    document.querySelectorAll('.view-section').forEach(el => {
+        el.classList.add('hidden');
+        el.classList.add('hidden-force');
+    });
 
-            // Logic for mapping tabs to views
-            if(tab === 'livechat' || tab === 'dms') {
-                if(currentPlatform === 'whatsapp') {
-                    document.getElementById('crm-chats').classList.remove('hidden');
-                    document.getElementById('crm-chats').classList.remove('hidden-force');
-                    if(window.crm) window.crm.renderContacts();
-                } else if(currentPlatform === 'facebook') {
-                    document.getElementById('view-facebook').classList.remove('hidden');
-                    document.getElementById('view-facebook').classList.remove('hidden-force');
-                    if(window.crm) window.crm.renderSocialMessenger('facebook');
-                } else if(currentPlatform === 'instagram') {
-                    document.getElementById('view-instagram').classList.remove('hidden');
-                    document.getElementById('view-instagram').classList.remove('hidden-force');
-                    if(window.crm) window.crm.renderSocialMessenger('instagram');
-                } else if(currentPlatform === 'tiktok') {
-                    document.getElementById('view-tiktok').classList.remove('hidden');
-                    document.getElementById('view-tiktok').classList.remove('hidden-force');
-                    if(window.crm) window.crm.renderSocialMessenger('tiktok');
-                }
-            } else if(tab === 'comments') {
-                if(currentPlatform === 'facebook') {
-                    document.getElementById('view-facebook-comments').classList.remove('hidden');
-                    document.getElementById('view-facebook-comments').classList.remove('hidden-force');
-                    if(window.crm) window.crm.renderCommentFeed('facebook');
-                } else if(currentPlatform === 'instagram') {
-                    document.getElementById('view-instagram-comments').classList.remove('hidden');
-                    document.getElementById('view-instagram-comments').classList.remove('hidden-force');
-                    if(window.crm) window.crm.renderCommentFeed('instagram');
-                } else if(currentPlatform === 'tiktok') {
-                    document.getElementById('view-tiktok-comments').classList.remove('hidden');
-                    document.getElementById('view-tiktok-comments').classList.remove('hidden-force');
-                    if(window.crm) window.crm.renderCommentFeed('tiktok');
-                }
-            } else {
-                // Show placeholder for other sections
-                const specificView = document.getElementById(`view-${tab}`);
-                if(specificView) {
-                    specificView.classList.remove('hidden');
-                    specificView.classList.remove('hidden-force');
-                } else {
-                    document.getElementById('view-placeholder').classList.remove('hidden');
-                    document.getElementById('view-placeholder').classList.remove('hidden-force');
-                }
-            }
+    console.log('[UI] showing view for', { tab, currentPlatform });
 
-            // Optional: Notify messages.js if it exists
-            if(window.crm && window.crm.setPlatform) {
-                window.crm.setPlatform(currentPlatform);
-            }
+    // 5. Logic for mapping tabs to specific social platform views
+    if (tab === 'livechat' || tab === 'dms') {
+        let viewId = '';
+        let chatWindowId = '';
+        if (currentPlatform === 'whatsapp') {
+            viewId = 'crm-chats';
+            if (window.crm) window.crm.renderContacts();
+        } else if (currentPlatform === 'facebook') {
+            viewId = 'view-facebook';
+            chatWindowId = 'facebook-chat-window';
+            if (window.crm) window.crm.renderSocialMessenger('facebook');
+        } else if (currentPlatform === 'instagram') {
+            viewId = 'view-instagram';
+            chatWindowId = 'instagram-chat-window';
+            if (window.crm) window.crm.renderSocialMessenger('instagram');
+        } else if (currentPlatform === 'tiktok') {
+            viewId = 'view-tiktok';
+            chatWindowId = 'tiktok-chat-window';
+            if (window.crm) window.crm.renderSocialMessenger('tiktok');
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            switchPlatform('whatsapp'); // Init
-        });
-        
+        const targetView = document.getElementById(viewId);
+        if (targetView) {
+            targetView.classList.remove('hidden');
+            targetView.classList.remove('hidden-force');
+            // Force inline styles to override Tailwind
+            targetView.style.display = 'flex';
+            targetView.style.height = '100%';
+            targetView.style.width = '100%';
+            targetView.style.minHeight = '0';
+            
+            // Force conversation list container to have full height
+            const convList = targetView.querySelector('[id$="-conversation-list"]');
+            if (convList) {
+                convList.style.display = 'flex';
+                convList.style.flexDirection = 'column';
+                convList.style.height = '100%';
+                convList.style.width = '100%';
+                convList.style.minHeight = '0';
+            }
+            
+            // DEBUG: Verify the container is actually visible
+            setTimeout(() => {
+                const convListDebug = targetView.querySelector('[id$="-conversation-list"]');
+                const viewStyles = window.getComputedStyle(targetView);
+                const convListStyles = convListDebug ? window.getComputedStyle(convListDebug) : null;
+                console.log(`[DEBUG-DISPLAY] View: ${viewId}`);
+                console.log(`  - Display: ${viewStyles.display}`);
+                console.log(`  - Height: ${viewStyles.height}`);
+                console.log(`  - Width: ${viewStyles.width}`);
+                console.log(`  - Visible: ${targetView.offsetHeight > 0 ? 'YES' : 'NO (0 height!)'}`);
+                if (convListDebug) {
+                    console.log(`  - ConvList Display: ${convListStyles.display}`);
+                    console.log(`  - ConvList Height: ${convListStyles.height}`);
+                    console.log(`  - ConvList Width: ${convListStyles.width}`);
+                    const content = convListDebug.innerHTML;
+                    console.log(`  - Content length: ${content.length}`);
+                    console.log(`  - Content preview: ${content.substring(0, 100)}`);
+                } else {
+                    console.log(`  - NO CONVERSATION LIST FOUND`);
+                }
+            }, 100);
+        }
+
+        // For social platforms, ensure proper display:
+        // - Desktop (md+): Show chat window by default in split view
+        // - Mobile: Hide chat window until conversation is selected
+        if (chatWindowId) {
+            const chatWindow = document.getElementById(chatWindowId);
+            if (chatWindow) {
+                // On desktop, show the chat window alongside conversation list
+                // On mobile, it stays hidden until a specific conversation is selected
+                if (window.innerWidth >= 768) {
+                    chatWindow.classList.remove('hidden');
+                    chatWindow.classList.remove('hidden-force');
+                    chatWindow.style.display = 'flex';
+                } else {
+                    // Mobile: hide chat window, show conversation list
+                    chatWindow.classList.add('hidden');
+                }
+            }
+        }
+    } 
+    // 6. Handle Comments Views
+    else if (tab === 'comments') {
+        const commentViewId = `view-${currentPlatform}-comments`;
+        const commentView = document.getElementById(commentViewId);
+        if (commentView) {
+            commentView.classList.remove('hidden');
+            commentView.classList.remove('hidden-force');
+            if (window.crm) window.crm.renderCommentFeed(currentPlatform);
+        } else {
+            document.getElementById('view-placeholder').classList.remove('hidden');
+            document.getElementById('view-placeholder').classList.remove('hidden-force');
+        }
+    } 
+    // 7. Handle Generic Tabs (Lists, Campaigns, Templates)
+    else {
+        const specificView = document.getElementById(`view-${tab}`);
+        if (specificView) {
+            specificView.classList.remove('hidden');
+            specificView.classList.remove('hidden-force');
+            
+            if (window.crm) {
+                if (tab === 'lists') window.crm.renderLists();
+                if (tab === 'campaigns') window.crm.renderCampaigns();
+                if (tab === 'templates') window.crm.renderTemplates();
+            }
+        } else {
+            document.getElementById('view-placeholder').classList.remove('hidden');
+            document.getElementById('view-placeholder').classList.remove('hidden-force');
+        }
+    }
+
+    // Notify CRM engine of platform change
+    if (window.crm && window.crm.setPlatform) {
+        window.crm.setPlatform(currentPlatform);
+    }
+}
+
+    // Initialize: Default to WhatsApp on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        switchPlatform('whatsapp');
+    });
     </script>
 
     <div class="bg-[#1a1d23] border-b border-[#2b2f3a] px-2 md:px-4 pt-3 pb-3 flex items-center justify-between z-50 gap-2">
@@ -408,6 +517,14 @@
             <button onclick="resumeAI()" class="bg-white text-red-600 px-4 py-1.5 rounded-lg text-sm font-bold hover:bg-gray-100 transition-colors shadow-lg">
                 Resume AI ✅
             </button>
+        </div>
+        <!-- Offline Banner -->
+        <div id="offline-banner" class="hidden bg-yellow-500/90 text-black px-4 py-2 flex items-center gap-3 z-20 border-b border-yellow-600">
+            <i class="fa-solid fa-wifi-slash"></i>
+            <div>
+                <div class="font-bold text-sm">Offline</div>
+                <div class="text-xs opacity-80">No network connection — some features may be unavailable.</div>
+            </div>
         </div>
         
         <!-- WhatsApp Livechat Section -->
@@ -568,8 +685,8 @@
     </div>
 </div>
         <!-- Facebook Section -->
-        <div id="view-facebook" class="view-section hidden h-full flex gap-4 lg:gap-6 relative fade-in">
-            <div class="w-full md:w-80 lg:w-96 bg-[#1a1d23] border border-[#2b2f3a] rounded-2xl flex flex-col h-full shadow-xl overflow-hidden relative">
+<div id="view-facebook" class="view-section hidden flex-1 overflow-hidden flex gap-4 lg:gap-6 relative fade-in">
+        <div class="w-full md:w-80 lg:w-96 bg-[#1a1d23] border border-[#2b2f3a] rounded-2xl flex flex-col h-full shadow-xl overflow-hidden relative">
                 <div id="fb-conversation-list" class="flex-1 overflow-y-auto"></div>
                 <div id="fb-empty-state" class="hidden absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-[#1a1d23] rounded-2xl">
                     <i class="fa-brands fa-facebook text-6xl text-blue-600 mb-4 opacity-40"></i>
@@ -622,8 +739,8 @@
         </div>
 
         <!-- Instagram Section -->
-        <div id="view-instagram" class="view-section hidden h-full flex gap-4 lg:gap-6 relative fade-in">
-            <div class="w-full md:w-80 lg:w-96 bg-[#1a1d23] border border-[#2b2f3a] rounded-2xl flex flex-col h-full shadow-xl overflow-hidden relative">
+<div id="view-instagram" class="view-section hidden flex-1 overflow-hidden flex gap-4 lg:gap-6 relative fade-in">
+        <div class="w-full md:w-80 lg:w-96 bg-[#1a1d23] border border-[#2b2f3a] rounded-2xl flex flex-col h-full shadow-xl overflow-hidden relative">
                 <div id="ig-conversation-list" class="flex-1 overflow-y-auto"></div>
                 <div id="ig-empty-state" class="hidden absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-[#1a1d23] rounded-2xl">
                     <i class="fa-brands fa-instagram text-6xl text-pink-500 mb-4 opacity-40"></i>
@@ -676,8 +793,8 @@
         </div>
 
         <!-- TikTok Section -->
-        <div id="view-tiktok" class="view-section hidden h-full flex gap-4 lg:gap-6 relative fade-in">
-            <div class="w-full md:w-80 lg:w-96 bg-[#1a1d23] border border-[#2b2f3a] rounded-2xl flex flex-col h-full shadow-xl overflow-hidden relative">
+<div id="view-tiktok" class="view-section hidden flex-1 overflow-hidden flex gap-4 lg:gap-6 relative fade-in">
+        <div class="w-full md:w-80 lg:w-96 bg-[#1a1d23] border border-[#2b2f3a] rounded-2xl flex flex-col h-full shadow-xl overflow-hidden relative">
                 <div id="tt-conversation-list" class="flex-1 overflow-y-auto"></div>
                 <div id="tt-empty-state" class="hidden absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-[#1a1d23] rounded-2xl">
                     <i class="fa-brands fa-tiktok text-6xl text-white mb-4 opacity-40"></i>
@@ -838,8 +955,33 @@
             <p>This module is not yet connected to the backend.</p>
         </div>
 
-        <div id="view-lists" class="view-section hidden h-full fade-in">
+        <div id="view-lists" class="view-section hidden flex-1 flex-col fade-in overflow-y-auto">
+            <div class="p-6">
+                <h2 class="text-xl font-bold text-white mb-4">Contact Lists</h2>
+                <div id="crm-lists-container" class="space-y-3"></div>
             </div>
+        </div>
+
+        <div id="view-campaigns" class="view-section hidden flex-1 flex-col fade-in overflow-y-auto">
+            <div class="p-6">
+                <h2 class="text-xl font-bold text-white mb-4">Campaigns</h2>
+                <div class="bg-[#1a1d23] rounded-xl border border-[#2b2f3a] overflow-hidden">
+                    <table class="w-full text-left text-sm text-white/70">
+                        <thead class="bg-[#232730] text-white/50 border-b border-[#2b2f3a]">
+                            <tr><th class="p-4">Name</th><th class="p-4">Status</th><th class="p-4">Sent</th></tr>
+                        </thead>
+                        <tbody id="crm-campaigns-table"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-templates" class="view-section hidden flex-1 flex-col fade-in overflow-y-auto">
+            <div class="p-6">
+                <h2 class="text-xl font-bold text-white mb-4">Message Templates</h2>
+                <div id="crm-templates-container" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            </div>
+        </div>
 
     </div>
 

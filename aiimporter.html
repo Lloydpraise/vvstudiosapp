@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Product Importer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <style>
+        body { font-family: Inter, sans-serif; background:#0f1115; color:#fff; }
+        .glass-panel { background:#1a1d23; border:1px solid #2b2f3a; }
+        .input-dark { background:#0f1115; border:1px solid #2b2f3a; color:white; }
+        select option { background: #1a1d23; color: white; }
+        .fade-in { animation:fadeIn .25s ease-in-out; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+        .loader { border:2px solid #374151; border-top:2px solid #a855f7; border-radius:50%; width:16px; height:16px; animation:spin 1s linear infinite; }
+        @keyframes spin { 0% { transform:rotate(0); } 100% { transform:rotate(360deg); } }
+        input, textarea, select { font-family: Inter, sans-serif; }
+    </style>
+</head>
+<body class="min-h-screen p-6">
+    <div class="max-w-6xl mx-auto">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-2xl font-bold flex items-center gap-3"><i class="fa-solid fa-robot text-green-400"></i> AI Product Importer</h1>
+                <p class="text-white/40 text-sm ml-10">Bulk upload images • Auto-generate metadata • Review & Publish</p>
+            </div>
+            <div class="flex gap-2">
+                <select id="importerBusinessId" class="input-dark px-3 py-2 rounded-lg text-sm w-64 border border-[#2b2f3a] focus:border-green-500 outline-none cursor-pointer">
+                    <option value="">Loading businesses...</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            
+            <div class="glass-panel rounded-2xl p-4">
+                <h2 class="font-semibold text-sm text-white/80 mb-3">Upload Queue</h2>
+                <div class="border-2 border-dashed border-[#2b2f3a] rounded-xl p-6 text-center cursor-pointer mb-4 hover:border-green-500 transition-colors" onclick="document.getElementById('aiFileInput').click()">
+                    <input id="aiFileInput" type="file" accept="image/*" multiple class="hidden">
+                    <div class="w-12 h-12 rounded-full bg-[#2b2f3a] mx-auto mb-3 flex items-center justify-center"><i class="fa-solid fa-cloud-arrow-up text-green-400"></i></div>
+                    <div class="text-sm font-medium">Click to select product images</div>
+                    <div class="text-xs text-white/40 mt-1">Supports JPG, PNG, WEBP</div>
+                </div>
+
+                <button id="aiProcessBtn" class="w-full py-2 bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg font-bold hover:opacity-90 transition-opacity disabled:opacity-50" onclick="startAiProcessing()">
+                    <i class="fa-solid fa-play mr-2"></i> Start Processing
+                </button>
+
+                <div id="aiQueueList" class="mt-4 max-h-64 overflow-y-auto space-y-2">
+                    <div id="aiEmptyQueueMsg" class="text-center text-white/30 text-xs py-10 italic">No images selected yet</div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-3 glass-panel rounded-2xl p-4">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="font-semibold text-sm text-white/80">Product Review <span id="aiReviewCount" class="bg-[#2b2f3a] text-white/60 px-2 py-0.5 rounded text-xs ml-2">0</span></h2>
+                    <div class="text-xs text-white/40"><i class="fa-solid fa-circle-info mr-1"></i> Edit values and click Save</div>
+                </div>
+                <div id="aiReviewContainer" class="max-h-[70vh] overflow-y-auto grid grid-cols-1 xl:grid-cols-2 gap-4 pr-2">
+                    <div class="col-span-full h-full flex flex-col items-center justify-center text-white/30 py-20">
+                        <i class="fa-solid fa-boxes-stacked text-5xl mb-4 opacity-50"></i>
+                        <p>Processed products will appear here for review.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== Supabase Init =====
+        const SUPABASE_URL = 'https://xgtnbxdxbbywvzrttixf.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndG5ieGR4YmJ5d3Z6cnR0aXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Nzg5NTAsImV4cCI6MjA3MjA1NDk1MH0.YGk0vFyIJEiSpu5phzV04Mh4lrHBlfYLFtPP_afFtMQ';
+        window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // ===== State & Handlers =====
+        let aiQueue = [];
+        let isAiProcessing = false;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initBusinessDropdown();
+            
+            const fileInput = document.getElementById('aiFileInput');
+            if (fileInput) fileInput.addEventListener('change', function() { handleAiFileSelect(this); });
+        });
+
+        // 1. Fetch Businesses and Populate Dropdown
+        async function initBusinessDropdown() {
+            const select = document.getElementById('importerBusinessId');
+            if (!select) return;
+            
+            try {
+                const { data, error } = await window.supabase
+                    .from('businesses')
+                    .select('business_id, name')
+                    .eq('subscription_active', true)
+                    .order('name');
+                    
+                if (error) throw error;
+                
+                if (data && data.length > 0) {
+                    select.innerHTML = '<option value="">Select a Business...</option>';
+                    data.forEach(biz => {
+                        const opt = document.createElement('option');
+                        opt.value = biz.business_id;
+                        opt.textContent = biz.name;
+                        select.appendChild(opt);
+                    });
+                } else {
+                    select.innerHTML = '<option value="">No active businesses found</option>';
+                }
+            } catch (err) {
+                console.error('Error loading businesses:', err);
+                select.innerHTML = '<option value="">Error loading businesses</option>';
+            }
+        }
+
+        // 2. Handle File Selection
+        function handleAiFileSelect(input) {
+            const files = Array.from(input.files || []);
+            if (files.length === 0) return;
+            
+            const emptyMsg = document.getElementById('aiEmptyQueueMsg');
+            if (emptyMsg) emptyMsg.classList.add('hidden');
+            const queueList = document.getElementById('aiQueueList');
+
+            files.forEach(file => {
+                const id = Math.random().toString(36).substr(2,9);
+                aiQueue.push({ id, file, status: 'waiting' });
+
+                const el = document.createElement('div');
+                el.id = `q-${id}`;
+                el.className = 'flex items-center gap-3 p-3 rounded-lg bg-[#0f1115] border border-[#2b2f3a] fade-in';
+                const imgSrc = URL.createObjectURL(file);
+                el.innerHTML = `
+                    <div class="w-10 h-10 rounded bg-[#1a1d23] overflow-hidden flex-shrink-0"><img src="${imgSrc}" class="w-full h-full object-cover opacity-70"></div>
+                    <div class="flex-1 min-w-0"><div class="text-sm font-medium truncate text-white/90">${file.name}</div><div class="text-xs text-white/40" id="status-${id}">Waiting...</div></div>
+                    <div id="icon-${id}" class="text-white/30 pr-2"><i class="fa-regular fa-clock"></i></div>
+                `;
+                if (queueList) queueList.appendChild(el);
+            });
+            input.value = ''; // Reset input
+        }
+function toBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+}
+      async function startAiProcessing() {
+    if (isAiProcessing) return;
+    
+    const bizSelect = document.getElementById('importerBusinessId');
+    const businessId = bizSelect ? bizSelect.value : '';
+    
+    if (!businessId) {
+        return alert('Please select a business from the dropdown first.');
+    }
+
+    isAiProcessing = true;
+    const btn = document.getElementById('aiProcessBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Processing...`; }
+
+    try {
+        for (let item of aiQueue) {
+            if (item.status !== 'waiting') continue;
+            updateAiStatus(item.id, 'processing');
+            
+            try {
+                const base64 = await toBase64(item.file);
+                
+                // Call Edge Function (Which only does AI analysis now)
+                const res = await supabase.functions.invoke('process-product-image', {
+                    body: { imageBase64: base64 } 
+                });
+                
+                const { data, error } = res || {};
+                if (error) throw new Error(error.message || JSON.stringify(error));
+                
+                // Data is just the AI's JSON (title, price, etc.)
+                const payload = data || {};
+                
+                // Generate a temporary ID just for the UI
+                const tempId = Math.random().toString(36).slice(2);
+
+                updateAiStatus(item.id, 'done');
+
+                // CRITICAL: We pass the base64, fileName, and businessId here 
+                // so the Review Card's "Save" button has them ready.
+                addAiReviewCard(tempId, payload, base64, item.file.name, businessId);
+                
+                await new Promise(r => setTimeout(r, 600));
+                
+            } catch (err) {
+                console.error('Item processing error:', err);
+                updateAiStatus(item.id, 'error', err.message || 'Processing error');
+            }
+        }
+    } catch (mainErr) {
+        console.error('Main processing error:', mainErr);
+        alert('Error: ' + (mainErr.message || mainErr));
+    }
+
+    isAiProcessing = false;
+    if (btn) { btn.disabled = false; btn.innerHTML = `<i class="fa-solid fa-play mr-2"></i> Start Processing`; }
+}
+        // Helper: Update Queue UI Status
+        function updateAiStatus(id, status, msg = '') {
+            const item = aiQueue.find(i => i.id === id);
+            if (item) item.status = status;
+            
+            const stEl = document.getElementById(`status-${id}`);
+            const icEl = document.getElementById(`icon-${id}`);
+            const row = document.getElementById(`q-${id}`);
+            
+            if (!stEl) return;
+            if (status === 'processing') { 
+                stEl.innerText = 'Analyzing...'; stEl.className = 'text-xs text-green-400'; 
+                if (icEl) icEl.innerHTML = `<div class="loader"></div>`; 
+                if (row) row.style.borderColor = '#10b981'; 
+            } else if (status === 'done') { 
+                stEl.innerText = 'Complete'; stEl.className = 'text-xs text-green-500'; 
+                if (icEl) icEl.innerHTML = `<i class="fa-solid fa-check text-green-500"></i>`; 
+                if (row) row.style.borderColor = '#22c55e'; 
+            } else if (status === 'error') { 
+                stEl.innerText = msg || 'Failed'; stEl.className = 'text-xs text-red-500'; 
+                if (icEl) icEl.innerHTML = `<i class="fa-solid fa-circle-exclamation text-red-500"></i>`; 
+                if (row) row.style.borderColor = '#ef4444'; 
+            }
+        }
+// 4. Build Review Card
+function addAiReviewCard(tempId, data = {}, base64 = '', fileName = '', businessId = '') {
+    const container = document.getElementById('aiReviewContainer');
+    if (!container) return;
+    
+    // Clear placeholder text if it's the first item
+    if (container.children[0] && container.children[0].classList.contains('col-span-full')) {
+        container.innerHTML = '';
+    }
+
+    const safe = (s) => (s === null || s === undefined) ? '' : String(s).replace(/"/g, '&quot;');
+    const features = Array.isArray(data.key_features) ? data.key_features.join('\n') : (data.key_features || '');
+
+    const card = document.createElement('div');
+    // Added 'review-card' class for easier selection
+    card.className = 'review-card bg-[#0f1115] border border-[#2b2f3a] rounded-xl overflow-hidden flex flex-col md:flex-row gap-4 p-4 fade-in relative group mb-4';
+    
+    card.dataset.imgData = base64;
+
+    card.innerHTML = `
+        <div class="w-full md:w-32 h-32 bg-[#1a1d23] rounded-lg overflow-hidden flex-shrink-0 border border-[#2b2f3a]">
+            <img src="${base64}" class="w-full h-full object-cover">
+        </div>
+        <div class="flex-1 space-y-3 min-w-0">
+            <div>
+                <label class="text-[10px] uppercase text-white/40">Product Title</label>
+                <input type="text" id="title-${tempId}" value="${safe(data.title || '')}" class="w-full bg-transparent border-b border-[#2b2f3a] focus:border-green-500 text-white pb-1 outline-none">
+            </div>
+            <div class="flex gap-4">
+                <div class="w-1/2">
+                    <label class="text-[10px] uppercase text-white/40">Price</label>
+                    <input type="number" id="price-${tempId}" value="${safe(data.price || 0)}" class="w-full bg-transparent border-b border-[#2b2f3a] text-white pb-1 outline-none">
+                </div>
+                <div class="w-1/2 flex items-end justify-end">
+                    <button onclick="confirmAndSave('${tempId}', '${safe(fileName)}', '${safe(businessId)}')" id="btn-${tempId}" class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-md transition-colors w-full">
+                        Confirm & Save
+                    </button>
+                </div>
+            </div>
+            <div>
+                <label class="text-[10px] uppercase text-white/40">Short Description</label>
+                <textarea id="desc-short-${tempId}" rows="2" class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded p-2 text-xs text-white focus:border-green-500 outline-none">${safe(data.description_short || '')}</textarea>
+            </div>
+            <div>
+                <label class="text-[10px] uppercase text-white/40">Key Features (One per line)</label>
+                <textarea id="features-${tempId}" rows="4" class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded p-2 text-xs text-white focus:border-green-500 outline-none">${safe(features)}</textarea>
+            </div>
+            <div>
+                <label class="text-[10px] uppercase text-white/40">Long Description (Markdown)</label>
+                <textarea id="desc-long-${tempId}" rows="6" class="w-full bg-[#1a1d23] border border-[#2b2f3a] rounded p-2 text-xs text-white focus:border-green-500 outline-none">${safe(data.description_long || '')}</textarea>
+            </div>
+        </div>
+    `;
+    container.prepend(card);
+    
+    // Fixed: Use the simpler selector
+    const countEl = document.getElementById('aiReviewCount'); 
+    if (countEl) countEl.innerText = container.querySelectorAll('.review-card').length;
+}
+// 5. Final Save: Uploads Image to Storage and Inserts Record to Database
+async function confirmAndSave(tempId, fileName, businessId) {
+    const btn = document.getElementById(`btn-${tempId}`);
+    const card = btn.closest('.review-card');
+    if (!card) return;
+
+    const base64 = card.dataset.imgData;
+    const originalText = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
+
+    try {
+        const blob = await fetch(base64).then(res => res.blob());
+
+        // 1. Storage Path: products/timestamp-name
+        const filePath = `products/${Date.now()}-${fileName}`;
+
+        const { error: storageError } = await window.supabase.storage
+            .from('ecommerce-assets')
+            .upload(filePath, blob);
+
+        if (storageError) throw storageError;
+
+        const { data: { publicUrl } } = window.supabase.storage
+            .from('ecommerce-assets')
+            .getPublicUrl(filePath);
+
+        // 2. Gather UI data
+        const newTitle = document.getElementById(`title-${tempId}`).value;
+        const newPrice = parseFloat(document.getElementById(`price-${tempId}`).value || 0);
+        const newDescShort = document.getElementById(`desc-short-${tempId}`).value;
+        const newDescLong = document.getElementById(`desc-long-${tempId}`).value;
+        const featuresText = document.getElementById(`features-${tempId}`).value || '';
+        const newFeatures = featuresText.split('\n').map(s => s.trim()).filter(Boolean);
+
+        // 3. Database Insert
+        const { error: dbError } = await window.supabase
+            .from('products')
+            .insert({
+                id: crypto.randomUUID(), // Generates the 'text' ID your table needs
+                business_id: businessId,
+                title: newTitle,
+                price: newPrice,
+                description_short: newDescShort,
+                description_long: newDescLong,
+                key_features: newFeatures,
+                images: [publicUrl], // Array format as per your schema
+                type: 'product',
+                needs_polish: true
+            });
+
+        if (dbError) throw dbError;
+
+        // 4. Success UI
+        btn.className = 'px-4 py-2 bg-green-600 text-white text-xs font-bold rounded-md w-full';
+        btn.innerHTML = `<i class="fa-solid fa-check"></i> Published`;
+        card.style.opacity = '0.5';
+        card.style.pointerEvents = 'none';
+
+    } catch (err) {
+        console.error('Save Error:', err);
+        alert('Error: ' + (err.message || 'Check console'));
+        btn.disabled = false;
+        btn.innerHTML = 'Retry Save';
+    }
+}
+ </script>
+</body>
+</html>

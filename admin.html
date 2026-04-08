@@ -1217,13 +1217,29 @@
 
                             <div class="p-4 flex flex-col gap-4 flex-1 overflow-hidden">
                                 <div class="border-2 border-dashed border-[#2b2f3a] hover:border-green-500/50 bg-[#15171c] rounded-xl p-6 flex flex-col items-center justify-center text-center transition-colors cursor-pointer group" onclick="document.getElementById('aiFileInput').click()">
-                                    <input type="file" id="aiFileInput" multiple accept="image/*" class="hidden" onchange="handleAiFileSelect(this)">
+                                    <input type="file" id="aiFileInput" multiple accept="image/*" class="hidden">
                                     <div class="w-10 h-10 rounded-full bg-[#2b2f3a] group-hover:bg-[#374151] flex items-center justify-center mb-2 transition-colors">
                                         <i class="fa-solid fa-cloud-arrow-up text-green-400 text-lg"></i>
                                     </div>
                                     <p class="text-white font-medium text-xs">Click to select product images</p>
                                     <p class="text-white/30 text-xs mt-1">Supports JPG, PNG, WEBP</p>
                                 </div>
+                                <script>
+                                    (function(){
+                                        try {
+                                            const inp = document.getElementById('aiFileInput');
+                                            if (!inp) return;
+                                            inp.addEventListener('change', function(){
+                                                if (typeof window.handleAiFileSelect === 'function') {
+                                                    try { window.handleAiFileSelect(this); } catch(e) { console.error('handleAiFileSelect execution error', e); }
+                                                } else {
+                                                    console.warn('handleAiFileSelect not defined yet. Please try again shortly.');
+                                                    try { this.value = ''; } catch(e) {}
+                                                }
+                                            });
+                                        } catch (e) { console.warn('AI input listener attach failed', e); }
+                                    })();
+                                </script>
 
                                 <button onclick="startAiProcessing()" id="aiProcessBtn" class="w-full py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-lg font-bold shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm">
                                     <i class="fa-solid fa-play mr-2"></i> Start Processing

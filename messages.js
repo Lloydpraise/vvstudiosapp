@@ -72,6 +72,7 @@ function resolveBusinessId() {
     });
 
 const bizId = resolveBusinessId();
+console.log('[DEBUG] Resolved bizId:', bizId);
 
 // Safety check: Ensure the script waits for Supabase to be initialized from index.html
 const getSupabase = () => window.supabase;
@@ -99,6 +100,8 @@ const crm = {
             return;
         }
         console.log("CRM Initialized for:", crmStore.businessId);
+        // Cache original typing bar HTML so we can restore it when session is active
+        try { this._originalTypingBarHtml = document.querySelector('#crm-chat-window .chat-typing-bar')?.innerHTML || null; } catch(e) {}
         await this.loadConversations();
         await this.loadLists();
         await this.loadTemplates();
@@ -232,8 +235,17 @@ const crm = {
             .eq('business_id', crmStore.businessId)
             .order('last_user_message_at', { ascending: false, nullsFirst: false });
 
+        if (error) {
+            console.error('[ERROR] loadConversations failed:', error);
+            return;
+        }
+
         if (!error && data) {
             crmStore.conversations = data;
+            console.log('[DEBUG] loadConversations - All conversations:', crmStore.conversations.map(c => ({id: c.id, channel: c.channel, contact: c.contacts?.name})));
+            const uniqueChannels = [...new Set(crmStore.conversations.map(c => c.channel))];
+            console.log('[DEBUG] Unique channels in database:', uniqueChannels);
+            console.log('[DEBUG] Total conversations loaded:', crmStore.conversations.length);
             // Ensure we have realtime subscriptions for messages belonging to these conversations
             try { await this.syncMessageSubscriptions(); } catch (e) { /* ignore */ }
             
@@ -463,16 +475,21 @@ const crm = {
                         const dealEl = document.createElement('div');
                         dealEl.className = "flex items-start gap-3 mb-3 pb-3 border-b border-white/5 last:border-0 last:mb-0 last:pb-0";
                         
-                        // Format currency
-                        const price = deal.amount ? parseFloat(deal.amount).toFixed(2) : '0.00';
-                        
+                        // Determine if this is a cart item (has title/product_id) or a deal entry
+                        const title = deal.title || deal.deal_name || deal.name || 'Product';
+                        const rawPrice = (deal.price !== undefined ? deal.price : (deal.amount !== undefined ? deal.amount : 0));
+                        const price = (typeof rawPrice === 'number') ? rawPrice.toFixed(2) : (isNaN(Number(rawPrice)) ? rawPrice : Number(rawPrice).toFixed(2));
+                        const quantity = deal.quantity !== undefined ? deal.quantity : 1;
+                        const stageLabel = deal.stage ? String(deal.stage).replace(/_/g, ' ') : (deal.status === 'pending' ? 'Cart' : 'New Lead');
+
                         dealEl.innerHTML = `
                             <div class="mt-1 w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
                             <div class="flex-1">
-                                <p class="text-sm font-medium text-white">${deal.deal_name || 'Interested Product'}</p>
-                                <p class="text-xs text-white/50 capitalize">
-                                    <span class="inline-block px-1.5 py-0.5 rounded bg-green-500/10 text-green-400 text-[10px]">${deal.stage?.replace('_', ' ') || 'New Lead'}</span>
-                                    <span class="ml-1">KES ${price}</span>
+                                <p class="text-sm font-medium text-white">${title}</p>
+                                <p class="text-xs text-white/50">
+                                    <span class="inline-block px-1.5 py-0.5 rounded bg-green-500/10 text-green-400 text-[10px]">${stageLabel}</span>
+                                    <span class="ml-2">Qty: ${quantity}</span>
+                                    <span class="ml-2">KES ${price}</span>
                                 </p>
                             </div>
                         `;
@@ -523,14 +540,31 @@ const crm = {
             }
             
             const msgs = crmStore.messages.filter(m => m.conversation_id == convId);
+
+            // Deduplicate messages with identical role+text+media to avoid double AI bubbles
+            const seen = new Set();
+            const uniqueMsgs = [];
+            for (const m of msgs) {
+                let raw = m.content;
+                if (typeof raw === 'string' && raw.startsWith('{')) {
+                    try { raw = JSON.parse(raw); } catch(e) {}
+                }
+                const text = (typeof raw === 'string') ? raw : (raw?.text || '');
+                const media = raw?.media_url || raw?.image_url || m.media_url || '';
+                const key = `${m.role}||${String(text).trim()}||${String(media).trim()}`;
+                if (seen.has(key)) continue;
+                seen.add(key);
+                uniqueMsgs.push(m);
+            }
+            const msgsToRender = uniqueMsgs;
             
-            if (msgs.length === 0) {
+            if (msgsToRender.length === 0) {
                 container.innerHTML = `<div class="text-center text-white/20 mt-10">No messages yet.</div>`;
                 return;
             }
 
             // Sort messages by created_at timestamp in ascending order (oldest first)
-            msgs.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            msgsToRender.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
             // DEBUG: Log all messages to see their roles
             console.log('Messages to render:', msgs.map(m => ({ 
@@ -542,7 +576,7 @@ const crm = {
             })));
 
             container.innerHTML = '';
-            msgs.forEach((msg, idx) => {
+            msgsToRender.forEach((msg, idx) => {
                 try {
                     renderMessage(msg);
                 } catch (msgErr) {
@@ -554,9 +588,9 @@ const crm = {
         }
     },
 
-    async loadConversation(contactId) {
-        crmStore.activeChatId = contactId;
-
+    // Load sidebar context for a conversation. Keep using contact id for contact queries
+    // but accept conversation id so we can query `cart_state` from the conversations table.
+    async loadConversation(contactId, convId = null) {
         // 1. Fetch Contact Basic Info
         const { data: contact, error } = await getSupabase()
             .from('contacts')
@@ -569,17 +603,41 @@ const crm = {
             return;
         }
 
-        // 2. FETCH EXTRA CONTEXT: Deals/Cart
-        // Fetch deals with correct schema: deal_name, amount, stage, status
-        const { data: deals } = await getSupabase()
-            .from('deals') 
-            .select('deal_name, amount, stage, status, created_at')
-            .eq('contact_id', contactId)
-            .neq('status', 'lost') // Hide lost deals
-            .order('created_at', { ascending: false });
+        // 2. FETCH cart_state from conversations table by conversation id (preferred)
+        // We no longer rely on a separate `deals` table; cart items are stored in conversations.cart_state
+        const finalDeals = [];
+        try {
+            // If convId was not passed, try to find a conversation for this contact
+            let convoFilter = null;
+            if (convId) convoFilter = getSupabase().from('conversations').select('id, cart_state').eq('id', convId).maybeSingle();
+            else convoFilter = getSupabase().from('conversations').select('id, cart_state').eq('contact_id', contactId).eq('business_id', crmStore.businessId).maybeSingle();
 
-        // 3. Render Sidebar with new Context
-        this.renderRightSidebar(contact, deals);
+            const { data: convRow } = await convoFilter;
+            if (convRow && convRow.cart_state) {
+                let cart = convRow.cart_state;
+                if (typeof cart === 'string') {
+                    try { cart = JSON.parse(cart); } catch (e) { cart = null; }
+                }
+
+                if (cart && (Array.isArray(cart.items) || Array.isArray(cart))) {
+                    const items = Array.isArray(cart.items) ? cart.items : cart;
+                    const cartDeals = items.map(it => ({
+                        title: it.title || it.name || 'Product',
+                        price: (it.price !== undefined ? it.price : (it.amount !== undefined ? it.amount : 0)),
+                        quantity: (it.quantity !== undefined ? it.quantity : 1),
+                        product_id: it.product_id || it.productId || it.id || '',
+                        stage: 'cart',
+                        status: 'pending'
+                    }));
+                    finalDeals.push(...cartDeals);
+                }
+            }
+        } catch (e) {
+            console.warn('Error loading cart_state for contact:', e);
+        }
+
+        // 3. Render Sidebar with cart items
+        this.renderRightSidebar(contact, finalDeals);
 
         // NEW: Pro AI Features
         checkEscalationStatus(contact);         // Check if AI is paused
@@ -619,12 +677,19 @@ const crm = {
             
             // Fetch and render the new right sidebar with deals/cart
             if (conv.contact_id) {
-                await this.loadConversation(conv.contact_id);
+                await this.loadConversation(conv.contact_id, convId);
             } else {
                 // Fallback to rendering with embedded contact
                 const deals = [];
                 this.renderRightSidebar(conv.contacts || {}, deals);
             }
+
+            // Update online/session UI for WhatsApp header and typing bar
+            try {
+                const isActive = this.isWindowActive(conv.last_user_message_at);
+                // Update header status and typing bar accordingly
+                if (typeof this.updateWhatsAppSessionUI === 'function') this.updateWhatsAppSessionUI(conv, isActive);
+            } catch (e) { console.warn('updateWhatsAppSessionUI error', e); }
         }
 
         // 5. Fetch Messages for WhatsApp
@@ -766,17 +831,32 @@ const crm = {
         const emptyStateId = emptyStateIdMap[platform];
         const listContainer = document.getElementById(listId);
         const emptyState = document.getElementById(emptyStateId);
-        if (!listContainer) return;
+        
+        // DEBUG: Check if container exists
+        console.log(`[DEBUG-RENDER] ${platform}: listId=${listId}, container found=${!!listContainer}, emptyState=${!!emptyState}`);
+        if (listContainer) {
+            const parentView = listContainer.closest('.view-section');
+            console.log(`[DEBUG-RENDER] ${platform}: parent view display=${parentView ? window.getComputedStyle(parentView).display : 'NO PARENT'}`);
+        }
+        
+        if (!listContainer) {
+            console.warn(`[WARN] renderSocialMessenger(${platform}) - Container #${listId} not found!`);
+            return;
+        }
 
         // Filter: Channel = platform
         const chats = crmStore.conversations.filter(c => c.channel === platform);
+        console.log(`[DEBUG] renderSocialMessenger(${platform}) - Filtered conversations:`, chats.length, 'chats');
+        console.log(`[DEBUG] All conversations available:`, crmStore.conversations.length, 'total');
+        console.log(`[DEBUG] Looking for channel="${platform}", Found:`, chats.map(c => c.contacts?.name));
         
         if (chats.length === 0) {
             listContainer.innerHTML = '';
             if (emptyState) emptyState.classList.remove('hidden');
+            console.log(`[DEBUG-RENDER] ${platform}: Showing empty state`);
         } else {
             if (emptyState) emptyState.classList.add('hidden');
-            listContainer.innerHTML = chats.map(c => {
+            const html = chats.map(c => {
                 const name = c.contacts?.name || "Social User";
                 const isActive = String(c.id) === String(crmStore.activeChatId);
                 const timeVal = c.last_user_message_at || c.updated_at || null;
@@ -799,6 +879,9 @@ const crm = {
                         </div>
                     </div>`;
             }).join('');
+            
+            listContainer.innerHTML = html;
+            console.log(`[DEBUG-RENDER] ${platform}: Set HTML content, length=${html.length}, container inner HTML length=${listContainer.innerHTML.length}`);
         }
     },
 
@@ -1283,9 +1366,12 @@ const crm = {
             };
 
             // 4. CALL THE NEW UNIFIED FUNCTION
+            // Use phone number for WhatsApp outbound; for social platforms use social_id if available
+            const recipientId = (platform === 'whatsapp') ? contact.phone : (contact.social_id || contact.phone);
+
             const { data, error } = await getSupabase().functions.invoke('agent-outbound', {
                 body: { 
-                    recipientId: contact.social_id || contact.phone, // Prioritize social_id for FB/IG
+                    recipientId: recipientId,
                     payload: payload,
                     conversationId: crmStore.activeChatId,
                     businessId: resolveBusinessId(),
@@ -1351,6 +1437,59 @@ const crm = {
             inputContainer.classList.remove('hidden');
             disabledMsg.classList.add('hidden');
         }
+    },
+
+    // WhatsApp-specific UI update: header online badge and typing bar behavior
+    updateWhatsAppSessionUI(conv, isActive) {
+        try {
+            const headerNameEl = document.getElementById('chat-header-name');
+            const headerStatusEl = headerNameEl ? headerNameEl.parentElement.querySelector('p') : null;
+            const avatarEl = document.getElementById('chat-header-avatar');
+            const badgeDot = avatarEl ? avatarEl.parentElement.querySelector('div.absolute') : null;
+            const typingBar = document.querySelector('#crm-chat-window .chat-typing-bar');
+
+            if (headerStatusEl) {
+                if (!isActive) {
+                    headerStatusEl.innerHTML = '<i class="fa-solid fa-clock mr-2"></i> Session expired.';
+                    headerStatusEl.classList.remove('text-green-400');
+                    headerStatusEl.classList.add('text-white/50');
+                } else {
+                    headerStatusEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Online';
+                    headerStatusEl.classList.remove('text-white/50');
+                    headerStatusEl.classList.add('text-green-400');
+                }
+            }
+
+            if (badgeDot) {
+                if (!isActive) {
+                    badgeDot.className = 'absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-gray-500 rounded-full border-2 border-[#111318]';
+                } else {
+                    badgeDot.className = 'absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-[#111318]';
+                }
+            }
+
+            if (typingBar) {
+                if (!isActive) {
+                    // Replace typing bar with a disabled hint
+                    typingBar.dataset._cached = typingBar.dataset._cached || typingBar.innerHTML;
+                    typingBar.innerHTML = `<div class="p-3 text-center text-white/50"> <i class="fa-solid fa-clock mr-2"></i> Session expired.</div>`;
+                } else {
+                    // Restore original typing bar HTML if cached
+                    if (typingBar.dataset._cached) {
+                        typingBar.innerHTML = typingBar.dataset._cached;
+                        delete typingBar.dataset._cached;
+                        // Reattach keyboard handling for input focus scroll if necessary
+                        try {
+                            const input = document.getElementById('message-input');
+                            const messagesEl = document.getElementById('chat-messages');
+                            if (input && messagesEl) {
+                                input.addEventListener('focus', () => { try { messagesEl.scrollTop = messagesEl.scrollHeight; } catch(e){} });
+                            }
+                        } catch(e){}
+                    }
+                }
+            }
+        } catch (e) { console.warn('updateWhatsAppSessionUI error', e); }
     },
 
     // --- LISTS & TEMPLATES ---
@@ -1518,6 +1657,36 @@ const crm = {
 document.addEventListener('DOMContentLoaded', () => crm.init());
 window.crm = crm;
 
+// Offline/Online UI helpers
+function showOfflineBanner(show) {
+    try {
+        const el = document.getElementById('offline-banner');
+        if (!el) return;
+        if (show) el.classList.remove('hidden'); else el.classList.add('hidden');
+    } catch (e) { /* ignore */ }
+}
+
+// React to network state so the UI doesn't stay blank when offline
+function handleNetworkChange() {
+    const offline = !navigator.onLine;
+    showOfflineBanner(offline);
+    console.log('[Network] online?', !offline);
+    try {
+        // If CRM exists, force a render of UI placeholders so views are visible even when data fails to load
+        if (window.crm) {
+            try { crm.renderContacts(); } catch (e) {}
+            try { crm.renderSocialMessenger('facebook'); } catch (e) {}
+            try { crm.renderSocialMessenger('instagram'); } catch (e) {}
+            try { crm.renderSocialMessenger('tiktok'); } catch (e) {}
+        }
+    } catch (e) { console.warn('handleNetworkChange error', e); }
+}
+
+window.addEventListener('online', handleNetworkChange);
+window.addEventListener('offline', handleNetworkChange);
+// Initialize banner based on current state
+setTimeout(handleNetworkChange, 50);
+
 // Handle browser back button on mobile to close chat window
 window.addEventListener('popstate', () => {
     if (crmStore.activeChatId && window.innerWidth < 768) {
@@ -1600,15 +1769,21 @@ Object.assign(window.aiManager, {
     init: async function() {
         console.log("🧠 Initializing AI Manager...");
         
-        // 1. Load Global Prompt
-        const { data: globalData } = await supabase
-            .from('global_config')
-            .select('master_system_prompt')
-            .eq('id', 1)
-            .maybeSingle();
-            
-        if(globalData && document.getElementById('global-system-prompt')) {
-            document.getElementById('global-system-prompt').value = globalData.master_system_prompt || '';
+        // 1. Load Global Prompt (robust: handle missing table/permission errors)
+        try {
+            const { data: globalData, error: globalErr } = await supabase
+                .from('global_config')
+                .select('master_system_prompt')
+                .eq('id', 1)
+                .maybeSingle();
+
+            if (globalErr) {
+                console.warn('Could not load global_config.master_system_prompt:', globalErr);
+            } else if (globalData && document.getElementById('global-system-prompt')) {
+                document.getElementById('global-system-prompt').value = globalData.master_system_prompt || '';
+            }
+        } catch (e) {
+            console.warn('Unexpected error loading global prompt:', e);
         }
 
         // 2. Populate Business Selector (Admin Only)
@@ -2565,7 +2740,9 @@ function renderMessage(msg) {
     if (!chatContainer) return;
 
     // 1. Determine Sender & Style
-    const isMe = msg.role === 'agent' || msg.role === 'admin' || msg.role === 'ai' || msg.direction === 'out';
+    // Treat `ai` as distinct (not the agent/admin) so it renders correctly
+    const isMe = msg.role === 'agent' || msg.role === 'admin' || msg.direction === 'out';
+    const isAI = msg.role === 'ai';
     const isSystem = msg.role === 'system' || msg.is_internal;
 
     // 2. Handle System Messages (Center Pill)
@@ -2598,7 +2775,7 @@ function renderMessage(msg) {
     
     // --- TYPE A: IMAGE (WhatsApp Style) ---
     // Checks for media_url in DB or inside the JSON content
-    const imgUrl = msg.media_url || rawContent?.image_url || rawContent?.url || rawContent?.media?.url;
+    const imgUrl = msg.media_url || rawContent?.media_url || rawContent?.image_url || rawContent?.url || rawContent?.media?.url;
     
     if (imgUrl) {
         const optimizedUrl = getOptimizedImageUrl(imgUrl);
@@ -2621,24 +2798,31 @@ function renderMessage(msg) {
     // --- TYPE B: PRODUCT CARD (Carousel Style) ---
     // If it's a single card or a list of cards
     if (rawContent?.type === 'product_card' || (rawContent?.title && rawContent?.price)) {
-        const pImg = rawContent.image || rawContent.image_url || 'https://placehold.co/200';
+        const pImg = rawContent.image || rawContent.image_url || 'https://placehold.co/240x128';
         const optimizedPImg = getOptimizedImageUrl(pImg);
         const productPlaceholder = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22240%22 height=%22128%22%3E%3Crect width=%22240%22 height=%22128%22 fill=%22%23333%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 font-size=%2212%22 fill=%22%23666%22 text-anchor=%22middle%22 dy=%22.3em%22%3ELoading...%3C/text%3E%3C/svg%3E';
+
+        // Normalize price display
+        const rawPrice = (rawContent.price || 0);
+        const priceVal = (typeof rawPrice === 'number') ? rawPrice.toFixed(2) : (isNaN(Number(rawPrice)) ? rawPrice : Number(rawPrice).toFixed(2));
+        const priceLabel = `KES ${priceVal}`;
+
+        // Build product card: image on top, then title and price, then Add to Cart button
         bubbleContent += `
-            <div class="bg-[#1f2c34] rounded-lg overflow-hidden max-w-[240px] border-b-4 border-[#00a884]">
+            <div class="bg-[#1f2c34] rounded-lg overflow-hidden max-w-[240px] border border-white/5">
                 <img 
                     src="${productPlaceholder}"
                     data-src="${optimizedPImg}" 
                     loading="lazy"
-                    class="w-full h-32 object-cover lazy-img" 
+                    class="w-full h-40 object-cover lazy-img"  
                     decoding="async"
                     onload="this.classList.add('loaded')"
                 >
                 <div class="p-3">
-                    <h3 class="font-bold text-white text-sm truncate">${rawContent.title}</h3>
-                    <p class="text-xs text-gray-400 mb-2">${rawContent.price} ${rawContent.currency || ''}</p>
-                    <a href="${rawContent.link || '#'}" target="_blank" class="block w-full text-center bg-[#00a884] hover:bg-[#008f6f] text-[#111b21] font-bold text-xs py-2 rounded">
-                        VIEW ITEM
+                    <h3 class="font-bold text-white text-sm truncate mb-1">${rawContent.title || ''}</h3>
+                    <p class="text-sm text-white/70 mb-3">${priceLabel}</p>
+                    <a href="${rawContent.link || '#'}" target="_blank" data-product-id="${rawContent.product_id || ''}" class="block w-full text-center bg-[#00a884] hover:bg-[#008f6f] text-[#111b21] font-bold text-sm py-2 rounded">
+                        Add to Cart
                     </a>
                 </div>
             </div>`;
@@ -2650,7 +2834,9 @@ function renderMessage(msg) {
     else if (rawContent?.text) text = rawContent.text;
 
     // If there is text (caption or message)
-    if (text) {
+    // Suppress placeholder captions like [USER_SENT_IMAGE] when an image is present
+    const placeholderImageTags = ['[USER_SENT_IMAGE]', '[USER_SENT_MEDIA]'];
+    if (text && !(imgUrl && placeholderImageTags.includes(String(text).trim().toUpperCase()))) {
         // Format links
         text = text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" class="text-[#53bdeb] hover:underline">$1</a>');
         // Format newlines
@@ -3131,10 +3317,4 @@ async function resumeAI() {
     } catch (e) {
         console.error('resumeAI error:', e);
     }
-}
-// Add this anywhere in your <script> tags
-function closeMobileChat() {
-    document.getElementById('crm-chat-window').classList.add('hidden');
-    document.getElementById('crm-chat-list-panel').classList.remove('hidden');
-    document.getElementById('crm-chat-list-panel').classList.add('flex', 'w-full');
 }

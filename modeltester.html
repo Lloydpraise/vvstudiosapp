@@ -101,8 +101,14 @@
 
         /* Bubbles */
         .msg-wrapper { display: flex; flex-direction: column; max-width: 80%; }
-        .msg-wrapper.bot { align-self: flex-start; }
+        .msg-wrapper.bot { /* default bot wrapper kept for backward compat */ }
         .msg-wrapper.user { align-self: flex-end; align-items: flex-end; }
+        /* Proxy AI (customer simulator) - render on the right, grey */
+        .msg-wrapper.proxy { align-self: flex-end; }
+        .msg-wrapper.proxy .msg { background: rgba(120,120,120,0.12); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.04); }
+        /* Sales AI (assistant) - left side (AI replies) */
+        .msg-wrapper.sales { align-self: flex-start; }
+        .msg-wrapper.sales .msg { background: linear-gradient(180deg,#16a34a22,#065f3266); color: #eaffef; border: 1px solid rgba(6,95,50,0.18); }
         
         .msg { padding: 12px 16px; border-radius: 14px; font-size: 14px; position: relative; line-height: 1.5; }
         .user .msg { background: var(--primary-neon); color: #000; border-bottom-right-radius: 4px; font-weight: 500; }
@@ -116,6 +122,33 @@
         .qc-bubble.auditing { color: var(--warning); border-color: var(--warning); animation: pulse 1.5s infinite; }
         .qc-bubble.score-a { color: var(--success); border-color: var(--success); }
         .qc-bubble.score-f { color: var(--danger); border-color: var(--danger); }
+
+        /* QC Improvements Panel */
+        .improvements-panel { display: flex; flex-direction: column; gap: 14px; margin-top: 18px; }
+        .improvement-title { text-align: center; font-size: 14px; font-weight: 800; color: var(--primary-neon); text-transform: none; padding: 8px 12px; }
+        .qc-diagnosis { background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--glass-border); color: var(--text-main); font-size: 13px; }
+        .perfect-reply { background: linear-gradient(180deg, rgba(0,255,136,0.04), rgba(0,0,0,0.2)); padding: 12px; border-radius: 8px; border: 1px solid rgba(0,255,136,0.06); color: var(--success); font-family: var(--font-mono); font-size: 13px; }
+
+        .targeted-fix-list { display: flex; flex-direction: column; gap: 8px; }
+        .targeted-fix-item { display: flex; align-items: center; gap: 12px; background: rgba(0,0,0,0.35); padding: 10px; border-radius: 8px; border: 1px solid var(--glass-border); }
+        .fix-target { font-weight: 700; color: var(--text-muted); text-transform: capitalize; font-size: 12px; min-width: 88px; background: rgba(255,255,255,0.02); padding:6px 8px; border-radius:8px; border:1px solid rgba(255,255,255,0.02); }
+        .fix-instruction { flex: 1; font-size: 13px; color: var(--text-main); line-height: 1.3; font-family: var(--font-mono); font-weight: 400; }
+        .perfect-reply-item { margin-top: 8px; background: rgba(255,255,255,0.02); padding: 10px 12px; border-radius: 10px; border: 1px dashed rgba(255,255,255,0.03); color: var(--text-main); font-family: var(--font-mono); font-size: 13px; }
+        /* Target color variants */
+        .fix-target.target-manager { background: linear-gradient(180deg, rgba(62,166,255,0.06), rgba(0,0,0,0.15)); border-color: rgba(62,166,255,0.12); color: #bfe9ff; }
+        .fix-target.target-sales { background: linear-gradient(180deg, rgba(255,138,0,0.06), rgba(0,0,0,0.15)); border-color: rgba(255,138,0,0.12); color: #ffd9b8; }
+        .fix-target.target-eq { background: linear-gradient(180deg, rgba(255,184,77,0.06), rgba(0,0,0,0.15)); border-color: rgba(255,184,77,0.12); color: #fff0d6; }
+        .perfect-reply-global { margin-top: 10px; background: rgba(0,0,0,0.24); padding: 12px; border-radius: 10px; border:1px solid var(--glass-border); color: var(--text-main); }
+        .fix-save-btn { background: transparent; border: 1px solid var(--primary-neon); color: var(--primary-neon); padding: 6px 10px; border-radius: 8px; font-weight: 700; font-size: 12px; min-width:64px; text-align:center; box-shadow: none; }
+        .fix-save-btn:hover { background: var(--primary-dim); box-shadow: 0 6px 18px rgba(0,229,255,0.06); }
+        .fix-save-btn { background: transparent; border: 1px solid var(--primary-neon); color: var(--primary-neon); padding: 6px 10px; border-radius: 8px; font-weight: 700; font-size: 12px; min-width:64px; text-align:center; }
+        .fix-save-btn.saved { background: rgba(0,229,255,0.08); border-color: rgba(0,229,255,0.14); color: var(--success); }
+        /* Modal chat bubbles */
+        .auditor-chat-section .msg-wrapper { display: flex; max-width: 92%; }
+        .msg-wrapper.modal-user { align-self: flex-end; align-items: flex-end; }
+        .msg-wrapper.modal-user .msg { background: rgba(120,120,120,0.12); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.04); border-radius: 12px; padding: 8px 12px; }
+        .msg-wrapper.modal-auditor { align-self: flex-start; align-items: flex-start; }
+        .msg-wrapper.modal-auditor .msg { background: linear-gradient(180deg,#3ea6ff22,#0b5b8b44); color: #e8f8ff; border: 1px solid rgba(62,166,255,0.12); border-radius: 12px; padding: 8px 12px; }
         
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 184, 77, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(255, 184, 77, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 184, 77, 0); } }
 
@@ -142,6 +175,7 @@
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: 0.3s; }
         .modal-overlay.active { opacity: 1; pointer-events: auto; }
         .modal-content { background: var(--bg-base); border: 1px solid var(--glass-border); border-radius: 12px; padding: 28px; width: 78%; max-width: 880px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0, 229, 255, 0.08); }
+        .modal-content { overflow-y: auto; }
 
         /* Keep the prompt/text edit modal centered and smaller rather than full-screen */
         #textModal.active { align-items: center; justify-content: center; }
@@ -179,6 +213,15 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
+/* Improved container styling for logs */
+.log-container {
+    padding: 12px;
+    background: rgba(255,255,255,0.01);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
 /* History list items */
 .history-item { display: block; width: 100%; text-align: left; padding: 10px; font-size: 11px; text-transform: none; background: rgba(0,0,0,0.3); border-color: var(--glass-border); color: var(--text-main); border-radius:6px; transition: 0.18s; }
 .history-item:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,0.35); }
@@ -189,6 +232,42 @@
 .log-network { border-left-color: #d19a66; color: #d19a66; background: #282c34; }
 .log-data { font-size: 10px; color: #98c379; background: #21252b; border-left: 3px solid #98c379; margin-top: -5px; border-top-left-radius: 0; border-top-right-radius: 0; }
 pre { margin: 0; white-space: pre-wrap; }
+#proxy-sidebar {
+    position: fixed;
+    left: 20px;
+    top: 20px;
+    bottom: 20px;
+    width: 280px;
+    padding: 15px;
+    border-right: 1px solid var(--glass-border);
+    z-index: 100;
+}
+.failed-item {
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.failed-item:hover { background: var(--primary-dim); border-color: var(--primary-neon); }
+
+.failed-item.selected {
+    border-color: var(--primary-neon);
+    background: rgba(0, 229, 255, 0.1);
+}
+
+.intent-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    background: var(--warning);
+    color: #000;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    margin-top: 5px;
+}
+.image-preview { width: 50px; height: 50px; border-radius: 5px; margin-top: 5px; object-fit: cover; }
     </style>
 </head>
 <body>
@@ -196,8 +275,9 @@ pre { margin: 0; white-space: pre-wrap; }
     <div id="logs-panel" class="glass-panel">
     <div class="header-bar" style="padding: 0;">
         <div style="display: flex; width: 100%;">
-            <div id="tab-btn-logs" class="tab active" style="flex: 1; padding: 14px;" onclick="switchLeftTab('logs')">Terminal Logs</div>
-            <div id="tab-btn-history" class="tab" style="flex: 1; padding: 14px;" onclick="switchLeftTab('history')">Past Chats</div>
+            <div id="tab-btn-logs" class="tab active" style="flex: 1; padding: 14px; font-size: 0.8rem; text-align: center;" onclick="switchLeftTab('logs')">Terminal</div>
+            <div id="tab-btn-history" class="tab" style="flex: 1; padding: 14px; font-size: 0.8rem; text-align: center;" onclick="switchLeftTab('history')">History</div>
+            <div id="tab-btn-proxy" class="tab" style="flex: 1; padding: 14px; font-size: 0.8rem; text-align: center;" onclick="switchLeftTab('proxy')">AI Proxy</div>
         </div>
         <button class="btn-icon" style="padding: 14px;" onclick="toggleLogs()">×</button>
     </div>
@@ -207,12 +287,19 @@ pre { margin: 0; white-space: pre-wrap; }
     </div>
 
     <div id="history-box" style="display: none; flex: 1; overflow-y: auto; padding: 15px;">
-        <button class="btn-neon" style="width: 100%; margin-bottom: 15px;" onclick="fetchHistoricalConversations()">Load Database Chats</button>
-        <div id="history-list" style="display: flex; flex-direction: column; gap: 10px;">
-            </div>
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
+            <button class="btn-neon" style="display:inline-block;" onclick="fetchHistoricalConversations()">Load Database Chats</button>
+        </div>
+        <div id="history-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
+    </div>
+
+    <div id="proxy-box" style="display: none; flex: 1; overflow-y: auto; padding: 15px;">
+        <div style="margin-bottom: 15px;">
+            <button class="btn-neon" style="width: 100%; margin-bottom: 15px;" onclick="loadFailedConversations()">Load Failed Chats</button>
+        </div>
+        <div id="failed-conv-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
     </div>
 </div>
-
     <div id="chat-area">
         <div class="header-bar glass-panel" style="border-radius: 0; border-bottom: 1px solid var(--glass-border);">
             <div style="display: flex; align-items: center; gap: 15px;">
@@ -222,6 +309,11 @@ pre { margin: 0; white-space: pre-wrap; }
             <div style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 8px;">
                 <div id="status-led" style="width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success);"></div>
                 <span id="biz-label">Loading...</span>
+                <div id="battle-controls" style="display:flex; align-items:center; gap:8px; margin-left:10px;">
+                    <span id="battle-status" style="font-size:11px; color:var(--primary-neon); display:none; font-weight:700; text-transform:uppercase; letter-spacing:0.6px;">AI Battle ONgoing</span>
+                    <button id="stop-battle-btn" class="btn-neon" style="display:none; padding:6px 10px; font-size:11px;" onclick="stopProxySimulation()">Stop Battle</button>
+                    <button id="call-teacher-btn" class="btn-neon" style="display:none; padding:6px 10px; font-size:11px;" onclick="callTeacherAI()">Call Teacher AI</button>
+                </div>
             </div>
         </div>
 
@@ -366,13 +458,46 @@ pre { margin: 0; white-space: pre-wrap; }
                     <div id="qc-reason-eq" style="font-size: 10px; color: var(--text-muted);">Waiting for data...</div>
                 </div>
             </div>
+<div class="improvements-panel">
+                <div style="display: flex; gap: 15px; margin-bottom: 10px;">
+                    <div id="qc-diagnosis-box" class="qc-diagnosis" style="flex: 1;">
+                        <div style="font-size: 10px; color: var(--primary-neon); text-transform: uppercase; margin-bottom: 6px; font-weight: bold;">System Logic Diagnosis</div>
+                        <div id="qc-diagnosis" style="line-height: 1.4;"></div>
+                    </div>
+                    
+                    <div id="qc-street-box" class="qc-diagnosis" style="flex: 1; border-color: rgba(255, 184, 77, 0.3); background: rgba(255, 184, 77, 0.02);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <div style="font-size: 10px; color: var(--warning); text-transform: uppercase; font-weight: bold;">Street Vibe Check</div>
+                            <div id="qc-street-score" style="font-size: 14px; font-weight: bold; color: var(--warning); font-family: var(--font-mono);">--%</div>
+                        </div>
+                        <div id="qc-street-vibe" style="margin-bottom: 8px; line-height: 1.4;"></div>
+                        <div style="font-size: 10px; color: var(--text-muted); border-top: 1px solid rgba(255,255,255,0.05); padding-top: 6px;">
+                            Cultural Fail: <span id="qc-street-fail" style="font-weight: bold;"></span>
+                        </div>
+                    </div>
+                </div>
 
-            <div class="qc-suggestion">
-                <strong style="color: var(--warning); display: block; margin-bottom: 5px;">AI Suggested Prompt Improvement:</strong>
-                <span id="qc-improvement">No improvement suggestion available.</span>
-            </div>
-        </div>
+                <div id="qc-perfect-reply" class="perfect-reply" style="display:none; margin-bottom: 10px;"></div>
+
+                <div class="improvement-title" style="text-align: left; padding-left: 0; padding-bottom: 4px;">Targeted Prompt Additions</div>
+                <div id="qc-targeted-list" class="targeted-fix-list"></div>
+                <div class="auditor-chat-section" style="margin-top: 20px; border-top: 1px solid var(--glass-border); padding-top: 15px;">
+    <div style="font-size: 10px; color: var(--primary-neon); text-transform: uppercase; font-weight: bold; margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
+        <span class="pulse-dot"></span> Chat with Auditor
     </div>
+    
+    <div id="auditor-chat-log" style="height: 120px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 6px; padding: 10px; font-size: 12px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px;">
+        <div style="color: var(--text-muted);">Ask why a specific score was given or how to refine a fix...</div>
+    </div>
+
+    <div style="display: flex; gap: 8px;">
+        <input type="text" id="auditor-chat-input" placeholder="Clarify something with the Auditor..." 
+               onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); sendAuditorChat(); }"
+               style="flex: 1; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: #fff; padding: 8px; border-radius: 4px; font-size: 12px;">
+        <button id="auditor-chat-send-btn" onclick="sendAuditorChat()" class="btn-primary" style="padding: 0 15px; font-size: 12px; background: var(--primary-neon); color: #000; border: 1px solid rgba(0,229,255,0.18); box-shadow: 0 6px 18px rgba(0,229,255,0.08);">Ask</button>
+    </div>
+</div>
+            </div>
 
     <script>
         // --- CONFIG ---
@@ -559,10 +684,24 @@ pre { margin: 0; white-space: pre-wrap; }
         // --- DATABASE SYNC ---
         async function fetchAvailableBusinesses() {
             try {
+                // Keep this request minimal to match the Edge Function's expected shape
                 const res = await fetch(TESTER_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: "fetch_businesses" }) });
                 if(!res.ok) {
-                    const txt = await res.text().catch(()=>'');
+                    // Try to capture a helpful response body for debugging
+                    let txt = '';
+                    try { txt = await res.text(); } catch(e) { txt = '<no body>'; }
                     log('error', `fetchAvailableBusinesses failed: ${res.status} ${res.statusText} - ${txt}`);
+                    const select = document.getElementById('businessSelect');
+                    if(select) {
+                        // If server reported 'Unknown action', try a graceful fallback so UI can continue
+                        if(String(txt).toLowerCase().includes('unknown action')) {
+                            select.innerHTML = `<option value="${BUSINESS_ID}">${BUSINESS_ID} (fallback)</option>`;
+                            // Attempt to load config for the fallback business id so the page populates
+                            try { await loadBusinessConfig(BUSINESS_ID); } catch(e) { /* ignore */ }
+                        } else {
+                            select.innerHTML = '<option value="">-- Load failed (check logs) --</option>';
+                        }
+                    }
                     return;
                 }
                 const data = await res.json();
@@ -656,47 +795,57 @@ pre { margin: 0; white-space: pre-wrap; }
                 reader.readAsDataURL(file);
             }
         }
-        async function sendMessage() {
+async function sendMessage() {
     const input = document.getElementById('prompt');
     const text = input.value.trim();
     
-    // 1. Validation & Setup
-    if (!text && !base64Image) return;
+    // 1. Validation & Setup (Include our new staged URL check)
+    if (!text && !base64Image && !window.stagedImageUrl) return;
 
     const msgId = 'msg_' + Date.now(); 
     const currentPrompts = getCurrentPrompts(); 
     
+    // Identify if we are sending a local upload or a historical URL
+    const activeImageData = base64Image || window.stagedImageUrl;
+    
     // 2. Render User Message Visually
-    renderBubble('user', text, base64Image, null);
+    // If the text is exactly the image URL, hide the text so we only show the Image Card in the UI
+    let displayText = text;
+    if (text === window.stagedImageUrl) {
+        displayText = ""; 
+    }
+    renderBubble('user', displayText, activeImageData, null, 'user');
 
     // 3. Prepare Payload
-    // In Replay Mode, ensuring 'conversationId' stays consistent is key to context.
     const payload = {
         action: "simulate",
         userId: "test_ui_001",
         businessId: BUSINESS_ID,
-        conversationId: conversationId, // Ensure this is the ID of the historical chat
-        text: text, 
-        history: [...chatHistory], // Send the full current context bundle
+        conversationId: conversationId,
+        // If we're sending a staged image URL, don't put the URL in `text` — keep text empty
+        text: window.stagedImageUrl ? "" : text,
+        history: [...chatHistory],
         ...currentPrompts
     };
 
     if (base64Image) {
         payload.media = { type: "image/jpeg", base64: base64Image };
+    } else if (window.stagedImageUrl) {
+        // Optional: Send it in the media object in case your backend needs it structured
+        payload.media = { type: "image/url", url: window.stagedImageUrl }; 
     }
 
     // 4. Update history with User message for the NEXT turn
-    chatHistory.push({ role: 'user', content: text });
-    
-    // Optional: Only slice if history is getting too heavy (> 15 messages)
+    // If we sent a staged image URL, record a sentinel so replay/rendering knows it was an image
+    chatHistory.push({ role: 'user', content: window.stagedImageUrl ? '[USER_SENT_IMAGE]' : text });
     if (chatHistory.length > 15) chatHistory = chatHistory.slice(-15);
 
     // 5. Cleanup Input UI
     input.value = ''; 
     document.getElementById('img-preview').style.display = 'none';
-    const fInput = document.getElementById('imageInput'); 
-    fInput.value = ''; 
+    document.getElementById('imageInput').value = ''; 
     base64Image = null;
+    window.stagedImageUrl = null; // Clear the historical image state
     
     setLed('thinking');
     log('sys', `Forwarding Turn to Brain. Context Depth: ${payload.history.length} messages.`);
@@ -752,7 +901,7 @@ pre { margin: 0; white-space: pre-wrap; }
 
         // 8. Process Final AI Reply
         if (data.reply) {
-            renderBubble('bot', data.reply, null, msgId);
+            renderBubble('bot', data.reply, null, msgId, 'sales');
             
             // CRITICAL: Update history so the NEXT message in Replay knows what the AI just said
             chatHistory.push({ role: 'assistant', content: data.reply });
@@ -832,73 +981,274 @@ pre { margin: 0; white-space: pre-wrap; }
         log('error', "QC Agent Error: " + e.message);
     }
 }
-        function showQCModal(msgId) {
+function showQCModal(msgId) {
     const qc = qcReports[msgId];
-    if (!qc) {
-        console.error("[QC_TRACE] No report found for ID:", msgId);
-        return;
-    }
+    if (!qc) return;
+    try { window.currentAuditId = msgId; } catch(e) { /* ignore in restricted contexts */ }
 
-    console.log("[QC_TRACE] Populating Modal with:", qc);
-
-    // 1. Handle Main Score (Check both 'score' and 'overall_score')
+    // 1. Handle Main Score
     const displayScore = qc.score !== undefined ? qc.score : (qc.overall_score || 0);
     const scoreEl = document.getElementById('qc-score-main');
     scoreEl.innerText = `${displayScore}%`;
     scoreEl.style.color = displayScore >= 80 ? 'var(--success)' : (displayScore < 60 ? 'var(--danger)' : 'var(--warning)');
 
-    // 2. Map Grades (OpenAI returns: qc.grades.manager, etc.)
-    const grades = qc.grades || {};
-    
-    // Manager Grade
-    const mgrGrade = grades.manager || '--';
-    const mgrEl = document.getElementById('qc-grade-mgr');
-    mgrEl.className = `grade grade-${mgrGrade.replace('+', '').replace('-', '')}`; // Clean CSS class
-    mgrEl.innerText = mgrGrade;
-    // Since the AI doesn't provide separate 'reasons' per grade in this version, 
-    // we use the librarian_check or a generic placeholder
-    document.getElementById('qc-reason-mgr').innerText = qc.librarian_check || 'Audit complete.';
+    // 2. Map Grades (Check root first, fallback to system.grades)
+    const grades = qc.grades || (qc.system && qc.system.grades) || {};
+    ['manager', 'sales', 'eq'].forEach(target => {
+        const grade = grades[target] || '--';
+        const el = document.getElementById(`qc-grade-${target === 'manager' ? 'mgr' : target}`);
+        if(el) {
+            el.className = `grade grade-${grade.replace(/[+-]/g, '')}`;
+            el.innerText = grade;
+        }
+    });
 
-    // Sales Grade
-    const salesGrade = grades.sales || '--';
-    const salesEl = document.getElementById('qc-grade-sales');
-    salesEl.className = `grade grade-${salesGrade.replace('+', '').replace('-', '')}`;
-    salesEl.innerText = salesGrade;
+    document.getElementById('qc-reason-mgr').innerText = qc.librarian_check || (qc.system && qc.system.librarian_check) || 'Audit complete.';
     document.getElementById('qc-reason-sales').innerText = "Tone and mechanics checked.";
-
-    // EQ Grade
-    const eqGrade = grades.eq || '--';
-    const eqEl = document.getElementById('qc-grade-eq');
-    eqEl.className = `grade grade-${eqGrade.replace('+', '').replace('-', '')}`;
-    eqEl.innerText = eqGrade;
     document.getElementById('qc-reason-eq').innerText = "Psychological hook analysis.";
 
-    // 3. Improvement Suggestion
-    document.getElementById('qc-improvement').innerText = qc.improvement_suggestion || "No suggestions provided.";
+    // 3. System Diagnosis
+    const sys = qc.system || {};
+    document.getElementById('qc-diagnosis').innerText = sys.diagnosis || qc.diagnosis || "No logic issues detected.";
 
-    // 4. Show the Modal
-    const modal = document.getElementById('qcModal');
-    if (modal) {
-        modal.classList.add('active');
+    // 4. Street Vibe Details
+    const street = qc.street || {};
+    const streetBox = document.getElementById('qc-street-box');
+    if (street.vibe_check) {
+        streetBox.style.display = 'block';
+        document.getElementById('qc-street-score').innerText = `${street.score || 0}%`;
+        document.getElementById('qc-street-vibe').innerText = street.vibe_check;
+        
+        const failEl = document.getElementById('qc-street-fail');
+        failEl.innerText = street.cultural_fail || 'None';
+        failEl.style.color = (street.cultural_fail && street.cultural_fail !== 'None') ? 'var(--danger)' : 'var(--success)';
     } else {
-        log('error', "Modal element #qcModal not found in DOM");
+        streetBox.style.display = 'none';
+    }
+
+    // 5. Perfect Reply
+    const perfectEl = document.getElementById('qc-perfect-reply');
+    const perfectText = sys.perfect_reply || qc.perfect_reply;
+    if (perfectText) {
+        perfectEl.style.display = 'block';
+        perfectEl.innerHTML = `<strong style="display:block; font-size:10px; color:var(--success); margin-bottom:4px; text-transform:uppercase;">Expected AI Output</strong>${perfectText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}`;
+    } else {
+        perfectEl.style.display = 'none';
+    }
+
+    // 6. Combine Targeted Fixes (System Logic + Street Vibe)
+    const fixesList = document.getElementById('qc-targeted-list');
+    fixesList.innerHTML = '';
+    fixesList.style.display = 'flex';
+
+    let allFixes = [];
+    
+    // Grab system logic fixes
+    if (Array.isArray(sys.targeted_fixes)) allFixes = [...sys.targeted_fixes];
+    else if (Array.isArray(qc.targeted_fixes)) allFixes = [...qc.targeted_fixes];
+
+    // Force the street fix into the array as a 'Sales' target
+    if (street.prompt_fix) {
+        allFixes.push({
+            target: 'sales',
+            instruction: `[STREET VIBE] ${street.prompt_fix}`,
+            _source: 'street'
+        });
+    }
+
+    // Attach unified array to the main object so the save button can access it
+    qcReports[msgId].unified_fixes = allFixes;
+
+    if (allFixes.length === 0) {
+        fixesList.innerHTML = '<div style="color:var(--text-muted); font-size:12px; font-style:italic; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 6px;">No prompt improvements required.</div>';
+    } else {
+        allFixes.forEach((f, idx) => {
+            const item = document.createElement('div');
+            item.className = 'targeted-fix-item';
+            if(f._source === 'street') item.style.borderColor = 'rgba(255, 184, 77, 0.3)';
+
+            const targetDiv = document.createElement('div');
+            targetDiv.className = 'fix-target';
+            const t = (f.target || 'unknown').toString().toLowerCase();
+            targetDiv.innerText = t.charAt(0).toUpperCase() + t.slice(1);
+            
+            if (t === 'manager') targetDiv.classList.add('target-manager');
+            else if (t === 'sales') targetDiv.classList.add('target-sales');
+            else if (t === 'eq') targetDiv.classList.add('target-eq');
+
+            const instrDiv = document.createElement('div');
+            instrDiv.className = 'fix-instruction';
+            instrDiv.innerText = (f.instruction || '').toString();
+
+            const btn = document.createElement('button');
+            btn.className = 'fix-save-btn';
+            btn.innerText = (f._saved ? 'Saved' : 'Save');
+            if (f._saved) btn.classList.add('saved');
+            btn.onclick = () => saveTargetedFix(msgId, idx);
+
+            item.appendChild(targetDiv);
+            item.appendChild(instrDiv);
+            item.appendChild(btn);
+            fixesList.appendChild(item);
+        });
+    }
+
+    // 7. Show Modal
+    document.getElementById('qcModal').classList.add('active');
+}
+
+function saveTargetedFix(msgId, index) {
+    try {
+        const report = qcReports[msgId];
+        const fix = report.unified_fixes && report.unified_fixes[index];
+        if (!fix) return;
+        
+        fix._saved = true;
+
+        // UI Update
+        const list = document.getElementById('qc-targeted-list');
+        if (!list) return;
+        const items = Array.from(list.querySelectorAll('.targeted-fix-item'));
+        const item = items[index];
+        if (!item) return;
+        const btn = item.querySelector('.fix-save-btn');
+        if (btn) { btn.innerText = 'Saved'; btn.classList.add('saved'); }
+
+        logSystem(`Queued targeted fix [${fix.target.toUpperCase()}] for saving.`);
+    } catch (e) {
+        console.error('saveTargetedFix error', e);
     }
 }
-        // --- RENDERERS ---
-        function renderBubble(type, text, imgBase64, msgId) {
-            const box = document.getElementById('chat-box');
-            const wrap = document.createElement('div');
-            wrap.className = `msg-wrapper ${type}`;
-            if(msgId) wrap.id = msgId;
-            
-            let content = `<div class="msg">`;
-            if (imgBase64) content += `<img src="data:image/jpeg;base64,${imgBase64}" style="max-width:200px; border-radius:8px; margin-bottom:8px; display:block;">`;
-            if (text) content += text.replace(/\n/g, '<br>');
-            content += `</div>`;
 
-            wrap.innerHTML = content;
-            box.appendChild(wrap);
-            box.scrollTop = box.scrollHeight;
+// --- Auditor chat helpers ---
+function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+}
+
+function renderAuditorChatBubble(who, text) {
+    const log = document.getElementById('auditor-chat-log');
+    if (!log) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'msg-wrapper ' + (who === 'auditor' ? 'modal-auditor' : 'modal-user');
+    const msg = document.createElement('div');
+    msg.className = 'msg';
+    msg.innerHTML = escapeHtml(text);
+    wrap.appendChild(msg);
+    log.appendChild(wrap);
+    log.scrollTop = log.scrollHeight;
+}
+
+async function sendAuditorChat() {
+    const input = document.getElementById('auditor-chat-input');
+    const text = input.value.trim();
+    
+    // 1. Identify which audit report we are talking about
+    // window.currentAuditId is set when you click 'View QC' on a message
+    const report = qcReports[window.currentAuditId]; 
+
+    if (!text || !report) {
+        logSystem("⚠️ Cannot chat: No active audit context found.");
+        return;
+    }
+
+    // 2. UI: Show your question in the modal chat
+    renderAuditorChatBubble('user', text);
+    input.value = '';
+
+    try {
+        // 3. The Payload - This is what gives the AI 'Sight'
+        const res = await fetch(QC_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                action: 'audit_chat', 
+                question: text, 
+                businessId: BUSINESS_ID, // Key to fetching RAG/Business prompts
+                userMessage: report.userMessage, // The Customer's text
+                aiResponse: report.aiResponse,   // The Sales AI's 'bad' reply
+                auditContext: report,           // The JSON with the 75% and grades
+                prompts: getCurrentPrompts()     // The current logic in your textareas
+            })
+        });
+
+        const data = await res.json();
+        
+        // 4. Render the Auditor's intelligent response
+        if (data.answer) {
+            renderAuditorChatBubble('auditor', data.answer);
+        } else {
+            renderAuditorChatBubble('auditor', "The Auditor processed the request but returned no text.");
+        }
+
+    } catch (e) {
+        console.error('sendAuditorChat error', e);
+        renderAuditorChatBubble('auditor', "Connection error: Auditor is offline.");
+    }
+}
+
+function renderBubble(type, text, imgData, msgId, actor) {
+    const box = document.getElementById('chat-box');
+    const wrap = document.createElement('div');
+    const cls = actor || type || 'bot';
+    wrap.className = `msg-wrapper ${cls}`;
+    if(msgId) wrap.id = msgId;
+    
+    let content = `<div class="msg">`;
+    
+    // Handle both Base64 uploads and Database HTTP URLs
+    if (imgData) {
+        const imgSrc = imgData.startsWith('http') ? imgData : `data:image/jpeg;base64,${imgData}`;
+        content += `<img src="${imgSrc}" style="max-width:200px; border-radius:8px; margin-bottom:8px; display:block; border: 1px solid var(--glass-border);">`;
+    }
+    
+    if (text) content += text.replace(/\n/g, '<br>');
+    content += `</div>`;
+
+    wrap.innerHTML = content;
+    box.appendChild(wrap);
+    box.scrollTop = box.scrollHeight;
+}
+
+        // Update Battle UI helper
+        function updateBattleUI(active) {
+            const status = document.getElementById('battle-status');
+            const stopBtn = document.getElementById('stop-battle-btn');
+            const teacherBtn = document.getElementById('call-teacher-btn');
+            if(active) {
+                if(status) status.style.display = 'inline-block';
+                if(stopBtn) stopBtn.style.display = 'inline-block';
+                if(teacherBtn) teacherBtn.style.display = 'inline-block';
+                setLed('thinking');
+            } else {
+                if(status) status.style.display = 'none';
+                if(stopBtn) stopBtn.style.display = 'none';
+                if(teacherBtn) teacherBtn.style.display = 'none';
+                setLed(isDraftMode ? 'warning' : 'success');
+            }
+        }
+
+        // Call Teacher AI manually for the last turn
+        async function callTeacherAI() {
+            // Find last assistant and preceding user in chatHistory
+            let lastAssistant = null; let prevUser = null;
+            for(let i = chatHistory.length - 1; i >= 0; i--) {
+                if(!lastAssistant && chatHistory[i].role === 'assistant') lastAssistant = chatHistory[i].content;
+                else if(lastAssistant && chatHistory[i].role === 'user') { prevUser = chatHistory[i].content; break; }
+            }
+            if(!lastAssistant || !prevUser) { log('sys', 'No recent assistant/user pair to audit.'); return; }
+            logSystem('Invoking Teacher AI on the last turn...');
+            try {
+                // Use the runTurnAudit signature that accepts (msgId, userMsg, aiMsg, meta)
+                await runTurnAudit(null, prevUser, lastAssistant, null);
+                logSystem('Teacher AI audit requested.');
+            } catch (e) {
+                logError('Teacher AI call failed: ' + e.message);
+            }
         }
 
         function renderThought(text) {
@@ -966,10 +1316,31 @@ let historicalIndex = 0;   // Tracks where we are in the timeline
 
 // Toggle between Logs and History on the left panel
 function switchLeftTab(tab) {
-    document.getElementById('tab-btn-logs').classList.toggle('active', tab === 'logs');
-    document.getElementById('tab-btn-history').classList.toggle('active', tab === 'history');
-    document.getElementById('log-box').style.display = tab === 'logs' ? 'block' : 'none';
-    document.getElementById('history-box').style.display = tab === 'history' ? 'block' : 'none';
+    // Hide all boxes
+    document.getElementById('log-box').style.display = 'none';
+    document.getElementById('history-box').style.display = 'none';
+    document.getElementById('proxy-box').style.display = 'none';
+
+    // Remove active class from all tabs
+    document.getElementById('tab-btn-logs').classList.remove('active');
+    document.getElementById('tab-btn-history').classList.remove('active');
+    document.getElementById('tab-btn-proxy').classList.remove('active');
+
+    // Show selected box and set active tab
+    if (tab === 'logs') {
+        document.getElementById('log-box').style.display = 'flex';
+        document.getElementById('tab-btn-logs').classList.add('active');
+    } else if (tab === 'history') {
+        // Use block so children stack vertically (button above list)
+        document.getElementById('history-box').style.display = 'block';
+        document.getElementById('tab-btn-history').classList.add('active');
+    } else if (tab === 'proxy') {
+        // Use block so children stack vertically (button above list)
+        document.getElementById('proxy-box').style.display = 'block';
+        document.getElementById('tab-btn-proxy').classList.add('active');
+    }
+
+    logSystem(`Switched to ${tab} view.`);
 }
 
 // 1. Fetch past conversations from your DB
@@ -1072,11 +1443,28 @@ function loadNextHistoricalMessage() {
     const nextMsg = historicalThread[historicalIndex];
     const input = document.getElementById('prompt');
     
-    // Extract text (handles if your DB saves content as a string or JSON object)
     let textToInject = typeof nextMsg.content === 'string' ? nextMsg.content : (nextMsg.content?.text || "");
     
-    // Put it in the input box so the tester can see it, edit it, and hit Transmit
-    input.value = textToInject;
+    // DETECT IMAGE FROM HISTORY
+    if (textToInject.includes('[USER_SENT_IMAGE]') || nextMsg.image_url) {
+        // Fallback: If image_url isn't explicitly passed, try to extract it from the text if appended
+        const imgUrl = nextMsg.image_url || textToInject.replace('[USER_SENT_IMAGE]', '').trim();
+        
+        // Stage the URL globally so sendMessage can grab it
+        window.stagedImageUrl = imgUrl;
+        
+        // Show the image preview next to the input box
+        const previewEl = document.getElementById('img-preview');
+        previewEl.src = imgUrl;
+        previewEl.style.display = 'block';
+        
+        // Show a human-friendly text in the input while keeping the URL staged
+        input.value = 'The user sent an image';
+    } else {
+        input.value = textToInject;
+        window.stagedImageUrl = null;
+        document.getElementById('img-preview').style.display = 'none';
+    }
     
     logSystem(`Loaded historical message ${historicalIndex + 1} of ${historicalThread.length}. Ready to transmit.`);
     historicalIndex++;
@@ -1106,6 +1494,443 @@ function markVisited(id) {
         if (el) el.classList.add('visited');
     } catch (e) { /* safe no-op */ }
 }
+let currentProxyIntent = ""; // Global to store the persona for the auto-responder
+
+async function loadFailedConversations() {
+    logSystem("Scanning for high-engagement/low-conversion chats...");
+    const list = document.getElementById('failed-conv-list');
+    list.innerHTML = '<div style="color:var(--text-muted); font-size:12px; padding:10px;">Scanning database...</div>';
+
+    // Prefer the right-side business selector if present, otherwise fall back to global BUSINESS_ID
+    const bizElem = document.getElementById('businessSelect') || document.getElementById('business-select');
+    const bizId = (bizElem && bizElem.value) ? bizElem.value : (typeof BUSINESS_ID !== 'undefined' ? BUSINESS_ID : null);
+    console.log('loadFailedConversations: resolved bizId=', bizId, 'businessSelectElem=', !!bizElem);
+    console.log('loadFailedConversations: BUSINESS_ID global=', typeof BUSINESS_ID !== 'undefined' ? BUSINESS_ID : null);
+    console.log('loadFailedConversations: supabase defined=', typeof supabase !== 'undefined');
+    if (!bizId) {
+        logSystem("⚠️ Please select a business first.");
+        list.innerHTML = '';
+        return;
+    }
+
+    try {
+        // We use the Edge Function directly as it handles the complex SQL/Filtering logic
+        console.log('loadFailedConversations: calling TESTER_URL', TESTER_URL, 'with businessId', bizId);
+        // Resolve an available Supabase key variable from the global scope if present
+        const resolvedKey = (typeof supabaseKey !== 'undefined') ? supabaseKey
+            : (typeof SUPABASE_KEY !== 'undefined') ? SUPABASE_KEY
+            : (window?.supabase?.supabaseKey) ? window.supabase.supabaseKey
+            : (window?.supabaseClient?.supabaseKey) ? window.supabaseClient.supabaseKey
+            : null;
+        console.log('loadFailedConversations: resolved auth key present=', !!resolvedKey);
+
+        const headers = { 'Content-Type': 'application/json' };
+        if (resolvedKey) headers['Authorization'] = `Bearer ${resolvedKey}`;
+
+        const res = await fetch(TESTER_URL, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ 
+                action: 'fetch_failed_conversations', 
+                businessId: bizId 
+            })
+        });
+        console.log('loadFailedConversations: fetch completed, status=', res.status, res.statusText);
+        const payload = await res.json();
+        console.log('loadFailedConversations: payload=', payload);
+        if (!res.ok) {
+            console.error('loadFailedConversations: fetch response not ok', res.status, res.statusText, payload);
+            list.innerHTML = `<div style="color:var(--danger); font-size:12px; padding:10px;">Scan failed.</div>`;
+            return;
+        }
+        const failures = payload.conversations || [];
+
+        list.innerHTML = '';
+
+        if (failures.length === 0) {
+            logSystem("No high-engagement failures found for this business.");
+            return;
+        }
+
+        failures.forEach(conv => {
+            const div = document.createElement('div');
+            div.className = 'failed-item';
+            div.id = `proxy-item-${conv.id}`;
+            
+            // Format preview text safely
+            let previewText = conv.preview || "View failure details...";
+            
+            div.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <strong style="color: var(--primary-neon); font-size: 0.8rem;">${conv.id.substring(0, 8)}</strong>
+                    <span style="font-size: 0.7rem; color: var(--text-muted);">${conv.message_count} msgs</span>
+                </div>
+                <div style="font-size: 0.75rem; margin-top: 5px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    ${previewText}
+                </div>
+            `;
+            // We pass the whole conv object so startProxySimulation has the messages
+            div.onclick = () => startProxySimulation(conv);
+            list.appendChild(div);
+        });
+        
+        logSystem(`Loaded ${failures.length} potential test cases.`);
+    } catch (e) {
+        console.error('loadFailedConversations: error', e);
+        logSystem(`❌ Error: ${e.message}`);
+        list.innerHTML = `<div style="color:var(--danger); font-size:12px; padding:10px;">Scan failed.</div>`;
+    }
+}
+
+async function startProxySimulation(conv) {
+    logSystem(`🚀 Initializing Autonomous Proxy for Conv: ${conv.id}...`);
+    
+    // Highlight selected item
+    document.querySelectorAll('.failed-item').forEach(el => el.classList.remove('selected'));
+    document.getElementById(`proxy-item-${conv.id}`)?.classList.add('selected');
+
+    try {
+        const resolvedKey = (typeof supabaseKey !== 'undefined') ? supabaseKey
+            : (typeof SUPABASE_KEY !== 'undefined') ? SUPABASE_KEY
+            : (window?.supabase?.supabaseKey) ? window.supabase.supabaseKey
+            : (window?.supabaseClient?.supabaseKey) ? window.supabaseClient.supabaseKey
+            : null;
+
+        const headers = { 'Content-Type': 'application/json' };
+        if (resolvedKey) headers['Authorization'] = `Bearer ${resolvedKey}`;
+
+        // 1. Get Intent (Persona) from the AI Analyst
+        const res = await fetch(TESTER_URL, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ 
+                action: 'get_proxy_intent', 
+                messages: conv.messages || [] 
+            })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to get intent');
+
+        currentProxyIntent = data.intent;
+        logSystem(`🎯 PROXY PERSONA: ${currentProxyIntent}`);
+
+        // 2. Clear Chat and Prep UI
+        clearChat();
+        renderIntentBubble(currentProxyIntent);
+        chatHistory = []; // Reset history for new simulation
+
+        // 3. Start the Autonomous Loop
+        simulationActive = true;
+        // Show battle UI
+        try { updateBattleUI(true); } catch(e) { /* ignore if not present */ }
+        await runNextProxyTurn(headers, conv.id);
+
+    } catch (err) {
+        console.error('startProxySimulation Error:', err);
+        logSystem(`❌ Proxy Setup Failed: ${err.message}`);
+    }
+}
+
+// Initialize these before starting the loop
+let turnCounter = 0;
+const MAX_TURNS = 10;
+let originalMsgs = []; // Populate this with the failed conversation messages
+
+async function runNextProxyTurn(headers, convId) {
+    // 1. Check if we should stop
+    if (!simulationActive || turnCounter >= MAX_TURNS) {
+        logSystem(turnCounter >= MAX_TURNS ? "🏁 Max turns reached (10/10)." : "⏹️ Simulation stopped.");
+        simulationActive = false;
+        return;
+    }
+
+    try {
+        // STEP A: Generate Proxy Reply (The Customer speaks)
+        // Uses Intelligent Mirroring by passing original_history and turn_index
+        logSystem(`🤖 Proxy Customer is typing... (Turn ${turnCounter + 1}/${MAX_TURNS})`);
+        
+        const genRes = await fetch(TESTER_URL, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ 
+                action: 'generate_proxy_reply', 
+                intent: currentProxyIntent, 
+                history: chatHistory,
+                original_history: originalMsgs, // The "Gold" messages to learn from
+                turn_index: turnCounter,
+                business_context: document.getElementById('business_prompt')?.value 
+            })
+        });
+
+        const genPayload = await genRes.json();
+        if (!genRes.ok || !genPayload.reply) {
+            logSystem("⏹️ Proxy reached a conclusion or error.");
+            simulationActive = false;
+            return;
+        }
+
+        // Render Proxy Message (User Side)
+        renderBubble('user', genPayload.reply, null, null, 'proxy');
+        chatHistory.push({ role: 'user', content: genPayload.reply });
+
+        // STEP B: 8 Second Wait for "System Processing" Realism
+        logSystem("⏳ Waiting 8s for Sales AI to process...");
+        await new Promise(r => setTimeout(r, 8000));
+
+        // STEP C: Run the Sales AI Brain (Simulate Turn)
+        const forwardPayload = {
+            action: 'simulate',
+            text: genPayload.reply,
+            history: chatHistory,
+            businessId: BUSINESS_ID || (typeof bizId !== 'undefined' ? bizId : 'default'),
+            prompts: {
+                manager_ai_prompt: document.getElementById('manager_ai_prompt')?.value,
+                sales_ai_prompt_mechanics: document.getElementById('sales_ai_prompt_mechanics')?.value,
+                eq_ai_prompt: document.getElementById('eq_ai_prompt')?.value
+            }
+        };
+
+        const forwardRes = await fetch(TESTER_URL, { 
+            method: 'POST', 
+            headers, 
+            body: JSON.stringify(forwardPayload) 
+        });
+        
+        const brainData = await forwardRes.json();
+        const aiText = brainData.text || brainData.reply; // Handle both naming styles
+        
+        if (aiText) {
+            // Render Sales AI Response (Bot Side)
+            renderBubble('bot', aiText, brainData.metadata, brainData.qc, 'sales');
+            chatHistory.push({ role: 'assistant', content: aiText });
+
+            // STEP D: Evaluate the Turn's "Convincing Power"
+            const evalRes = await fetch(TESTER_URL, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ 
+                    action: 'evaluate_convincing_power', 
+                    ai_response: aiText, 
+                    intent: currentProxyIntent 
+                })
+            });
+            const evalData = await evalRes.json();
+            logSystem(`⚖️ Convincing Score: ${evalData.score}% - ${evalData.reason}`);
+
+            // STEP E: Run the Teacher Audit (Full analysis)
+            // If the score is low, the Teacher can prioritize fixing this specific turn
+            runTurnAudit(genPayload.reply, aiText, brainData.metadata, evalData.score);
+        }
+
+        // STEP F: Recursive Loop
+        turnCounter++;
+        if (simulationActive) {
+            logSystem("♻️ Scheduling next turn...");
+            setTimeout(() => runNextProxyTurn(headers, convId), 3000);
+        }
+
+    } catch (err) {
+        logSystem(`❌ Loop Error: ${err.message}`);
+        simulationActive = false;
+    }
+}// Attach this to a "Pause/Play" button in your UI
+function togglePause() {
+    isPaused = !isPaused;
+    logSystem(isPaused ? "⏸️ Simulation Paused" : "▶️ Simulation Resumed");
+}
+async function runTurnAudit(userMsg, aiMsg, meta) {
+    const resolvedKey = (typeof supabaseKey !== 'undefined') ? supabaseKey : null;
+    const headers = { 'Content-Type': 'application/json' };
+    if (resolvedKey) headers['Authorization'] = `Bearer ${resolvedKey}`;
+
+    const res = await fetch(TESTER_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+            action: "full_audit",
+            history: chatHistory,
+            userMessage: userMsg,
+            aiResponse: aiMsg,
+            metadata: meta,
+            prompts: {
+                manager_ai_prompt: document.getElementById('manager_ai_prompt')?.value,
+                sales_ai_prompt_mechanics: document.getElementById('sales_ai_prompt_mechanics')?.value
+            }
+        })
+    });
+    
+    const report = await res.json();
+    
+    // Log Street and System fixes to the log panel
+    if (report.system?.prompt_fix) {
+        console.log("🛠️ SYSTEM FIX:", report.system.prompt_fix);
+    }
+    if (report.street?.prompt_fix) {
+        logSystem(`🏙️ STREET FIX: ${report.street.prompt_fix}`);
+    }
+}
+function renderImage(url, direction = 'in') {
+    const chatDisplay = document.getElementById('chat-display');
+    const container = document.createElement('div');
+    container.style.margin = "10px 0";
+    container.style.textAlign = direction === 'in' ? 'left' : 'right';
+
+    const img = document.createElement('img');
+    img.src = url;
+    img.style.maxWidth = "200px";
+    img.style.borderRadius = "8px";
+    img.style.border = "1px solid var(--glass-border)";
+    img.style.cursor = "pointer";
+    img.onclick = () => window.open(url, '_blank'); // Click to expand
+    
+    container.appendChild(img);
+    chatDisplay.appendChild(container);
+    chatDisplay.scrollTop = chatDisplay.scrollHeight;
+}
+
+// Clear the main chat area and reset history
+function clearChat() {
+    const box = document.getElementById('chat-box');
+    if (!box) return;
+    box.innerHTML = '';
+    chatHistory = [];
+    conversationId = conversationId || null;
+}
+
+// Render the core intent as a grey bubble at the very top
+function renderIntentBubble(intentText) {
+    if (!intentText) return;
+    const box = document.getElementById('chat-box');
+    const div = document.createElement('div');
+    div.className = 'msg-wrapper proxy';
+    div.style.alignSelf = 'flex-end';
+    div.innerHTML = `
+        <div class="msg" style="background: rgba(120,120,120,0.12); color: var(--text-muted); font-size: 12px;">
+            <strong style="display:block; font-size:11px; color:var(--text-muted); margin-bottom:6px;">Core Intent</strong>
+            ${intentText.replace(/\n/g, '<br>')}
+        </div>
+    `;
+    // Insert at the top
+    if (box.firstChild) box.insertBefore(div, box.firstChild);
+    else box.appendChild(div);
+    box.scrollTop = 0;
+}
+async function runTurnAudit(msgId, userMsg, aiMsg, meta) {
+    const currentPrompts = getCurrentPrompts();
+    
+    // Call your existing QC endpoint
+    const res = await fetch(QC_URL, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ 
+            action: "full_audit", // Special flag for the Teacher
+            userMessage: userMsg, 
+            aiResponse: aiMsg, 
+            metadata: meta, 
+            prompts: currentPrompts.globalPrompts 
+        })
+    });
+    
+    const report = await res.json();
+    
+    // If the Teacher found a "Street" (Kenyan Context) error, log it specifically
+    if (report.street_fix) {
+        logSystem(`🏙️ <span style="color:var(--warning)">STREET FIX:</span> ${report.street_fix}`);
+    }
+}
+
+        // --- TOOL MANAGEMENT ---
+        function loadSelectedTool() {
+            const toolSelect = document.getElementById('toolSelect');
+            const toolId = toolSelect.value;
+            
+            if (!toolId) {
+                // Clear fields if no tool selected
+                document.getElementById('toolDesc').value = '';
+                document.getElementById('toolParams').value = '';
+                return;
+            }
+            
+            // Find the tool in activeToolsData
+            const selectedTool = activeToolsData.find(t => t.id === toolId);
+            if (selectedTool) {
+                document.getElementById('toolDesc').value = selectedTool.description || '';
+                document.getElementById('toolParams').value = JSON.stringify(selectedTool.parameters || {}, null, 2);
+                log('sys', `Loaded tool: ${selectedTool.name}`);
+                handleEdit();
+            }
+        }
+
+        async function saveToolToDB() {
+            try {
+                const toolSelect = document.getElementById('toolSelect');
+                const toolId = toolSelect.value;
+                
+                if (!toolId) {
+                    log('error', 'Please select a tool first.');
+                    return;
+                }
+                
+                const description = document.getElementById('toolDesc').value;
+                const paramsText = document.getElementById('toolParams').value;
+                
+                // Try to parse JSON parameters
+                let parameters = {};
+                try {
+                    parameters = JSON.parse(paramsText);
+                } catch (e) {
+                    log('error', 'Invalid JSON in Parameters field: ' + e.message);
+                    return;
+                }
+                
+                // Send update to server
+                const res = await fetch(TESTER_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        action: "update_tool", 
+                        businessId: BUSINESS_ID, 
+                        toolId: toolId,
+                        description: description,
+                        parameters: parameters
+                    })
+                });
+                
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+                
+                log('sys', "Tool updated successfully.");
+                isDraftMode = false;
+                document.getElementById('draft-banner').classList.remove('active');
+                setLed('success');
+                
+                // Reload config to sync latest data
+                await loadBusinessConfig(BUSINESS_ID);
+            } catch (err) {
+                log('error', "Tool update failed: " + err.message);
+            }
+        }
+
+// UI helper to stop the loop
+function stopProxySimulation() {
+    simulationActive = false;
+    try { updateBattleUI(false); } catch(e) { /* ignore */ }
+    logSystem("🛑 Simulation Halted by User.");
+}
+
+// Helper to render the intent at the top of the chat (kept for backward compat)
+function renderIntentBubble(intent) {
+    if(!intent) return;
+    const box = document.getElementById('chat-box');
+    const div = document.createElement('div');
+    div.className = 'msg-wrapper proxy';
+    div.style.alignSelf = 'flex-end';
+    div.innerHTML = `<div class="msg" style="background: rgba(120,120,120,0.12); color: var(--text-muted); font-size:12px;">` +
+                    `<strong style="display:block; font-size:11px; color:var(--text-muted); margin-bottom:6px;">ACTIVE PERSONA:</strong>${intent}</div>`;
+    box.appendChild(div);
+}
+
     </script>
 </body>
 </html>
