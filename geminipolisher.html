@@ -95,25 +95,28 @@
 
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         
-        // --- EDGE FUNCTION HELPERS ---
-        async function analyzeImage(imageBase64) {
-            try {
-                const res = await fetch(`${EDGE_FUNCTION_BASE}/analyze-image`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ image_base64: imageBase64 })
-                });
-
-                if (!res.ok) throw new Error(`API Error ${res.status}`);
-
-                const data = await res.json();
-                console.log("🟢 Image Analysis Result:", data.new_data);
-                return data.new_data;
-            } catch (err) {
-                console.error("❌ analyzeImage error:", err);
-                return null;
+       // Inside geminipolisher.html
+async function analyzeImage(base64, product) {
+    const response = await fetch(`${EDGE_FUNCTION_URL}/analyze-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            image_base64: base64,
+            product_category: product.product_type || 'General',
+            current_metadata: {
+                text_colors: product.text_colors,
+                materials: product.materials,
+                patterns: product.patterns
             }
-        }
+        })
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`API Error ${response.status}: ${errorText}`);
+    }
+    return await response.json();
+}
 
         async function saveAndEmbedProduct(productId, metadata) {
             try {
